@@ -1,5 +1,6 @@
-import { useState } from "react";
 import "./App.css";
+import { useEffect, useState } from "react";
+import { obtenerEventos } from "./services/api.js";
 
 const initialTasks = [
   { id: 1, name: "Reservar salón", status: "Hecho", due: "02 Nov", hours: "2h", note: "Salón campestre confirmado." },
@@ -29,7 +30,20 @@ function Modal({ title, close, children }) {
   );
 }
 
-export default function App() {
+export default function App() {   
+  const [eventos, setEventos] = useState([]);
+
+  useEffect(() => {
+    async function cargarEventos() {
+      try {
+        const datos = await obtenerEventos();
+        setEventos(datos);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    cargarEventos();
+  }, []);
   const [view, setView] = useState("eventos");
   const [tasks, setTasks] = useState(initialTasks);
   const [active, setActive] = useState(initialTasks[2]);
