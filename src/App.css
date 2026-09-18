@@ -29,15 +29,16 @@ header > .primary { margin-left: auto; }
 }
 
 nav { display: flex; gap: 8px; }
-nav button {
+nav a {
   border: 0; background: transparent;
   padding: 9px 13px; border-radius: 7px;
-  color: var(--muted); font-weight: 700;
+  color: var(--muted); font-weight: 700; text-decoration: none;
 }
 nav .selected { background: #edf1ff; color: var(--blue); }
 
 /* ── Buttons ── */
 .btn { border: 1px solid transparent; border-radius: 8px; min-height: 42px; padding: 0 16px; font-weight: 750; }
+.btn:disabled { cursor: not-allowed; opacity: .65; }
 .primary { background: var(--blue); color: #fff; box-shadow: 0 5px 12px #3157d533; }
 .secondary { background: #fff; border-color: #cbd6f5; color: var(--blue); }
 .ghost { background: #fff; border-color: var(--line); color: #506078; }
@@ -56,6 +57,8 @@ small { font-size: 11px; font-weight: 800; letter-spacing: 1.1px; color: var(--b
   padding: 27px 30px; border-radius: 14px;
   background: linear-gradient(105deg, #263f9b, #416adf); color: #fff;
 }
+.event-grid { display: grid; gap: 16px; }
+.event-description { margin-top: 9px !important; max-width: 680px; color: #fff !important; line-height: 1.45; }
 .event small { color: #dbe4ff; }
 .event h2 { margin: 7px 0; font-size: 23px; }
 .event p { margin: 0; color: #e4eaff; font-size: 14px; }
@@ -73,6 +76,17 @@ small { font-size: 11px; font-weight: 800; letter-spacing: 1.1px; color: var(--b
 
 /* ── Card ── */
 .card { background: #fff; border: 1px solid var(--line); border-radius: 13px; }
+
+/* ── Estados remotos ── */
+.state-card { min-height: 130px; display: flex; align-items: center; justify-content: center; gap: 13px; padding: 28px; color: var(--muted); font-weight: 700; }
+.spinner { width: 20px; height: 20px; border: 3px solid #dce4fb; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+.error-state { justify-content: space-between; color: var(--ink); }
+.error-state p { margin-bottom: 0; color: var(--muted); font-weight: 500; }
+.empty-state { max-width: 620px; margin: 50px auto; padding: 44px 28px; text-align: center; }
+.empty-state h2 { margin: 14px 0 7px; }
+.empty-state p { margin: 0 auto 22px; max-width: 440px; color: var(--muted); line-height: 1.5; }
+.empty-icon { display: grid; place-items: center; width: 48px; height: 48px; margin: auto; border-radius: 13px; background: #edf1ff; color: var(--blue); font-size: 25px; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Progress ── */
 .progress { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 24px 28px; margin-top: 24px; }
@@ -156,6 +170,9 @@ blockquote { margin: 15px 0; padding: 13px; background: #f6f8fc; border-radius: 
 .modal label { display: block; margin: 17px 0 7px; font-size: 13px; font-weight: 750; }
 .modal input, .modal textarea, .modal select { width: 100%; padding: 11px 12px; border: 1px solid #cfd6e3; border-radius: 7px; }
 .modal textarea { min-height: 100px; resize: vertical; }
+.modal input:focus, .modal textarea:focus { outline: 3px solid #3157d52b; border-color: var(--blue); }
+.optional { color: var(--muted); font-weight: 500; }
+.form-error { margin: 14px 0 0 !important; padding: 10px 12px; border-radius: 7px; background: #fff0f0; color: #a72e37 !important; font-size: 13px; font-weight: 700; }
 .close { position: absolute; right: 15px; top: 15px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: #f0f2f6; color: #526078; font-size: 21px; }
 .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
@@ -186,6 +203,7 @@ blockquote { margin: 15px 0; padding: 13px; background: #f6f8fc; border-radius: 
   .detail + .detail { margin-left: 0; }
   .badge { margin-left: auto; }
   .today { grid-template-columns: 1fr; }
+  .error-state { align-items: flex-start; flex-direction: column; }
   .actions { flex-wrap: wrap; }
   .actions .btn { flex: 1; }
 }
