@@ -600,9 +600,126 @@ function CrearEventoPage({ onCancelar, onCrear }) {
   );
 }
 
-function Today() {
-  return <section className="page"><div className="heading"><div><small>VISTA DE PROTOTIPO</small><h1>Hoy</h1><p>Esta vista se conserva del frontend anterior mientras el backend define la información real de tareas.</p></div></div><section className="card empty-state"><div className="empty-icon">◷</div><h2>Vista Hoy</h2><p>La gestión de tareas de hoy se conectará cuando el backend exponga el endpoint correspondiente.</p></section></section>;
+function obtenerFechaLocalHoy() {
+  const hoy = new Date();
+  const year = hoy.getFullYear();
+  const month = String(hoy.getMonth() + 1).padStart(2, "0");
+  const day = String(hoy.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
+
+function Today({ onNotify }) {
+  const [tareas, setTareas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [actualizando, setActualizando] = useState(null);
+
+  const cargarHoy = async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const [eventosData, subtareasData] = await Promise.all([obtenerEventos(), obtenerSubtareas()]);
+      const listaEventos = Array.isArray(eventosData) ? eventosData : [];
+      const listaSubtareas = Array.isArray(subtareasData) ? subtareasData : [];
+      const eventosPorId = new Map(listaEventos.map((evento) => [String(evento.id), evento]));
+      const hoy = obtenerFechaLocalHoy();
+
+      const tareasDeHoy = listaSubtareas
+        .map((subtarea) => {
+          const evento = eventosPorId.get(String(subtarea.evento_id));
+          return { ...subtarea, evento, fechaObjetivo: subtarea.dia_objetivo || evento?.fecha || null };
+        })
+        .filter((subtarea) => String(subtarea.fechaObjetivo || "").slice(0, 10) === hoy)
+        .sort((a, b) => {
+          const estadoA = normalizarEstado(a.estado);
+          const estadoB = normalizarEstado(b.estado);
+          if (estadoA === "hecho" && estadoB !== "hecho") return 1;
+          if (estadoA !== "hecho" && estadoB === "hecho") return -1;
+          return obtenerTituloSubtarea(a).localeCompare(obtenerTituloSubtarea(b), "es");
+        });
+
+      setTareas(tareasDeHoy);
+    } catch (errorActual) {
+      setError(errorActual.message || "No fue posible cargar las tareas de hoy.");
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => { cargarHoy(); }, []);
+
+  const cambiarEstado = async (tarea) => {
+    const nuevoEstado = normalizarEstado(tarea.estado) === "hecho" ? "pendiente" : "hecho";
+    setActualizando(tarea.id);
+    try {
+      await actualizarSubtarea(tarea.id, {
+        evento_id: tarea.evento_id,
+        titulo: obtenerTituloSubtarea(tarea),
+        horas_estimadas: obtenerHoras(tarea),
+        estado: nuevoEstado,
+      });
+      await cargarHoy();
+      onNotify(nuevoEstado === "hecho" ? "Subtarea marcada como hecha." : "Subtarea marcada como pendiente.");
+    } catch (errorActual) {
+      onNotify(errorActual.message || "No fue posible actualizar la subtarea.", "error");
+    } finally {
+      setActualizando(null);
+    }
+  };
+
+  const pendientes = tareas.filter((tarea) => normalizarEstado(tarea.estado) !== "hecho");
+  const completadas = tareas.filter((tarea) => normalizarEstado(tarea.estado) === "hecho");
+  const horas = tareas.reduce((total, tarea) => total + obtenerHoras(tarea), 0);
+
+  return (
+    <section className="page">
+      <div className="heading">
+        <div><small>SEGUIMIENTO DIARIO</small><h1>Hoy</h1><p>Consulta las subtareas programadas para hoy y actualiza su estado sin salir de esta vista.</p></div>
+        <button className="btn secondary" type="button" onClick={cargarHoy} disabled={cargando}>↻ Actualizar</button>
+      </div>
+
+      {cargando && <section className="card state-card"><span className="spinner" /> Cargando tareas de hoy...</section>}
+
+      {!cargando && error && <section className="card state-card error-state" role="alert"><div><b>No se pudieron cargar las tareas de hoy.</b><p>{error}</p></div><button className="btn ghost" type="button" onClick={cargarHoy}>Reintentar</button></section>}
+
+      {!cargando && !error && <>
+        <section className="event-grid" aria-label="Resumen de tareas de hoy">
+          <article className="card event-card"><div className="event-card-icon">◷</div><div className="event-card-content"><span className="status-pill">● HOY</span><h2>{tareas.length}</h2><p>Subtareas programadas</p></div></article>
+          <article className="card event-card"><div className="event-card-icon">✓</div><div className="event-card-content"><span className="status-pill">● COMPLETADAS</span><h2>{completadas.length}</h2><p>Subtareas terminadas</p></div></article>
+          <article className="card event-card"><div className="event-card-icon">◷</div><div className="event-card-content"><span className="status-pill">● TIEMPO</span><h2>{horas}</h2><p>{horas === 1 ? "hora estimada" : "horas estimadas"}</p></div></article>
+        </section>
+
+        {tareas.length === 0 ? (
+          <section className="card empty-state"><div className="empty-icon">✓</div><h2>No hay tareas para hoy</h2><p>No encontramos subtareas cuya fecha objetivo o evento corresponda a hoy.</p><button className="btn primary" type="button" onClick={() => navegar("/eventos")}>Ver eventos</button></section>
+        ) : (
+          <section className="card">
+            <div className="subtasks-heading"><div><h2>Tareas de hoy</h2><p>{pendientes.length} pendientes · {completadas.length} completadas</p></div></div>
+            <div className="subtask-list">
+              {tareas.map((tarea) => {
+                const estado = normalizarEstado(tarea.estado);
+                const hecha = estado === "hecho";
+                const titulo = obtenerTituloSubtarea(tarea);
+                const nombreEvento = tarea.evento?.titulo || "Evento sin título";
+                return (
+                  <article className="subtask-row" key={tarea.id}>
+                    <span className={`task-check ${hecha ? "completed" : ""}`}>{hecha ? "✓" : ""}</span>
+                    <div className="task-main"><h3 className={hecha ? "completed-text" : ""}>{titulo}</h3><p>{nombreEvento} · {obtenerHoras(tarea)} {obtenerHoras(tarea) === 1 ? "hora" : "horas"}</p></div>
+                    <span className={`badge ${hecha ? "badge-success" : "badge-pending"}`}>{etiquetaEstado(estado)}</span>
+                    <div className="row-actions">
+                      <button className={`btn ${hecha ? "ghost" : "primary"}`} type="button" onClick={() => cambiarEstado(tarea)} disabled={actualizando === tarea.id}>{actualizando === tarea.id ? "Guardando…" : hecha ? "↶ Pendiente" : "✓ Marcar hecha"}</button>
+                      {tarea.evento?.id && <button className="btn ghost" type="button" onClick={() => navegar(`/eventos/${tarea.evento.id}`)}>Ver evento</button>}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </>}
+    </section>
+  );
+}
+
 
 export default function App() {
   const [ruta, setRuta] = useState(rutaActual);
@@ -644,7 +761,7 @@ export default function App() {
     <Header ruta={ruta} abrirCrear={() => navegar("/crear-evento")} />
     <Toast type={toast.type} message={toast.message} />
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} />}
-    {ruta === "/hoy" && <Today />}
+    {ruta === "/hoy" && <Today onNotify={notify} />}
     {detalleId && <DetalleEvento id={detalleId} volver={() => navegar("/eventos")} onNotify={notify} onEventosChanged={cargarEventos} />}
     {ruta === "/crear-evento" && <CrearEventoPage onCancelar={() => navegar("/eventos")} onCrear={crear} />}
   </main>;
