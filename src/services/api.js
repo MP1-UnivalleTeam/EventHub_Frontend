@@ -1,5 +1,4 @@
 // Frontend-only API client.
-// The backend team only needs to expose the routes documented in README_FRONTEND_API.md.
 const API_URL = (import.meta.env.VITE_API_URL || "https://eventhub-backend-tbst.onrender.com").replace(/\/$/, "");
 
 async function request(path, options = {}) {
@@ -26,6 +25,8 @@ async function request(path, options = {}) {
   return data;
 }
 
+// --- EVENTOS ---
+
 export function obtenerEventos() {
   return request("/eventos");
 }
@@ -48,14 +49,25 @@ export function actualizarEvento(id, evento) {
   });
 }
 
+export function actualizarParcialEvento(id, datos) {
+  return request(`/eventos/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(datos),
+  });
+}
+
 export function eliminarEvento(id) {
   return request(`/eventos/${id}`, {
     method: "DELETE",
   });
 }
 
+// --- SUBTAREAS ---
+
 export function obtenerSubtareas(eventoId) {
-  return request(`/subtareas/?evento_id=${encodeURIComponent(eventoId)}`);
+  // Si envías eventoId, lo concatena como query param; si no, trae todas.
+  const query = eventoId ? `?evento_id=${encodeURIComponent(eventoId)}` : "";
+  return request(`/subtareas/${query}`);
 }
 
 export function crearSubtarea(subtarea) {
@@ -69,6 +81,13 @@ export function actualizarSubtarea(id, subtarea) {
   return request(`/subtareas/${id}`, {
     method: "PUT",
     body: JSON.stringify(subtarea),
+  });
+}
+
+export function actualizarParcialSubtarea(id, datos) {
+  return request(`/subtareas/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(datos),
   });
 }
 
