@@ -18,9 +18,17 @@ async function request(path, options = {}) {
     : await response.text().catch(() => "");
 
   if (!response.ok) {
-    const detail = typeof data === "object" && data?.detail ? data.detail : null;
-    throw new Error(detail || "No fue posible completar la solicitud.");
-  }
+  const detail =
+    typeof data === "object" && data?.detail
+      ? Array.isArray(data.detail)
+        ? data.detail
+            .map((item) => item.msg || "Error de validación.")
+            .join(" ")
+        : String(data.detail)
+      : null;
+
+  throw new Error(detail || "No fue posible completar la solicitud.");
+}
 
   return data;
 }
