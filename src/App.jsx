@@ -405,7 +405,11 @@ function EditarSubtareaForm({ subtarea, eventoId, onCancelar, onGuardado }) {
         </div>
         <div>
           <div className="field-header"><label htmlFor="edit-sub-estado">Estado</label></div>
-          <select id="edit-sub-estado" name="estado" value={form.estado} onChange={actualizar}><option>Pendiente</option><option>Completada</option></select>
+          <select id="edit-sub-estado" name="estado" value={form.estado} onChange={actualizar}>
+            <option value="pendiente">Pendiente</option>
+            <option value="hecho">Hecho</option>
+            <option value="pospuesto">Pospuesto</option>
+          </select>
         </div>
       </div>
       {errorServidor && <div className="alert alert-error" role="alert"><b>No fue posible actualizar la subtarea.</b><span>{errorServidor}</span></div>}
@@ -613,109 +617,490 @@ function Today({ onNotify }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [actualizando, setActualizando] = useState(null);
+  const [seleccionada, setSeleccionada] = useState(null);
 
   const cargarHoy = async () => {
     setCargando(true);
     setError("");
+
     try {
-      const [eventosData, subtareasData] = await Promise.all([obtenerEventos(), obtenerSubtareas()]);
+      const [eventosData, subtareasData] = await Promise.all([
+        obtenerEventos(),
+        obtenerSubtareas(),
+      ]);
+
       const listaEventos = Array.isArray(eventosData) ? eventosData : [];
       const listaSubtareas = Array.isArray(subtareasData) ? subtareasData : [];
-      const eventosPorId = new Map(listaEventos.map((evento) => [String(evento.id), evento]));
+      const eventosPorId = new Map(
+        listaEventos.map((evento) => [String(evento.id), evento])
+      );
+
       const hoy = obtenerFechaLocalHoy();
 
       const tareasDeHoy = listaSubtareas
         .map((subtarea) => {
           const evento = eventosPorId.get(String(subtarea.evento_id));
-          return { ...subtarea, evento, fechaObjetivo: subtarea.dia_objetivo || evento?.fecha || null };
+
+          return {
+            ...subtarea,
+            evento,
+            fechaObjetivo: subtarea.dia_objetivo || evento?.fecha || null,
+          };
         })
-        .filter((subtarea) => String(subtarea.fechaObjetivo || "").slice(0, 10) === hoy)
+        .filter(
+          (subtarea) =>
+            String(subtarea.fechaObjetivo || "").slice(0, 10) === hoy
+        )
         .sort((a, b) => {
           const estadoA = normalizarEstado(a.estado);
           const estadoB = normalizarEstado(b.estado);
+
           if (estadoA === "hecho" && estadoB !== "hecho") return 1;
           if (estadoA !== "hecho" && estadoB === "hecho") return -1;
-          return obtenerTituloSubtarea(a).localeCompare(obtenerTituloSubtarea(b), "es");
+
+          return obtenerTituloSubtarea(a).localeCompare(
+            obtenerTituloSubtarea(b),
+            "es"
+          );
         });
 
       setTareas(tareasDeHoy);
+
+      if (
+        seleccionada &&
+        !tareasDeHoy.some((tarea) => tarea.id === seleccionada.id)
+      ) {
+        setSeleccionada(null);
+      }
     } catch (errorActual) {
-      setError(errorActual.message || "No fue posible cargar las tareas de hoy.");
+      setError(
+        errorActual.message || "No fue posible cargar las tareas de hoy."
+      );
     } finally {
       setCargando(false);
     }
   };
 
-  useEffect(() => { cargarHoy(); }, []);
+  useEffect(() => {
+    cargarHoy();
+  }, []);
 
-  const cambiarEstado = async (tarea) => {
-    const nuevoEstado = normalizarEstado(tarea.estado) === "hecho" ? "pendiente" : "hecho";
+  const cambiarEstado = async (tarea, nuevoEstado = null) => {
+    const estadoActual = normalizarEstado(tarea.estado);
+    const estadoNuevo =
+      nuevoEstado ||
+      (estadoActual === "hecho" ? "pendiente" : "hecho");
+
     setActualizando(tarea.id);
+
     try {
       await actualizarSubtarea(tarea.id, {
         evento_id: tarea.evento_id,
         titulo: obtenerTituloSubtarea(tarea),
         horas_estimadas: obtenerHoras(tarea),
-        estado: nuevoEstado,
+        estado: estadoNuevo,
       });
+
       await cargarHoy();
-      onNotify(nuevoEstado === "hecho" ? "Subtarea marcada como hecha." : "Subtarea marcada como pendiente.");
+
+      setSeleccionada((actual) =>
+        actual?.id === tarea.id
+          ? { ...actual, estado: estadoNuevo }
+          : actual
+      );
+
+      onNotify(
+        estadoNuevo === "hecho"
+          ? "Subtarea marcada como hecha."
+          : estadoNuevo === "pospuesto"
+          ? "Subtarea pospuesta correctamente."
+          : "Subtarea marcada como pendiente."
+      );
     } catch (errorActual) {
-      onNotify(errorActual.message || "No fue posible actualizar la subtarea.", "error");
+      onNotify(
+        errorActual.message || "No fue posible actualizar la subtarea.",
+        "error"
+      );
     } finally {
       setActualizando(null);
     }
   };
 
-  const pendientes = tareas.filter((tarea) => normalizarEstado(tarea.estado) !== "hecho");
-  const completadas = tareas.filter((tarea) => normalizarEstado(tarea.estado) === "hecho");
-  const horas = tareas.reduce((total, tarea) => total + obtenerHoras(tarea), 0);
+  const pendientes = tareas.filter(
+    (tarea) => normalizarEstado(tarea.estado) === "pendiente"
+  );
+
+  const pospuestas = tareas.filter(
+    (tarea) => normalizarEstado(tarea.estado) === "pospuesto"
+  );
+
+  const completadas = tareas.filter(
+    (tarea) => normalizarEstado(tarea.estado) === "hecho"
+  );
+
+  const urgentes = [...pospuestas, ...pendientes];
+
+  const horas = tareas.reduce(
+    (total, tarea) => total + obtenerHoras(tarea),
+    0
+  );
+
+  const horasPendientes = [...pendientes, ...pospuestas].reduce(
+    (total, tarea) => total + obtenerHoras(tarea),
+    0
+  );
+
+  const capacidadDiaria = 8;
+  const porcentajeCapacidad = Math.min(
+    Math.round((horasPendientes / capacidadDiaria) * 100),
+    100
+  );
+
+  const renderTarea = (tarea, urgente = false) => {
+    const estado = normalizarEstado(tarea.estado);
+    const hecha = estado === "hecho";
+    const titulo = obtenerTituloSubtarea(tarea);
+    const nombreEvento = tarea.evento?.titulo || "Evento sin título";
+    const horasTarea = obtenerHoras(tarea);
+    const seleccionadaActual = seleccionada?.id === tarea.id;
+
+    return (
+      <article
+        className={`today-task-card ${urgente ? "urgent-task" : ""} ${
+          hecha ? "done-task" : ""
+        } ${seleccionadaActual ? "selected-task" : ""}`}
+        key={tarea.id}
+        onClick={() => setSeleccionada(tarea)}
+      >
+        <div className="today-task-main">
+          <div className="today-task-top">
+            <span className="today-event-pill">
+              Evento: {nombreEvento}
+            </span>
+
+            <span className={`today-status status-${estado}`}>
+              {hecha ? "✓" : estado === "pospuesto" ? "◷" : "○"}{" "}
+              {etiquetaEstado(estado)}
+            </span>
+
+            <span className="today-hours">{horasTarea}h</span>
+          </div>
+
+          <h3>{titulo}</h3>
+
+          {urgente && !hecha && (
+            <div className="today-urgent-message">
+              <strong>⚠ Atención inmediata</strong>
+              <span>
+                Esta gestión todavía requiere atención durante el día de hoy.
+              </span>
+            </div>
+          )}
+
+          <div className="today-task-meta">
+            <span>
+              📅{" "}
+              {tarea.dia_objetivo
+                ? "Plazo: Hoy"
+                : tarea.evento?.fecha
+                ? "Evento programado para hoy"
+                : "Sin fecha específica"}
+            </span>
+          </div>
+        </div>
+
+        <div
+          className="today-task-actions"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {!hecha ? (
+            <>
+              <button
+                className="today-action-primary"
+                type="button"
+                disabled={actualizando === tarea.id}
+                onClick={() => cambiarEstado(tarea, "hecho")}
+              >
+                {actualizando === tarea.id
+                  ? "Guardando..."
+                  : "✓ Marcar como hecho"}
+              </button>
+
+              <button
+                className="today-action-secondary"
+                type="button"
+                disabled={actualizando === tarea.id}
+                onClick={() => cambiarEstado(tarea, "pospuesto")}
+              >
+                Posponer
+              </button>
+            </>
+          ) : (
+            <span className="today-verified">✓ Realizada</span>
+          )}
+        </div>
+      </article>
+    );
+  };
 
   return (
-    <section className="page">
-      <div className="heading">
-        <div><small>SEGUIMIENTO DIARIO</small><h1>Hoy</h1><p>Consulta las subtareas programadas para hoy y actualiza su estado sin salir de esta vista.</p></div>
-        <button className="btn secondary" type="button" onClick={cargarHoy} disabled={cargando}>↻ Actualizar</button>
+    <section className="page today-page">
+      <div className="today-header">
+        <div>
+          <small>
+            SEGUIMIENTO DIARIO ·{" "}
+            {new Intl.DateTimeFormat("es-CO", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }).format(new Date())}
+          </small>
+          <h1>Hoy</h1>
+          <p>Prioriza lo importante y conserva el ritmo.</p>
+        </div>
+
+        <div className="today-capacity">
+          <span>Capacidad del día</span>
+          <strong>
+            {horasPendientes}h / {capacidadDiaria}h
+          </strong>
+
+          <div className="today-capacity-track">
+            <span style={{ width: `${porcentajeCapacidad}%` }} />
+          </div>
+        </div>
       </div>
 
-      {cargando && <section className="card state-card"><span className="spinner" /> Cargando tareas de hoy...</section>}
+      <div className="today-summary-grid">
+        <article className="today-summary-card">
+          <span className="today-summary-icon">◷</span>
+          <div>
+            <small>GESTIONES DE HOY</small>
+            <strong>{tareas.length}</strong>
+            <span>Subtareas programadas</span>
+          </div>
+        </article>
 
-      {!cargando && error && <section className="card state-card error-state" role="alert"><div><b>No se pudieron cargar las tareas de hoy.</b><p>{error}</p></div><button className="btn ghost" type="button" onClick={cargarHoy}>Reintentar</button></section>}
+        <article className="today-summary-card">
+          <span className="today-summary-icon">!</span>
+          <div>
+            <small>PENDIENTES</small>
+            <strong>{urgentes.length}</strong>
+            <span>Requieren atención</span>
+          </div>
+        </article>
 
-      {!cargando && !error && <>
-        <section className="event-grid" aria-label="Resumen de tareas de hoy">
-          <article className="card event-card"><div className="event-card-icon">◷</div><div className="event-card-content"><span className="status-pill">● HOY</span><h2>{tareas.length}</h2><p>Subtareas programadas</p></div></article>
-          <article className="card event-card"><div className="event-card-icon">✓</div><div className="event-card-content"><span className="status-pill">● COMPLETADAS</span><h2>{completadas.length}</h2><p>Subtareas terminadas</p></div></article>
-          <article className="card event-card"><div className="event-card-icon">◷</div><div className="event-card-content"><span className="status-pill">● TIEMPO</span><h2>{horas}</h2><p>{horas === 1 ? "hora estimada" : "horas estimadas"}</p></div></article>
-        </section>
+        <article className="today-summary-card">
+          <span className="today-summary-icon">✓</span>
+          <div>
+            <small>REALIZADAS</small>
+            <strong>{completadas.length}</strong>
+            <span>Completadas hoy</span>
+          </div>
+        </article>
 
-        {tareas.length === 0 ? (
-          <section className="card empty-state"><div className="empty-icon">✓</div><h2>No hay tareas para hoy</h2><p>No encontramos subtareas cuya fecha objetivo o evento corresponda a hoy.</p><button className="btn primary" type="button" onClick={() => navegar("/eventos")}>Ver eventos</button></section>
-        ) : (
-          <section className="card">
-            <div className="subtasks-heading"><div><h2>Tareas de hoy</h2><p>{pendientes.length} pendientes · {completadas.length} completadas</p></div></div>
-            <div className="subtask-list">
-              {tareas.map((tarea) => {
-                const estado = normalizarEstado(tarea.estado);
-                const hecha = estado === "hecho";
-                const titulo = obtenerTituloSubtarea(tarea);
-                const nombreEvento = tarea.evento?.titulo || "Evento sin título";
-                return (
-                  <article className="subtask-row" key={tarea.id}>
-                    <span className={`task-check ${hecha ? "completed" : ""}`}>{hecha ? "✓" : ""}</span>
-                    <div className="task-main"><h3 className={hecha ? "completed-text" : ""}>{titulo}</h3><p>{nombreEvento} · {obtenerHoras(tarea)} {obtenerHoras(tarea) === 1 ? "hora" : "horas"}</p></div>
-                    <span className={`badge ${hecha ? "badge-success" : "badge-pending"}`}>{etiquetaEstado(estado)}</span>
-                    <div className="row-actions">
-                      <button className={`btn ${hecha ? "ghost" : "primary"}`} type="button" onClick={() => cambiarEstado(tarea)} disabled={actualizando === tarea.id}>{actualizando === tarea.id ? "Guardando…" : hecha ? "↶ Pendiente" : "✓ Marcar hecha"}</button>
-                      {tarea.evento?.id && <button className="btn ghost" type="button" onClick={() => navegar(`/eventos/${tarea.evento.id}`)}>Ver evento</button>}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        )}
-      </>}
+        <article className="today-summary-card">
+          <span className="today-summary-icon">◴</span>
+          <div>
+            <small>TIEMPO ESTIMADO</small>
+            <strong>{horas}h</strong>
+            <span>Horas de trabajo</span>
+          </div>
+        </article>
+      </div>
+
+      <div className="today-layout">
+        <main className="today-main-column">
+          {cargando && (
+            <section className="card state-card">
+              <span className="spinner" />
+              Cargando tareas de hoy...
+            </section>
+          )}
+
+          {!cargando && error && (
+            <section
+              className="card state-card error-state"
+              role="alert"
+            >
+              <div>
+                <b>No se pudieron cargar las tareas de hoy.</b>
+                <p>{error}</p>
+              </div>
+
+              <button
+                className="btn ghost"
+                type="button"
+                onClick={cargarHoy}
+              >
+                Reintentar
+              </button>
+            </section>
+          )}
+
+          {!cargando && !error && tareas.length === 0 && (
+            <section className="card today-no-tasks">
+              <div className="empty-icon">✓</div>
+              <h2>No hay gestiones para hoy</h2>
+              <p>
+                No encontramos subtareas cuya fecha objetivo o evento
+                corresponda a hoy.
+              </p>
+              <button
+                className="btn primary"
+                type="button"
+                onClick={() => navegar("/eventos")}
+              >
+                Ver eventos
+              </button>
+            </section>
+          )}
+
+          {!cargando && !error && tareas.length > 0 && (
+            <>
+              <section className="today-section">
+                <div className="today-section-title">
+                  <div>
+                    <h2>Gestiones urgentes</h2>
+                    <span>Atención inmediata</span>
+                  </div>
+
+                  <span className="today-count urgent-count">
+                    {urgentes.length}
+                  </span>
+                </div>
+
+                {urgentes.length === 0 ? (
+                  <div className="today-empty">
+                    <span>✓</span>
+                    <p>No tienes gestiones urgentes.</p>
+                  </div>
+                ) : (
+                  urgentes.map((tarea) => renderTarea(tarea, true))
+                )}
+              </section>
+
+              <section className="today-section">
+                <div className="today-section-title">
+                  <div>
+                    <h2>Gestiones realizadas hoy</h2>
+                    <span>Historial del día</span>
+                  </div>
+
+                  <span className="today-count done-count">
+                    {completadas.length}
+                  </span>
+                </div>
+
+                {completadas.length === 0 ? (
+                  <div className="today-empty">
+                    <span>○</span>
+                    <p>Aún no has completado gestiones hoy.</p>
+                  </div>
+                ) : (
+                  completadas.map((tarea) => renderTarea(tarea))
+                )}
+              </section>
+            </>
+          )}
+        </main>
+
+        <aside className="today-side-panel">
+          <div className="today-panel-header">
+            <small>GESTIÓN SELECCIONADA</small>
+            <h2>
+              {seleccionada
+                ? obtenerTituloSubtarea(seleccionada)
+                : "Selecciona una gestión"}
+            </h2>
+          </div>
+
+          {seleccionada ? (
+            <>
+              <p className="today-panel-event">
+                {seleccionada.evento?.titulo || "Evento sin título"}
+              </p>
+
+              <div className="today-panel-info">
+                <span>Horas estimadas</span>
+                <strong>{obtenerHoras(seleccionada)}h</strong>
+              </div>
+
+              <div className="today-panel-info">
+                <span>Estado</span>
+                <strong>{etiquetaEstado(seleccionada.estado)}</strong>
+              </div>
+
+              <div className="today-panel-info">
+                <span>Fecha</span>
+                <strong>
+                  {seleccionada.dia_objetivo
+                    ? formatearFecha(seleccionada.dia_objetivo)
+                    : "Hoy"}
+                </strong>
+              </div>
+
+              {normalizarEstado(seleccionada.estado) !== "hecho" ? (
+                <>
+                  <button
+                    className="today-register-button"
+                    type="button"
+                    disabled={actualizando === seleccionada.id}
+                    onClick={() => cambiarEstado(seleccionada, "hecho")}
+                  >
+                    {actualizando === seleccionada.id
+                      ? "Guardando..."
+                      : "✓ Registrar ejecución"}
+                  </button>
+
+                  <button
+                    className="today-panel-secondary"
+                    type="button"
+                    disabled={actualizando === seleccionada.id}
+                    onClick={() =>
+                      cambiarEstado(seleccionada, "pospuesto")
+                    }
+                  >
+                    Posponer gestión
+                  </button>
+                </>
+              ) : (
+                <div className="today-panel-success">
+                  ✓ Gestión realizada
+                </div>
+              )}
+
+              {seleccionada.evento?.id && (
+                <button
+                  className="today-panel-cancel"
+                  type="button"
+                  onClick={() =>
+                    navegar(`/eventos/${seleccionada.evento.id}`)
+                  }
+                >
+                  Ver evento
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="today-panel-empty">
+              Selecciona una gestión para consultar sus detalles y registrar
+              su ejecución.
+            </p>
+          )}
+        </aside>
+      </div>
+
+      <div className="today-refresh-row">
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={cargarHoy}
+          disabled={cargando}
+        >
+          ↻ Actualizar vista
+        </button>
+      </div>
     </section>
   );
 }
