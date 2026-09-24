@@ -194,7 +194,12 @@ function CrearSubtareaForm({ eventoId, onCancelar, onCreada }) {
 
     setEnviando(true);
     try {
-      await crearSubtarea({ evento_id: eventoId, nombre: form.nombre.trim(), horas: Number(form.horas), estado: form.estado });
+          await crearSubtarea({
+            evento_id: eventoId,
+            titulo: form.nombre.trim(),
+            horas_estimadas: Number(form.horas),
+            estado: form.estado,
+          });
       onCreada();
     } catch (error) {
       setErrorServidor(error.message);
@@ -362,7 +367,12 @@ function EditarSubtareaForm({ subtarea, eventoId, onCancelar, onGuardado }) {
     if (Object.keys(next).length) return;
     setGuardando(true);
     try {
-      await actualizarSubtarea(subtarea.id, { evento_id: eventoId, nombre: form.nombre.trim(), horas: Number(form.horas), estado: form.estado });
+          await actualizarSubtarea(subtarea.id, {
+            evento_id: eventoId,
+            titulo: form.nombre.trim(),
+            horas_estimadas: Number(form.horas),
+            estado: form.estado,
+          });
       onGuardado();
     } catch (error) {
       setErrorServidor(error.message);
