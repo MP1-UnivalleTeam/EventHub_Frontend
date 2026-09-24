@@ -28,7 +28,7 @@ async function request(path, options = {}) {
 // --- EVENTOS ---
 
 export function obtenerEventos() {
-  return request("/eventos");
+  return request("/eventos/");
 }
 
 export function obtenerEvento(id) {
