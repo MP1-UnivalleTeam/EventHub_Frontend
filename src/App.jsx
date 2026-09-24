@@ -33,14 +33,26 @@ function formatearFecha(fecha) {
 }
 
 function normalizarEstado(estado) {
-  const value = String(estado || "Pendiente").toLowerCase();
-  if (value.includes("complet" ) || value.includes("hech")) return "Completada";
+  const value = String(estado || "pendiente").trim().toLowerCase();
+  if (value === "hecho" || value.includes("complet")) return "hecho";
+  if (value === "pospuesto") return "pospuesto";
+  return "pendiente";
+}
+
+function etiquetaEstado(estado) {
+  const value = normalizarEstado(estado);
+  if (value === "hecho") return "Hecho";
+  if (value === "pospuesto") return "Pospuesto";
   return "Pendiente";
 }
 
 function obtenerHoras(item) {
-  const value = Number(item?.horas ?? item?.hours ?? 0);
+  const value = Number(item?.horas_estimadas ?? item?.horas ?? item?.hours ?? 0);
   return Number.isFinite(value) ? value : 0;
+}
+
+function obtenerTituloSubtarea(item) {
+  return item?.titulo ?? item?.nombre ?? "Sin título";
 }
 
 function Toast({ type = "success", message }) {
@@ -172,7 +184,7 @@ function FormularioEvento({ onCancelar, onCrear }) {
 }
 
 function CrearSubtareaForm({ eventoId, onCancelar, onCreada }) {
-  const [form, setForm] = useState({ nombre: "", horas: "", estado: "Pendiente" });
+  const [form, setForm] = useState({ nombre: "", horas: "", estado: "pendiente" });
   const [errores, setErrores] = useState({});
   const [errorServidor, setErrorServidor] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -222,8 +234,9 @@ function CrearSubtareaForm({ eventoId, onCancelar, onCreada }) {
         <div>
           <div className="field-header"><label htmlFor="sub-estado">Estado</label></div>
           <select id="sub-estado" name="estado" value={form.estado} onChange={actualizar}>
-            <option>Pendiente</option>
-            <option>Completada</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="hecho">Hecho</option>
+            <option value="pospuesto">Pospuesto</option>
           </select>
           <p className="helper">Estado inicial asignado</p>
         </div>
@@ -348,7 +361,7 @@ function EditarEventoForm({ evento, onCancelar, onGuardado }) {
 }
 
 function EditarSubtareaForm({ subtarea, eventoId, onCancelar, onGuardado }) {
-  const [form, setForm] = useState({ nombre: subtarea?.nombre || "", horas: subtarea?.horas ?? "", estado: normalizarEstado(subtarea?.estado) });
+  const [form, setForm] = useState({ nombre: subtarea?.titulo ?? subtarea?.nombre ?? "", horas: subtarea?.horas_estimadas ?? subtarea?.horas ?? "", estado: normalizarEstado(subtarea?.estado) });
   const [errores, setErrores] = useState({});
   const [errorServidor, setErrorServidor] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -453,7 +466,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   };
   useEffect(() => { cargar(); cargarSubtareas(); }, [id]);
 
-  const completadas = subtareas.filter((item) => normalizarEstado(item.estado) === "Completada").length;
+  const completadas = subtareas.filter((item) => normalizarEstado(item.estado) === "hecho").length;
   const horasRegistradas = subtareas.reduce((total, item) => total + obtenerHoras(item), 0);
   const porcentaje = subtareas.length ? Math.round((completadas / subtareas.length) * 100) : 0;
   const responsable = evento?.usuario_responsable;
@@ -517,10 +530,11 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
         {estadoSubtareas === "success" && <div className="subtask-list">
           {subtareas.map((task) => {
             const estado = normalizarEstado(task.estado);
-            return <article className="subtask-row" key={task.id ?? `${task.nombre}-${task.horas}`}>
-              <span className={`task-check ${estado === "Completada" ? "completed" : ""}`}>{estado === "Completada" ? "✓" : ""}</span>
-              <div className="task-main"><h3 className={estado === "Completada" ? "completed-text" : ""}>{task.nombre}</h3><p>◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}</p></div>
-              <span className={`badge ${estado === "Completada" ? "badge-success" : "badge-pending"}`}>{estado}</span>
+            const titulo = obtenerTituloSubtarea(task);
+            return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
+              <span className={`task-check ${estado === "hecho" ? "completed" : ""}`}>{estado === "hecho" ? "✓" : ""}</span>
+              <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}</p></div>
+              <span className={`badge ${estado === "hecho" ? "badge-success" : "badge-pending"}`}>{etiquetaEstado(estado)}</span>
               <div className="row-actions"><button className="btn ghost" onClick={() => setModal({ type: "edit-subtask", item: task })}>✎ Editar</button><button className="btn danger-outline" onClick={() => setConfirmacion({ type: "subtarea", item: task })}>▥ Eliminar</button></div>
             </article>;
           })}
@@ -533,7 +547,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
       {modal === "edit-event" && <Modal title="Editar evento" subtitle="Actualiza la información del evento." close={() => setModal(null)} wide><EditarEventoForm evento={evento} onCancelar={() => setModal(null)} onGuardado={eventoActualizado} /></Modal>}
       {modal?.type === "edit-subtask" && <Modal title="Editar subtarea" subtitle="Actualiza la información de la subtarea." close={() => setModal(null)}><EditarSubtareaForm subtarea={modal.item} eventoId={id} onCancelar={() => setModal(null)} onGuardado={subtareaActualizada} /></Modal>}
       {confirmacion?.type === "evento" && <ConfirmModal title="¿Eliminar evento?" message="Esta acción eliminará el evento y sus subtareas. No se puede deshacer." close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
-      {confirmacion?.type === "subtarea" && <ConfirmModal title="¿Eliminar subtarea?" message={`Esta acción eliminará “${confirmacion.item.nombre}”. No se puede deshacer.`} close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
+      {confirmacion?.type === "subtarea" && <ConfirmModal title="¿Eliminar subtarea?" message={`Esta acción eliminará “${obtenerTituloSubtarea(confirmacion.item)}”. No se puede deshacer.`} close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
     </section>
   );
 }
