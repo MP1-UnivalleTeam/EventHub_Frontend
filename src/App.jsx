@@ -98,7 +98,7 @@ function Header({ ruta, abrirCrear }) {
   );
 }
 
-function FormularioEvento({ onCancelar, onCrear }) {
+function FormularioEvento({ onCancelar, onCrear, onProgress }) {
   const [formulario, setFormulario] = useState({
     titulo: "",
     fecha: "",
@@ -110,9 +110,51 @@ function FormularioEvento({ onCancelar, onCrear }) {
   const [errorServidor, setErrorServidor] = useState("");
   const [enviando, setEnviando] = useState(false);
 
+  useEffect(() => {
+    onProgress?.({
+      porcentaje: 0,
+      pasosCompletados: 0,
+      pasos: [false, false, false, false],
+    });
+  }, [onProgress]);
+
   const actualizar = (event) => {
     const { name, value } = event.target;
-    setFormulario((prev) => ({ ...prev, [name]: value }));
+
+    setFormulario((prev) => {
+      const siguiente = { ...prev, [name]: value };
+
+      const pasosCompletados = [
+        Boolean(siguiente.titulo.trim() && siguiente.titulo.trim().length >= 5),
+        Boolean(siguiente.fecha),
+        Boolean(
+          siguiente.horas &&
+          Number(siguiente.horas) >= 1 &&
+          Number(siguiente.horas) <= 24 &&
+          Number.isInteger(Number(siguiente.horas))
+        ),
+        Boolean(siguiente.usuario_responsable.trim()),
+      ].filter(Boolean).length;
+
+      onProgress?.({
+        porcentaje: Math.round((pasosCompletados / 4) * 100),
+        pasosCompletados,
+        pasos: [
+          Boolean(siguiente.titulo.trim() && siguiente.titulo.trim().length >= 5),
+          Boolean(siguiente.fecha),
+          Boolean(
+            siguiente.horas &&
+            Number(siguiente.horas) >= 1 &&
+            Number(siguiente.horas) <= 24 &&
+            Number.isInteger(Number(siguiente.horas))
+          ),
+          Boolean(siguiente.usuario_responsable.trim()),
+        ],
+      });
+
+      return siguiente;
+    });
+
     setErrores((prev) => ({ ...prev, [name]: "" }));
     setErrorServidor("");
   };
@@ -742,6 +784,31 @@ function InfoBlock({ icon, title, children }) {
 }
 
 function CrearEventoPage({ onCancelar, onCrear }) {
+  const [progreso, setProgreso] = useState({
+    porcentaje: 0,
+    pasosCompletados: 0,
+    pasos: [false, false, false, false],
+  });
+
+  const pasos = [
+    {
+      titulo: "Nombre y temática principal",
+      descripcion: "Título claro para identificar el evento.",
+    },
+    {
+      titulo: "Fecha fijada",
+      descripcion: "Selecciona una fecha para reservar.",
+    },
+    {
+      titulo: "Horas estimadas de ejecución",
+      descripcion: "Indica una duración entre 1 y 24 horas.",
+    },
+    {
+      titulo: "Usuario responsable",
+      descripcion: "Asigna la persona responsable del evento.",
+    },
+  ];
+
   return (
     <section className="create-page">
       <div className="create-main">
@@ -753,17 +820,44 @@ function CrearEventoPage({ onCancelar, onCrear }) {
           </div>
         </div>
         <section className="card create-form-card">
-          <FormularioEvento onCancelar={onCancelar} onCrear={onCrear} />
+          <FormularioEvento onCancelar={onCancelar} onCrear={onCrear} onProgress={setProgreso} />
         </section>
       </div>
       <aside className="create-sidebar">
         <section className="card progress-register">
-          <div className="sidebar-title"><span className="sidebar-icon">☷</span><h2>Progreso del Registro</h2><span className="ready-pill">75% Listo</span></div>
-          <div className="register-step done"><span className="step-dot">✓</span><div><b>Nombre y temática principal</b><small>Claro para asistentes y equipo de operaciones.</small></div></div>
-          <div className="register-step done"><span className="step-dot">✓</span><div><b>Fecha fijada</b><small>Selecciona una fecha para reservar.</small></div></div>
-          <div className="register-step current"><span className="step-dot">○</span><div><b>Horas estimadas de ejecución</b><small>Calcula montaje, show y desmontaje técnico.</small></div></div>
-          <div className="register-step"><span className="step-dot">○</span><div><b>Confirmación de locación</b><small>Se configura en el siguiente paso de logística.</small></div></div>
-          <div className="register-progress"><span /></div>
+          <div className="sidebar-title">
+            <span className="sidebar-icon">☷</span>
+            <h2>Progreso del Registro</h2>
+            <span className="ready-pill">{progreso.porcentaje}% Listo</span>
+          </div>
+
+          {pasos.map((paso, index) => {
+            const completado = progreso.pasos[index];
+            const actual =
+              !completado &&
+              (index === 0 || progreso.pasos[index - 1]);
+
+            return (
+              <div
+                className={`register-step ${
+                  completado ? "done" : actual ? "current" : ""
+                }`}
+                key={paso.titulo}
+              >
+                <span className="step-dot">
+                  {completado ? "✓" : actual ? "○" : "○"}
+                </span>
+                <div>
+                  <b>{paso.titulo}</b>
+                  <small>{paso.descripcion}</small>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="register-progress">
+            <span style={{ width: `${progreso.porcentaje}%` }} />
+          </div>
         </section>
 
         <section className="card validation-card">
