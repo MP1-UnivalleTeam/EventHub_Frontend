@@ -126,8 +126,12 @@ function FormularioEvento({ onCancelar, onCrear }) {
       next.titulo = "El título debe tener al menos 5 caracteres.";
     }
 
+    const hoy = obtenerFechaLocalHoy();
+
     if (!formulario.fecha) {
       next.fecha = "La fecha del evento es requerida.";
+    } else if (formulario.fecha < hoy) {
+      next.fecha = "La fecha del evento no puede ser anterior a hoy.";
     }
 
     const horas = Number(formulario.horas);
@@ -180,8 +184,20 @@ function FormularioEvento({ onCancelar, onCrear }) {
       <div className="form-two-columns">
         <div>
           <div className="field-header"><label htmlFor="fecha">Fecha del evento <span>*</span></label><small>Obligatorio</small></div>
-          <input id="fecha" name="fecha" type="date" value={formulario.fecha} onChange={actualizar} aria-invalid={Boolean(errores.fecha)} />
-          {errores.fecha && <p className="inline-error" role="alert">⊗ {errores.fecha}</p>}
+          <input
+            id="fecha"
+            name="fecha"
+            type="date"
+            min={obtenerFechaLocalHoy()}
+            value={formulario.fecha}
+            onChange={actualizar}
+            aria-invalid={Boolean(errores.fecha)}
+          />
+          {errores.fecha ? (
+            <p className="inline-error" role="alert">⊗ {errores.fecha}</p>
+          ) : (
+            <p className="helper">ⓘ La fecha debe ser hoy o una fecha futura</p>
+          )}
         </div>
         <div>
           <div className="field-header"><label htmlFor="horas">Horas <span>*</span></label><small>Duración estimada</small></div>
@@ -361,8 +377,12 @@ function EditarEventoForm({ evento, onCancelar, onGuardado }) {
       next.titulo = "El título debe tener al menos 5 caracteres.";
     }
 
+    const hoy = obtenerFechaLocalHoy();
+
     if (!formulario.fecha) {
       next.fecha = "La fecha del evento es requerida.";
+    } else if (formulario.fecha < hoy) {
+      next.fecha = "La fecha del evento no puede ser anterior a hoy.";
     }
 
     const horas = Number(formulario.horas);
@@ -414,8 +434,20 @@ if (
       <div className="form-two-columns">
         <div>
           <div className="field-header"><label htmlFor="edit-fecha">Fecha del evento <span>*</span></label></div>
-          <input id="edit-fecha" name="fecha" type="date" value={formulario.fecha} onChange={actualizar} aria-invalid={Boolean(errores.fecha)} />
-          {errores.fecha && <p className="inline-error" role="alert">⊗ {errores.fecha}</p>}
+          <input
+            id="edit-fecha"
+            name="fecha"
+            type="date"
+            min={obtenerFechaLocalHoy()}
+            value={formulario.fecha}
+            onChange={actualizar}
+            aria-invalid={Boolean(errores.fecha)}
+          />
+          {errores.fecha ? (
+            <p className="inline-error" role="alert">⊗ {errores.fecha}</p>
+          ) : (
+            <p className="helper">ⓘ La fecha debe ser hoy o una fecha futura</p>
+          )}
         </div>
         <div>
           <div className="field-header"><label htmlFor="edit-horas">Horas <span>*</span></label></div>
@@ -739,6 +771,7 @@ function CrearEventoPage({ onCancelar, onCrear }) {
           <p>Al registrar un nuevo evento en el workspace de EventHub:</p>
           <ul>
             <li><b>Título:</b> No puede quedar vacío ni contener menos de 5 caracteres.</li>
+            <li><b>Fecha:</b> Debe ser hoy o una fecha futura.</li>
             <li><b>Horas:</b> Debe ser un número entero entre 1 y 24.</li>
             <li><b>Usuario responsable:</b> Debe indicar la persona responsable del evento.</li>
           </ul>
@@ -899,11 +932,13 @@ function Today({ onNotify }) {
     0
   );
 
-  const capacidadDiaria = 8;
+  const capacidadDiaria = 6;
   const porcentajeCapacidad = Math.min(
     Math.round((horasPendientes / capacidadDiaria) * 100),
     100
   );
+
+  const haySobrecarga = horasPendientes > capacidadDiaria;
 
   const renderTarea = (tarea, urgente = false) => {
     const estado = normalizarEstado(tarea.estado);
@@ -1017,6 +1052,12 @@ function Today({ onNotify }) {
           <div className="today-capacity-track">
             <span style={{ width: `${porcentajeCapacidad}%` }} />
           </div>
+
+          {haySobrecarga && (
+            <div className="today-overload-message" role="status">
+              Sobrecarga de eventos
+            </div>
+          )}
         </div>
       </div>
 
