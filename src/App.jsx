@@ -83,10 +83,10 @@ function Modal({ title, subtitle, close, children, wide = false }) {
 function Header({ ruta, abrirCrear }) {
   return (
     <header>
-      <button className="brand" type="button" onClick={() => navegar("/eventos")}><span className="brand-icon">▣</span>EventHub</button>
+      <button className="brand" type="button" onClick={() => navegar("/eventos")}><span className="brand-icon">✦</span>EventHub</button>
       <nav aria-label="Navegación principal">
-        <button className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "nav-link active" : "nav-link"} onClick={() => navegar("/eventos")}>▣ Eventos</button>
-        <button className={ruta === "/hoy" ? "nav-link active" : "nav-link"} onClick={() => navegar("/hoy")}>◷ Hoy</button>
+        <button className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "nav-link active" : "nav-link"} onClick={() => navegar("/eventos")}>✦ Eventos</button>
+        <button className={ruta === "/hoy" ? "nav-link active" : "nav-link"} onClick={() => navegar("/hoy")}> Hoy</button>
       </nav>
       <div className="header-spacer" />
       <div className="search-placeholder">⌕ <span>Buscar eventos, tareas...</span></div>
@@ -431,10 +431,10 @@ function Eventos({ eventos, cargando, error, recargar, crear }) {
 
       {cargando && <section className="card state-card"><span className="spinner" /> Cargando eventos...</section>}
       {!cargando && error && <section className="card state-card error-state" role="alert"><div><b>No se pudieron cargar los eventos.</b><p>{error}</p></div><button className="btn ghost" onClick={recargar}>Reintentar</button></section>}
-      {!cargando && !error && eventos.length === 0 && <section className="card empty-state"><div className="empty-icon">▣</div><h2>Aún no hay eventos</h2><p>¿Deseas crear tu primer evento?</p><button className="btn primary" onClick={crear}>Crear el primer evento</button></section>}
+      {!cargando && !error && eventos.length === 0 && <section className="card empty-state"><div className="empty-icon">✦</div><h2>Aún no hay eventos</h2><p>¿Deseas crear tu primer evento?</p><button className="btn primary" onClick={crear}>Crear el primer evento</button></section>}
       {!cargando && !error && eventos.length > 0 && <section className="event-grid" aria-label="Eventos guardados">
         {eventos.map((evento) => <article className="event-card card" key={evento.id ?? `${evento.titulo}-${evento.fecha}`}>
-          <div className="event-card-icon">▣</div>
+          <div className="event-card-icon">✦</div>
           <div className="event-card-content"><span className="status-pill">● En preparación</span><h2>{evento.titulo}</h2><p>{formatearFecha(evento.fecha)} {evento.horas ? `• ${evento.horas} horas` : ""}</p>{evento.descripcion && <p className="muted-line">{evento.descripcion}</p>}</div>
           <button className="btn secondary" onClick={() => navegar(`/eventos/${evento.id}`)}>Ver detalle</button>
         </article>)}
@@ -474,7 +474,10 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const horasRegistradas = subtareas.reduce((total, item) => total + obtenerHoras(item), 0);
   const porcentaje = subtareas.length ? Math.round((completadas / subtareas.length) * 100) : 0;
   const responsable = evento?.usuario_responsable;
-  const responsableTexto = typeof responsable === "object" ? responsable.nombre : responsable;
+  const responsableTexto =
+  typeof responsable === "object"
+    ? responsable?.nombre
+    : responsable;
 
   const eventoActualizado = async () => {
     setModal(null); await cargar(); onEventosChanged?.(); onNotify("Evento actualizado correctamente");
@@ -519,10 +522,10 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
       </div>
 
       <section className="event-info card">
-        <InfoBlock icon="▣" title="FECHA DEL EVENTO"><strong>{formatearFecha(evento.fecha)}</strong><span>Fecha registrada</span></InfoBlock>
-        <InfoBlock icon="◷" title="DURACIÓN ESTIMADA"><strong>{evento.horas ?? "—"} horas</strong><span>Jornada estimada</span></InfoBlock>
-        <InfoBlock icon="♙" title="USUARIO RESPONSABLE"><strong>{responsableTexto || "Sin asignar"}</strong><span>Responsable</span></InfoBlock>
-        <InfoBlock icon="▤" title="DESCRIPCIÓN COMPLETA"><strong className="description-value">{evento.descripcion || "Sin descripción"}</strong></InfoBlock>
+        <InfoBlock icon="fecha" title="FECHA DEL EVENTO"><strong>{formatearFecha(evento.fecha)}</strong><span>Fecha registrada</span></InfoBlock>
+        <InfoBlock icon="duracion" title="DURACIÓN ESTIMADA"><strong>{evento.horas ?? "—"} horas</strong><span>Jornada estimada</span></InfoBlock>
+        <InfoBlock icon="responsable" title="USUARIO RESPONSABLE"><strong>{responsableTexto || "Sin asignar"}</strong><span>Responsable</span></InfoBlock>
+        <InfoBlock icon="descripcion" title="DESCRIPCIÓN COMPLETA"><strong className="description-value">{evento.descripcion || "Sin descripción"}</strong></InfoBlock>
       </section>
 
       <div className="subtasks-heading"><div><h2>Subtareas</h2><p>Organiza las tareas necesarias para completar este evento.</p></div><button className="btn primary" onClick={() => setModal("create-subtask")}>＋ Nueva subtarea</button></div>
@@ -530,7 +533,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
         <div className="section-tabs"><span className="tab active">Con subtareas ({subtareas.length})</span><span className="tab">Estado Vacío</span><span className="tab">Estado de Carga</span><span className="tab">Estado de Error</span></div>
         {estadoSubtareas === "loading" && <div className="state-inside"><span className="spinner" /> Cargando subtareas...</div>}
         {estadoSubtareas === "error" && <div className="state-inside error-inside" role="alert"><div><b>Error cargando las subtareas</b><p>{errorSubtareas}</p></div><button className="btn ghost" onClick={cargarSubtareas}>Reintentar</button></div>}
-        {estadoSubtareas === "empty" && <div className="empty-subtasks"><div className="empty-icon">▣</div><h3>Aún no hay subtareas</h3><p>Agrega una subtarea para organizar este evento.</p><button className="btn primary" onClick={() => setModal("create-subtask")}>＋ Nueva subtarea</button></div>}
+        {estadoSubtareas === "empty" && <div className="empty-subtasks"><div className="empty-icon">✦</div><h3>Aún no hay subtareas</h3><p>Agrega una subtarea para organizar este evento.</p><button className="btn primary" onClick={() => setModal("create-subtask")}>＋ Nueva subtarea</button></div>}
         {estadoSubtareas === "success" && <div className="subtask-list">
           {subtareas.map((task) => {
             const estado = normalizarEstado(task.estado);
@@ -557,7 +560,45 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
 }
 
 function InfoBlock({ icon, title, children }) {
-  return <div className="info-block"><span className="info-icon">{icon}</span><div><small>{title}</small>{children}</div></div>;
+  return (
+    <div className="info-block">
+      <span className="info-icon">
+        {icon === "fecha" && (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="17" rx="3" />
+            <path d="M8 2v4M16 2v4M3 9h18" />
+            <path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" />
+          </svg>
+        )}
+
+        {icon === "duracion" && (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+        )}
+
+        {icon === "responsable" && (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.5" />
+            <path d="M5 20c.8-3.4 3.2-5 7-5s6.2 1.6 7 5" />
+          </svg>
+        )}
+
+        {icon === "descripcion" && (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 3h9l4 4v14H6z" />
+            <path d="M14 3v5h5M9 13h6M9 17h6" />
+          </svg>
+        )}
+      </span>
+
+      <div>
+        <small>{title}</small>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function CrearEventoPage({ onCancelar, onCrear }) {
@@ -1150,4 +1191,7 @@ export default function App() {
     {detalleId && <DetalleEvento id={detalleId} volver={() => navegar("/eventos")} onNotify={notify} onEventosChanged={cargarEventos} />}
     {ruta === "/crear-evento" && <CrearEventoPage onCancelar={() => navegar("/eventos")} onCrear={crear} />}
   </main>;
+
+  
 }
+
