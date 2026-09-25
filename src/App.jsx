@@ -871,10 +871,7 @@ function CrearEventoPage({ onCancelar, onCrear }) {
           </ul>
         </section>
 
-        <section className="card venue-card">
-          <div className="venue-image"><div className="venue-label">Sede Predeterminada</div></div>
-          <div className="venue-content"><h3>Auditorio Central Corporativo</h3><p>Capacidad: 350 personas • Equipamiento audiovisual disponible</p></div>
-        </section>
+
       </aside>
     </section>
   );
