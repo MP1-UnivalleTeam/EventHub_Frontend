@@ -2010,6 +2010,48 @@ small {
 }
 
 
+/* MENSAJE SIN GESTIONES */
+.today-no-tasks {
+  min-height: 250px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  text-align: center;
+
+  padding: 40px 50px;
+}
+
+.today-no-tasks .empty-icon {
+  margin: 0 auto 14px;
+}
+
+.today-no-tasks h2 {
+  margin: 0 0 10px;
+
+  text-align: center;
+}
+
+.today-no-tasks p {
+  max-width: 600px;
+
+  margin: 0 auto 18px;
+
+  text-align: center;
+
+  color: var(--muted);
+}
+
+.today-no-tasks .btn {
+  margin: 0 auto;
+}
+
+
 /* RESUMEN */
 
 .today-summary-grid {
@@ -2466,11 +2508,37 @@ small {
 
 .today-panel-empty,
 .today-empty {
+  width: 100%;
+
   color: var(--muted);
 
   font-size: 12px;
 
   line-height: 1.5;
+
+  text-align: center;
+
+  padding: 10px 20px 20px;
+}
+
+.today-empty h2 {
+  margin: 14px 0 8px;
+
+  text-align: center;
+}
+
+.today-empty p {
+  margin: 0 auto 16px;
+
+  max-width: 600px;
+
+  text-align: center;
+}
+
+.today-empty .btn {
+  display: inline-flex;
+
+  margin: 0 auto;
 }
 
 .today-refresh-row {
@@ -2783,3 +2851,4 @@ small {
   box-shadow:
     0 6px 14px rgba(49, 91, 213, 0.12);
 }
+
