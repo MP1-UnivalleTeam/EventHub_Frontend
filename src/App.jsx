@@ -90,7 +90,7 @@ function Header({ ruta, abrirCrear }) {
       </nav>
       <div className="header-spacer" />
       <div className="search-placeholder">⌕ <span>Buscar eventos, tareas...</span></div>
-      <button className="icon-button" aria-label="Notificaciones">♧</button>
+      <button className="icon-button" aria-label="Notificaciones">☾</button>
       <button className="icon-button" aria-label="Ayuda">?</button>
       <button className="btn primary header-create" type="button" onClick={abrirCrear}>＋ Crear Evento</button>
       <div className="avatar" aria-label="Perfil">LV</div>
@@ -607,9 +607,7 @@ function Eventos({ eventos, cargando, error, recargar, crear }) {
   return (
     <section className="page">
       <div className="heading">
-        <div><small>PLANIFICACIÓN</small><h1>Eventos</h1><p>Gestiona tus eventos y organiza las tareas necesarias para completarlos.</p></div>
-        <button className="btn primary" type="button" onClick={crear}>＋ Nuevo evento</button>
-      </div>
+        <div><small>PLANIFICACIÓN</small><h1>Eventos</h1><p>Gestiona tus eventos y organiza las tareas necesarias para completarlos.</p></div>      </div>
 
       {cargando && <section className="card state-card"><span className="spinner" /> Cargando eventos...</section>}
       {!cargando && error && <section className="card state-card error-state" role="alert"><div><b>No se pudieron cargar los eventos.</b><p>{error}</p></div><button className="btn ghost" onClick={recargar}>Reintentar</button></section>}
@@ -696,7 +694,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
     <section className="page detail-page">
       <button className="back-link" onClick={volver}>← Volver a la lista general de eventos</button>
       <div className="detail-title-row">
-        <div><h1>{evento.titulo}</h1><p>Identificador ID: <b>EVT-{evento.id}</b> • Información del evento</p></div>
+        <div><h1>{evento.titulo}</h1><p>• Información del evento</p></div>
         <div className="title-actions">
           <button className="btn secondary" onClick={() => setModal("edit-event")}>✎ Editar</button>
           <button className="btn danger-outline" onClick={() => setConfirmacion({ type: "evento" })}>▥ Eliminar</button>
@@ -812,7 +810,7 @@ function CrearEventoPage({ onCancelar, onCrear }) {
   return (
     <section className="create-page">
       <div className="create-main">
-        <button className="back-link" onClick={onCancelar}>← Volver a Eventos <span className="back-dot">•</span> <span className="draft-pill">◉ Borrador de alta</span></button>
+        <button className="back-link" onClick={onCancelar}>← Volver a Eventos <span className="back-dot">•</span> <span className="draft-pill">◉ Borrador</span></button>
         <div className="create-heading">
           <div>
             <h1>Crear evento</h1>
@@ -1433,5 +1431,7 @@ export default function App() {
   </main>;
 
   
+
+
 }
 
