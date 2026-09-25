@@ -119,10 +119,37 @@ function FormularioEvento({ onCancelar, onCrear }) {
 
   const validar = () => {
     const next = {};
-    if (!formulario.titulo.trim()) next.titulo = "El título es requerido.";
-    else if (formulario.titulo.trim().length < 5) next.titulo = "El título debe tener al menos 5 caracteres.";
-    if (!formulario.fecha) next.fecha = "La fecha del evento es requerida.";
-    if (!formulario.horas || Number(formulario.horas) <= 0 || !Number.isInteger(Number(formulario.horas))) next.horas = "Las horas deben ser mayor a 0.";
+
+    if (!formulario.titulo.trim()) {
+      next.titulo = "El título es requerido.";
+    } else if (formulario.titulo.trim().length < 5) {
+      next.titulo = "El título debe tener al menos 5 caracteres.";
+    }
+
+    const hoy = obtenerFechaLocalHoy();
+
+    if (!formulario.fecha) {
+      next.fecha = "La fecha del evento es requerida.";
+    } else if (formulario.fecha < hoy) {
+      next.fecha = "La fecha del evento no puede ser anterior a hoy.";
+    }
+
+    const horas = Number(formulario.horas);
+
+    if (
+      !formulario.horas ||
+      horas <= 0 ||
+      !Number.isInteger(horas)
+    ) {
+      next.horas = "Las horas deben ser mayor a 0.";
+    } else if (horas > 24) {
+      next.horas = "Las horas no pueden ser mayores a 24.";
+    }
+
+    if (!formulario.usuario_responsable.trim()) {
+      next.usuario_responsable = "El usuario responsable es requerido.";
+    }
+
     return next;
   };
 
@@ -139,7 +166,7 @@ function FormularioEvento({ onCancelar, onCrear }) {
         titulo: formulario.titulo.trim(),
         fecha: formulario.fecha,
         horas: Number(formulario.horas),
-        usuario_responsable: formulario.usuario_responsable.trim() || null,
+        usuario_responsable: formulario.usuario_responsable.trim(),
         descripcion: formulario.descripcion.trim() || null,
       });
     } catch (error) {
@@ -157,19 +184,61 @@ function FormularioEvento({ onCancelar, onCrear }) {
       <div className="form-two-columns">
         <div>
           <div className="field-header"><label htmlFor="fecha">Fecha del evento <span>*</span></label><small>Obligatorio</small></div>
-          <input id="fecha" name="fecha" type="date" value={formulario.fecha} onChange={actualizar} aria-invalid={Boolean(errores.fecha)} />
-          {errores.fecha && <p className="inline-error" role="alert">⊗ {errores.fecha}</p>}
+          <input
+            id="fecha"
+            name="fecha"
+            type="date"
+            min={obtenerFechaLocalHoy()}
+            value={formulario.fecha}
+            onChange={actualizar}
+            aria-invalid={Boolean(errores.fecha)}
+          />
+          {errores.fecha ? (
+            <p className="inline-error" role="alert">⊗ {errores.fecha}</p>
+          ) : (
+            <p className="helper">ⓘ La fecha debe ser hoy o una fecha futura</p>
+          )}
         </div>
         <div>
           <div className="field-header"><label htmlFor="horas">Horas <span>*</span></label><small>Duración estimada</small></div>
-          <input id="horas" name="horas" type="number" min="1" step="1" value={formulario.horas} onChange={actualizar} placeholder="4" aria-invalid={Boolean(errores.horas)} />
+          <input
+            id="horas"
+            name="horas"
+            type="number"
+            min="1"
+            max="24"
+            step="1"
+            value={formulario.horas}
+            onChange={actualizar}
+            placeholder="4"
+            aria-invalid={Boolean(errores.horas)}
+          />
           {errores.horas && <p className="inline-error" role="alert">⊗ {errores.horas}</p>}
-          {!errores.horas && <p className="helper">ⓘ Las horas deben ser mayor a 0</p>}
+          {!errores.horas && <p className="helper">ⓘ Las horas deben ser entre 1 y 24</p>}
         </div>
       </div>
 
-      <div className="field-header"><label htmlFor="usuario_responsable">Usuario responsable</label><small>Opcional</small></div>
-      <input id="usuario_responsable" name="usuario_responsable" value={formulario.usuario_responsable} onChange={actualizar} placeholder="Ej. Laura V. (Coordinadora General)" />
+      <div className="field-header">
+        <label htmlFor="usuario_responsable">
+          Usuario responsable <span>*</span>
+        </label>
+        <small>Obligatorio</small>
+      </div>
+
+      <input
+        id="usuario_responsable"
+        name="usuario_responsable"
+        value={formulario.usuario_responsable}
+        onChange={actualizar}
+        placeholder="Ej. Laura V. (Coordinadora General)"
+        aria-invalid={Boolean(errores.usuario_responsable)}
+      />
+
+      {errores.usuario_responsable && (
+        <p className="inline-error" role="alert">
+          ⊗ {errores.usuario_responsable}
+        </p>
+      )}
 
       <div className="field-header"><label htmlFor="descripcion">Descripción</label><small>Opcional</small></div>
       <textarea id="descripcion" name="descripcion" value={formulario.descripcion} onChange={actualizar} placeholder="Describe el objetivo, alcance o información útil del evento." />
@@ -301,10 +370,37 @@ function EditarEventoForm({ evento, onCancelar, onGuardado }) {
 
   const validar = () => {
     const next = {};
-    if (!formulario.titulo.trim()) next.titulo = "El título es requerido.";
-    else if (formulario.titulo.trim().length < 5) next.titulo = "El título debe tener al menos 5 caracteres.";
-    if (!formulario.fecha) next.fecha = "La fecha del evento es requerida.";
-    if (!formulario.horas || Number(formulario.horas) <= 0 || !Number.isInteger(Number(formulario.horas))) next.horas = "Las horas deben ser mayor a 0.";
+
+    if (!formulario.titulo.trim()) {
+      next.titulo = "El título es requerido.";
+    } else if (formulario.titulo.trim().length < 5) {
+      next.titulo = "El título debe tener al menos 5 caracteres.";
+    }
+
+    const hoy = obtenerFechaLocalHoy();
+
+    if (!formulario.fecha) {
+      next.fecha = "La fecha del evento es requerida.";
+    } else if (formulario.fecha < hoy) {
+      next.fecha = "La fecha del evento no puede ser anterior a hoy.";
+    }
+
+    const horas = Number(formulario.horas);
+
+if (
+  !formulario.horas ||
+  horas <= 0 ||
+  !Number.isInteger(horas)
+) {
+  next.horas = "Las horas deben ser mayor a 0.";
+} else if (horas > 24) {
+  next.horas = "Las horas no pueden ser mayores a 24.";
+}
+
+    if (!formulario.usuario_responsable.trim()) {
+      next.usuario_responsable = "El usuario responsable es requerido.";
+    }
+
     return next;
   };
 
@@ -320,7 +416,7 @@ function EditarEventoForm({ evento, onCancelar, onGuardado }) {
         titulo: formulario.titulo.trim(),
         fecha: formulario.fecha,
         horas: Number(formulario.horas),
-        usuario_responsable: formulario.usuario_responsable.trim() || null,
+        usuario_responsable: formulario.usuario_responsable.trim(),
         descripcion: formulario.descripcion.trim() || null,
       });
       onGuardado();
@@ -338,17 +434,61 @@ function EditarEventoForm({ evento, onCancelar, onGuardado }) {
       <div className="form-two-columns">
         <div>
           <div className="field-header"><label htmlFor="edit-fecha">Fecha del evento <span>*</span></label></div>
-          <input id="edit-fecha" name="fecha" type="date" value={formulario.fecha} onChange={actualizar} aria-invalid={Boolean(errores.fecha)} />
-          {errores.fecha && <p className="inline-error" role="alert">⊗ {errores.fecha}</p>}
+          <input
+            id="edit-fecha"
+            name="fecha"
+            type="date"
+            min={obtenerFechaLocalHoy()}
+            value={formulario.fecha}
+            onChange={actualizar}
+            aria-invalid={Boolean(errores.fecha)}
+          />
+          {errores.fecha ? (
+            <p className="inline-error" role="alert">⊗ {errores.fecha}</p>
+          ) : (
+            <p className="helper">ⓘ La fecha debe ser hoy o una fecha futura</p>
+          )}
         </div>
         <div>
           <div className="field-header"><label htmlFor="edit-horas">Horas <span>*</span></label></div>
-          <input id="edit-horas" name="horas" type="number" min="1" step="1" value={formulario.horas} onChange={actualizar} aria-invalid={Boolean(errores.horas)} />
-          {errores.horas && <p className="inline-error" role="alert">⊗ {errores.horas}</p>}
+          <input
+            id="edit-horas"
+            name="horas"
+            type="number"
+            min="1"
+            max="24"
+            step="1"
+            value={formulario.horas}
+            onChange={actualizar}
+            aria-invalid={Boolean(errores.horas)}
+          />
+          {errores.horas ? (
+            <p className="inline-error" role="alert">⊗ {errores.horas}</p>
+          ) : (
+            <p className="helper">ⓘ Las horas deben ser entre 1 y 24</p>
+          )}
         </div>
       </div>
-      <div className="field-header"><label htmlFor="edit-responsable">Usuario responsable</label></div>
-      <input id="edit-responsable" name="usuario_responsable" value={formulario.usuario_responsable} onChange={actualizar} />
+      <div className="field-header">
+        <label htmlFor="edit-responsable">
+          Usuario responsable <span>*</span>
+        </label>
+        <small>Obligatorio</small>
+      </div>
+
+      <input
+        id="edit-responsable"
+        name="usuario_responsable"
+        value={formulario.usuario_responsable}
+        onChange={actualizar}
+        aria-invalid={Boolean(errores.usuario_responsable)}
+      />
+
+      {errores.usuario_responsable && (
+        <p className="inline-error" role="alert">
+          ⊗ {errores.usuario_responsable}
+        </p>
+      )}
       <div className="field-header"><label htmlFor="edit-descripcion">Descripción</label></div>
       <textarea id="edit-descripcion" name="descripcion" value={formulario.descripcion} onChange={actualizar} />
       {errorServidor && <div className="alert alert-error" role="alert"><b>No fue posible actualizar el evento.</b><span>{errorServidor}</span></div>}
@@ -631,8 +771,9 @@ function CrearEventoPage({ onCancelar, onCrear }) {
           <p>Al registrar un nuevo evento en el workspace de EventHub:</p>
           <ul>
             <li><b>Título:</b> No puede quedar vacío ni contener menos de 5 caracteres.</li>
-            <li><b>Horas:</b> Debe ser un número entero mayor a 0.</li>
-            <li><b>Coordinador:</b> Se asignará automáticamente el rol de propietario del cronograma.</li>
+            <li><b>Fecha:</b> Debe ser hoy o una fecha futura.</li>
+            <li><b>Horas:</b> Debe ser un número entero entre 1 y 24.</li>
+            <li><b>Usuario responsable:</b> Debe indicar la persona responsable del evento.</li>
           </ul>
         </section>
 
@@ -791,11 +932,13 @@ function Today({ onNotify }) {
     0
   );
 
-  const capacidadDiaria = 8;
+  const capacidadDiaria = 6;
   const porcentajeCapacidad = Math.min(
     Math.round((horasPendientes / capacidadDiaria) * 100),
     100
   );
+
+  const haySobrecarga = horasPendientes > capacidadDiaria;
 
   const renderTarea = (tarea, urgente = false) => {
     const estado = normalizarEstado(tarea.estado);
@@ -909,6 +1052,12 @@ function Today({ onNotify }) {
           <div className="today-capacity-track">
             <span style={{ width: `${porcentajeCapacidad}%` }} />
           </div>
+
+          {haySobrecarga && (
+            <div className="today-overload-message" role="status">
+              Sobrecarga de eventos
+            </div>
+          )}
         </div>
       </div>
 
