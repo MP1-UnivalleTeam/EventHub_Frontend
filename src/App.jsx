@@ -1,7 +1,7 @@
 import "./App.css";
 import logo_EventHub from "./assets/Logo.png";
 import logo_Jaguar from "./assets/Logo_Jaguar.png";
-import { FaLock, FaEye, FaEyeSlash, FaDoorOpen, FaSyncAlt, FaTrashAlt } from "react-icons/fa";
+import { FaLock, FaEye, FaEyeSlash, FaDoorOpen, FaSyncAlt, FaTrashAlt, FaStickyNote, FaFilter } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import {
   actualizarEvento,
@@ -2060,6 +2060,15 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
     notas: subtarea?.notas ?? "",
   });
 
+  // La nota crece automáticamente a medida que el usuario escribe.
+  const notaRef = useRef(null);
+  const expandirNota = () => {
+    const elemento = notaRef.current;
+    if (!elemento) return;
+    elemento.style.height = "auto";
+    elemento.style.height = `${elemento.scrollHeight}px`;
+  };
+
   const [errores, setErrores] = useState({});
   const [errorServidor, setErrorServidor] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -2290,60 +2299,50 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
         </div>
       </div>
 
-      <div className="form-two-columns">
-        <div>
-          <div className="field-header">
-            <label htmlFor="edit-sub-dia-objetivo">
-              Fecha límite <span>*</span>
-            </label>
-          </div>
+      <div className="field-header">
+        <label htmlFor="edit-sub-dia-objetivo">
+          Fecha límite <span>*</span>
+        </label>
+      </div>
 
-          <input
-            id="edit-sub-dia-objetivo"
-            name="dia_objetivo"
-            type="date"
-            min={obtenerFechaLocalHoy()}
-            max={eventoFecha}
-            value={form.dia_objetivo}
-            onChange={actualizar}
-            disabled={!eventoFecha || eventoFecha < obtenerFechaLocalHoy()}
-            aria-invalid={Boolean(errores.dia_objetivo)}
-          />
-          <p className="helper">Selecciona entre hoy y la fecha del evento.</p>
+      <input
+        id="edit-sub-dia-objetivo"
+        name="dia_objetivo"
+        type="date"
+        min={obtenerFechaLocalHoy()}
+        max={eventoFecha}
+        value={form.dia_objetivo}
+        onChange={actualizar}
+        disabled={!eventoFecha || eventoFecha < obtenerFechaLocalHoy()}
+        aria-invalid={Boolean(errores.dia_objetivo)}
+      />
+      <p className="helper">Selecciona entre hoy y la fecha del evento.</p>
 
-          {errores.dia_objetivo && (
-            <p className="inline-error" role="alert">
-              {errores.dia_objetivo}
-            </p>
-          )}
+      {errores.dia_objetivo && (
+        <p className="inline-error" role="alert">
+          {errores.dia_objetivo}
+        </p>
+      )}
+
+      {/* Nota opcional: card del mismo ancho que la fecha, auto-expandible */}
+      <div className="note-card">
+        <div className="note-card-header">
+          <FaStickyNote aria-hidden="true" />
+          <label htmlFor="edit-sub-notas">Nota opcional</label>
+          <span className="note-card-hint">Se guarda al editar</span>
         </div>
 
-        <div>
-          <div className="field-header">
-            <label htmlFor="edit-sub-notas">
-              Nota explicativa{" "}
-              <span className="optional-tag">opcional</span>
-            </label>
-            <span
-              className="field-info-icon"
-              role="img"
-              aria-label="Persistencia de la nota"
-              title="Si la subtarea ya tenía nota guardada, se precarga automáticamente y no se pierde en caso de error."
-            >
-              ⓘ
-            </span>
-          </div>
-
-          <textarea
-            id="edit-sub-notas"
-            name="notas"
-            value={form.notas}
-            onChange={actualizar}
-            rows={4}
-            maxLength={300}
-            placeholder="Añade una nota sobre esta subtarea (opcional)"
-          />
-        </div>
+        <textarea
+          id="edit-sub-notas"
+          name="notas"
+          ref={notaRef}
+          value={form.notas}
+          onChange={actualizar}
+          onInput={expandirNota}
+          rows={1}
+          maxLength={300}
+          placeholder="Añade una nota (opcional)"
+        />
       </div>
 
       {errorServidor && (
@@ -2416,76 +2415,6 @@ function Eventos({ eventos, cargando, error, recargar, crear, busqueda }) {
   );
 }
 
-// Modal ligero para cambiar solo el estado de una subtarea, sin abrir el
-// formulario de edición completo. La nota se precarga con la ya guardada y
-// permanece en el estado local si la API falla, para no perderla.
-function ModalCambioEstado({ subtarea, guardando, onCancelar, onGuardar }) {
-  const [estado, setEstado] = useState(normalizarEstado(subtarea?.estado));
-  const [notas, setNotas] = useState(subtarea?.notas ?? "");
-
-  return (
-    <Modal
-      title="Cambiar estado"
-      subtitle="Actualiza el estado operativo de esta subtarea."
-      close={onCancelar}
-    >
-      <div className="field-header">
-        <label htmlFor="estado-subtarea-modal">
-          Estado <span>*</span>
-        </label>
-      </div>
-
-      <select
-        id="estado-subtarea-modal"
-        value={estado}
-        onChange={(event) => setEstado(event.target.value)}
-        disabled={guardando}
-      >
-        <option value="pendiente">Pendiente</option>
-        <option value="pospuesto">Pospuesto</option>
-        <option value="hecho">Hecho</option>
-      </select>
-
-      <div className="field-header">
-        <label htmlFor="notas-subtarea-modal">
-          Nota <span className="optional-tag">opcional</span>
-        </label>
-      </div>
-
-      <textarea
-        id="notas-subtarea-modal"
-        value={notas}
-        onChange={(event) => setNotas(event.target.value)}
-        rows={4}
-        maxLength={300}
-        placeholder="Añade una nota (opcional)"
-        disabled={guardando}
-      />
-
-      <div className="actions">
-        <button
-          className="btn ghost"
-          type="button"
-          onClick={onCancelar}
-          disabled={guardando}
-        >
-          Cancelar
-        </button>
-
-        <button
-          className="btn primary"
-          type="button"
-          onClick={() => onGuardar({ estado, notas })}
-          disabled={guardando}
-        >
-          {guardando && <span className="mini-spinner" />}
-          {guardando ? "Guardando…" : "Guardar estado"}
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const [evento, setEvento] = useState(null);
   const [cargandoEvento, setCargandoEvento] = useState(true);
@@ -2496,8 +2425,6 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const [modal, setModal] = useState(null);
   const [confirmacion, setConfirmacion] = useState(null);
   const [eliminando, setEliminando] = useState(false);
-  const [tareaEstado, setTareaEstado] = useState(null);
-  const [guardandoEstado, setGuardandoEstado] = useState(false);
 
   const cargar = async () => {
     setCargandoEvento(true); setErrorEvento("");
@@ -2529,25 +2456,6 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   };
   const subtareaActualizada = async () => {
     setModal(null); await cargarSubtareas(); onNotify("Subtarea actualizada correctamente");
-  };
-  // Cambia solo el estado (y opcionalmente la nota) de una subtarea. Si la
-  // API falla, el modal permanece abierto y la nota no se pierde.
-  const guardarEstado = async ({ estado, notas }) => {
-    if (!tareaEstado) return;
-    setGuardandoEstado(true);
-    try {
-      await actualizarParcialSubtarea(tareaEstado.id, {
-        estado,
-        notas: notas.trim() || null,
-      });
-      setTareaEstado(null);
-      await cargarSubtareas();
-      onNotify("Subtarea actualizada correctamente");
-    } catch (error) {
-      onNotify(error.message || "No fue posible actualizar la subtarea.", "error");
-    } finally {
-      setGuardandoEstado(false);
-    }
   };
   const ejecutarEliminacion = async () => {
     if (!confirmacion) return;
@@ -2606,7 +2514,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
               <span className={`task-check ${estado === "hecho" ? "completed" : ""}`}>{estado === "hecho" ? "✓" : ""}</span>
               <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}</p></div>
               <span className={`badge ${estado === "hecho" ? "badge-success" : "badge-pending"}`}>{etiquetaEstado(estado)}</span>
-              <div className="row-actions"><button className="btn ghost" onClick={() => setModal({ type: "edit-subtask", item: task })}><span className="edit-pencil" aria-hidden="true">✎</span> Editar</button><button className="btn ghost" onClick={() => setTareaEstado(task)}>Cambiar estado</button><button className="btn danger-outline" onClick={() => setConfirmacion({ type: "subtarea", item: task })}><FaTrashAlt aria-hidden="true" /> Eliminar</button></div>
+              <div className="row-actions"><button className="btn ghost" onClick={() => setModal({ type: "edit-subtask", item: task })}><span className="edit-pencil" aria-hidden="true">✎</span> Editar</button><button className="btn danger-outline" onClick={() => setConfirmacion({ type: "subtarea", item: task })}><FaTrashAlt aria-hidden="true" /> Eliminar</button></div>
             </article>;
           })}
         </div>}
@@ -2619,7 +2527,6 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
       {modal?.type === "edit-subtask" && <Modal title="Editar subtarea" subtitle="Actualiza la información de la subtarea." close={() => setModal(null)}><EditarSubtareaForm subtarea={modal.item} eventoId={id} eventoFecha={evento.fecha} onCancelar={() => setModal(null)} onGuardado={subtareaActualizada} /></Modal>}
       {confirmacion?.type === "evento" && <ConfirmModal title="¿Eliminar evento?" message="Esta acción eliminará el evento y sus subtareas. No se puede deshacer." close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
       {confirmacion?.type === "subtarea" && <ConfirmModal title="¿Eliminar subtarea?" message={`Esta acción eliminará “${obtenerTituloSubtarea(confirmacion.item)}”. No se puede deshacer.`} close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
-      {tareaEstado && <ModalCambioEstado subtarea={tareaEstado} guardando={guardandoEstado} onCancelar={() => setTareaEstado(null)} onGuardar={guardarEstado} />}
     </section>
   );
 }
@@ -4780,9 +4687,13 @@ function Today({ onNotify }) {
 // del componente no cambia.
 // ============================================================
 
-// `enRiesgo` es una regla provisional del lado del cliente: son las
+// `vencida` es una regla provisional del lado del cliente: son las
 // subtareas sin completar cuya fecha objetivo es hoy o ya pasó. El
 // equipo de producto/backend debe confirmar la regla definitiva.
+//
+// Las categorías son DISJUNTAS: cada subtarea cuenta una sola vez, así la
+// suma de estados nunca supera el total de subtareas del evento.
+// Prioridad: hecho -> vencida -> pospuesta -> pendiente.
 function calcularProgreso(eventos, subtareas) {
   const hoy = obtenerFechaLocalHoy();
   const subtareasPorEvento = new Map();
@@ -4795,38 +4706,44 @@ function calcularProgreso(eventos, subtareas) {
   });
 
   let total = 0;
-  let ejecutadas = 0;
-  let pendientes = 0;
+  let completadas = 0;
+  let vencidas = 0;
   let pospuestas = 0;
-  let enRiesgo = 0;
+  let pendientes = 0;
 
   const detalleEventos = eventos.map((evento) => {
     const lista = (subtareasPorEvento.get(String(evento.id)) || []).slice();
     const totalEvento = lista.length;
-    const ejecutadasEvento = lista.filter(
-      (item) => normalizarEstado(item.estado) === "hecho"
-    ).length;
-    const pendientesEvento = lista.filter(
-      (item) => normalizarEstado(item.estado) === "pendiente"
-    ).length;
-    const pospuestasEvento = lista.filter(
-      (item) => normalizarEstado(item.estado) === "pospuesto"
-    ).length;
-    const enRiesgoEvento = lista.filter(
-      (item) =>
-        normalizarEstado(item.estado) !== "hecho" &&
-        String(item.dia_objetivo || "").slice(0, 10) <= hoy
-    ).length;
+
+    let completadasEvento = 0;
+    let vencidasEvento = 0;
+    let pospuestasEvento = 0;
+    let pendientesEvento = 0;
+
+    lista.forEach((item) => {
+      const estado = normalizarEstado(item.estado);
+      const fecha = String(item.dia_objetivo || "").slice(0, 10);
+
+      if (estado === "hecho") {
+        completadasEvento += 1;
+      } else if (fecha && fecha <= hoy) {
+        vencidasEvento += 1;
+      } else if (estado === "pospuesto") {
+        pospuestasEvento += 1;
+      } else {
+        pendientesEvento += 1;
+      }
+    });
 
     const porcentaje = totalEvento
-      ? Math.round((ejecutadasEvento / totalEvento) * 100)
+      ? Math.round((completadasEvento / totalEvento) * 100)
       : 0;
 
     total += totalEvento;
-    ejecutadas += ejecutadasEvento;
-    pendientes += pendientesEvento;
+    completadas += completadasEvento;
+    vencidas += vencidasEvento;
     pospuestas += pospuestasEvento;
-    enRiesgo += enRiesgoEvento;
+    pendientes += pendientesEvento;
 
     return {
       id: evento.id,
@@ -4835,24 +4752,24 @@ function calcularProgreso(eventos, subtareas) {
       estado: derivarEstadoEvento(porcentaje, totalEvento),
       porcentaje,
       total: totalEvento,
-      ejecutadas: ejecutadasEvento,
-      pendientes: pendientesEvento,
+      completadas: completadasEvento,
+      vencidas: vencidasEvento,
       pospuestas: pospuestasEvento,
-      enRiesgo: enRiesgoEvento,
+      pendientes: pendientesEvento,
     };
   });
 
   const porcentajeGlobal = total
-    ? Math.round((ejecutadas / total) * 100)
+    ? Math.round((completadas / total) * 100)
     : 0;
 
   return {
     resumen: {
       total,
-      ejecutadas,
-      pendientes,
+      completadas,
+      vencidas,
       pospuestas,
-      enRiesgo,
+      pendientes,
       porcentaje: porcentajeGlobal,
     },
     eventos: detalleEventos,
@@ -4874,10 +4791,13 @@ function derivarEstadoEvento(porcentaje, total) {
   return { clave: "planificacion", etiqueta: "Planificación" };
 }
 
-function Progreso() {
+function Progreso({ busquedaEventos = "" }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [datos, setDatos] = useState({ resumen: null, eventos: [] });
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  // "asc" | "desc" | "fecha"
+  const [orden, setOrden] = useState("desc");
 
   const cargar = async () => {
     setCargando(true);
@@ -4907,7 +4827,45 @@ function Progreso() {
     cargar();
   }, []);
 
-  const { resumen, eventos } = datos;
+  const { resumen } = datos;
+
+  // La búsqueda de la cabecera filtra los eventos dentro de esta pestaña.
+  const termino = busquedaEventos.trim().toLocaleLowerCase("es");
+  const eventosFiltrados = datos.eventos.filter((evento) =>
+    String(evento.titulo || "")
+      .toLocaleLowerCase("es")
+      .includes(termino)
+  );
+
+  const ordenarEventos = (lista) => {
+    const copia = lista.slice();
+
+    if (orden === "asc") {
+      return copia.sort((a, b) => a.porcentaje - b.porcentaje);
+    }
+
+    if (orden === "fecha") {
+      return copia.sort((a, b) =>
+        String(a.fecha || "").localeCompare(String(b.fecha || ""))
+      );
+    }
+
+    return copia.sort((a, b) => b.porcentaje - a.porcentaje);
+  };
+
+  const eventos = ordenarEventos(eventosFiltrados);
+
+  const etiquetasOrden = {
+    asc: "Ascendente",
+    desc: "Descendente",
+    fecha: "Fecha",
+  };
+
+  const opcionesOrden = [
+    { clave: "asc", etiqueta: "Ascendente" },
+    { clave: "desc", etiqueta: "Descendente" },
+    { clave: "fecha", etiqueta: "Fecha" },
+  ];
 
   return (
     <section className="page progress-page">
@@ -4916,8 +4874,8 @@ function Progreso() {
           <div className="progress-title-row">
             <h1>Progreso</h1>
             <span className="progress-events-badge">
-              {eventos.length}{" "}
-              {eventos.length === 1
+              {datos.eventos.length}{" "}
+              {datos.eventos.length === 1
                 ? "evento registrado"
                 : "eventos registrados"}
             </span>
@@ -4928,9 +4886,41 @@ function Progreso() {
           </p>
         </div>
 
-        <button className="btn secondary progress-filters-button" type="button">
-          ▤ Filtros avanzados
-        </button>
+        <div className="progress-filters">
+          <button
+            className="btn secondary progress-filters-button"
+            type="button"
+            onClick={() => setMostrarFiltros((valor) => !valor)}
+            aria-expanded={mostrarFiltros}
+          >
+            <FaFilter aria-hidden="true" /> Filtros avanzados
+          </button>
+
+          {mostrarFiltros && (
+            <div
+              className="progress-filters-panel"
+              role="group"
+              aria-label="Ordenar eventos"
+            >
+              {opcionesOrden.map((opcion) => (
+                <button
+                  key={opcion.clave}
+                  type="button"
+                  className={`progress-filter-option ${
+                    orden === opcion.clave ? "active" : ""
+                  }`}
+                  aria-pressed={orden === opcion.clave}
+                  onClick={() => {
+                    setOrden(opcion.clave);
+                    setMostrarFiltros(false);
+                  }}
+                >
+                  {opcion.etiqueta}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {cargando && (
@@ -4997,7 +4987,7 @@ function Progreso() {
                   <small>RENDIMIENTO OPERATIVO</small>
                   <h2>Progreso general</h2>
                   <p>
-                    {resumen.ejecutadas} de {resumen.total} subtareas
+                    {resumen.completadas} de {resumen.total} subtareas
                     completadas en activo.
                   </p>
                   <div className="progress-track progress-track-lg">
@@ -5006,22 +4996,22 @@ function Progreso() {
                 </div>
 
                 <div className="progress-rendimiento-stats">
-                  <article className="progress-stat-card">
-                    <span className="progress-stat-icon stat-done">✓</span>
+                  <article className="progress-stat-card stat-done">
+                    <span className="progress-stat-icon">✓</span>
                     <div>
                       <small>COMPLETADAS</small>
-                      <strong>{resumen.ejecutadas}</strong>
+                      <strong>{resumen.completadas}</strong>
                       <span>
                         {resumen.total
-                          ? Math.round((resumen.ejecutadas / resumen.total) * 100)
+                          ? Math.round((resumen.completadas / resumen.total) * 100)
                           : 0}
                         % del total
                       </span>
                     </div>
                   </article>
 
-                  <article className="progress-stat-card">
-                    <span className="progress-stat-icon stat-pending">○</span>
+                  <article className="progress-stat-card stat-pending">
+                    <span className="progress-stat-icon">○</span>
                     <div>
                       <small>PENDIENTES</small>
                       <strong>{resumen.pendientes}</strong>
@@ -5029,8 +5019,8 @@ function Progreso() {
                     </div>
                   </article>
 
-                  <article className="progress-stat-card">
-                    <span className="progress-stat-icon stat-postponed">◷</span>
+                  <article className="progress-stat-card stat-postponed">
+                    <span className="progress-stat-icon">◷</span>
                     <div>
                       <small>POSPUESTAS</small>
                       <strong>{resumen.pospuestas}</strong>
@@ -5038,11 +5028,11 @@ function Progreso() {
                     </div>
                   </article>
 
-                  <article className="progress-stat-card">
-                    <span className="progress-stat-icon stat-risk">!</span>
+                  <article className="progress-stat-card stat-risk">
+                    <span className="progress-stat-icon">!</span>
                     <div>
-                      <small>EN RIESGO</small>
-                      <strong>{resumen.enRiesgo}</strong>
+                      <small>VENCIDAS</small>
+                      <strong>{resumen.vencidas}</strong>
                       <span>Requieren atención</span>
                     </div>
                   </article>
@@ -5051,15 +5041,9 @@ function Progreso() {
 
               <section className="progress-breakdown">
                 <div className="progress-breakdown-header">
-                  <div>
-                    <h2>Desglose por Evento</h2>
-                    <p>
-                      Seguimiento individual de cada cuenta y cronograma activo.
-                    </p>
-                  </div>
-
+                  <h2>Eventos</h2>
                   <span className="progress-breakdown-order">
-                    Ordenar por: Porcentaje de avance (Descendente)
+                    Ordenar por: {etiquetasOrden[orden]}
                   </span>
                 </div>
 
@@ -5099,7 +5083,7 @@ function Progreso() {
                       </div>
 
                       <p className="progress-event-count">
-                        {evento.ejecutadas} de {evento.total} subtareas
+                        {evento.completadas} de {evento.total} subtareas
                         realizadas
                       </p>
 

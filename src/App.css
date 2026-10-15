@@ -1379,6 +1379,61 @@ small {
   cursor: help;
 }
 
+/* Card de nota opcional (mismo ancho que el input de fecha) */
+.note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid #d5dbe5;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.note-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.note-card-header > svg {
+  color: var(--eh-blue);
+  font-size: 15px;
+}
+
+.note-card-header label {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.note-card-hint {
+  margin-left: auto;
+  color: #6c7487;
+  font-size: 11px;
+}
+
+.note-card textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #cbd3e0;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #172033;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.note-card textarea:focus {
+  outline: 3px solid rgba(33, 70, 199, 0.15);
+  border-color: #2146c7;
+}
+
 .helper {
   color: #70798a !important;
 
