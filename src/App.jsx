@@ -593,23 +593,29 @@ function Header({
 
         <div className="header-spacer" />
 
-        <form
-          className="search-placeholder"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            navegar("/eventos");
-          }}
-        >
-          <label htmlFor="header-event-search" aria-label="Buscar eventos">⌕</label>
-          <input
-            id="header-event-search"
-            type="search"
-            placeholder="Buscar eventos..."
-            value={busquedaEventos}
-            onChange={(event) => onBuscarEventos(event.target.value)}
-          />
-        </form>
+        {/* La búsqueda no aparece en /hoy. En /progreso filtra dentro de la
+            misma pestaña; en el resto de rutas lleva a la lista de eventos. */}
+        {ruta !== "/hoy" && (
+          <form
+            className="search-placeholder"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (ruta !== "/progreso") {
+                navegar("/eventos");
+              }
+            }}
+          >
+            <label htmlFor="header-event-search" aria-label="Buscar eventos">⌕</label>
+            <input
+              id="header-event-search"
+              type="search"
+              placeholder="Buscar eventos..."
+              value={busquedaEventos}
+              onChange={(event) => onBuscarEventos(event.target.value)}
+            />
+          </form>
+        )}
 
         <button
           className="btn primary header-create"
@@ -4886,14 +4892,16 @@ function Progreso({ busquedaEventos = "" }) {
           </p>
         </div>
 
-        <div className="progress-filters">
+        <div className="progress-filters" style={{ position: 'relative' }}>
           <button
             className="btn secondary progress-filters-button"
             type="button"
             onClick={() => setMostrarFiltros((valor) => !valor)}
             aria-expanded={mostrarFiltros}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
-            <FaFilter aria-hidden="true" /> Filtros avanzados
+            <FaFilter aria-hidden="true" style={{ width: '13px', height: '13px' }} /> 
+            Filtros avanzados
           </button>
 
           {mostrarFiltros && (
@@ -4901,6 +4909,18 @@ function Progreso({ busquedaEventos = "" }) {
               className="progress-filters-panel"
               role="group"
               aria-label="Ordenar eventos"
+              style={{
+                position: 'absolute',
+                right: 0,
+                marginTop: '8px',
+                background: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                padding: '6px',
+                zIndex: 50,
+                minWidth: '160px'
+              }}
             >
               {opcionesOrden.map((opcion) => (
                 <button
@@ -4913,6 +4933,17 @@ function Progreso({ busquedaEventos = "" }) {
                   onClick={() => {
                     setOrden(opcion.clave);
                     setMostrarFiltros(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: orden === opcion.clave ? '#f3f4f6' : 'transparent',
+                    fontWeight: orden === opcion.clave ? '600' : 'normal',
+                    cursor: 'pointer'
                   }}
                 >
                   {opcion.etiqueta}
@@ -5040,10 +5071,10 @@ function Progreso({ busquedaEventos = "" }) {
               </section>
 
               <section className="progress-breakdown">
-                <div className="progress-breakdown-header">
+                <div className="progress-breakdown-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
                   <h2>Eventos</h2>
-                  <span className="progress-breakdown-order">
-                    Ordenar por: {etiquetasOrden[orden]}
+                  <span className="progress-breakdown-order" style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Ordenado por: {etiquetasOrden[orden]}
                   </span>
                 </div>
 
@@ -5102,9 +5133,10 @@ function Progreso({ busquedaEventos = "" }) {
                           </span>
                         )}
 
-                        {evento.enRiesgo > 0 && (
+                        {evento.vencidas > 0 && (
                           <span className="progress-tag tag-risk">
-                            {evento.enRiesgo} en riesgo
+                            {evento.vencidas} vencida
+                            {evento.vencidas !== 1 ? "s" : ""}
                           </span>
                         )}
 
@@ -5943,31 +5975,9 @@ export default function App() {
       onBuscarEventos={setBusquedaEventos}
     />
     <Toast type={toast.type} message={toast.message} />
-    <div className="help-widget">
-      <button
-        type="button"
-        className="help-button"
-        aria-label="Ayuda sobre el orden de las gestiones"
-        aria-describedby="gestiones-help-tooltip"
-      >
-        ?
-      </button>
-      <div
-        id="gestiones-help-tooltip"
-        className="help-tooltip"
-        role="tooltip"
-      >
-        <strong>¿Cómo se ordena esto?</strong>
-        <span>
-          Las gestiones se ordenan priorizando primero las más urgentes, luego
-          aquellas con mayor prioridad y proximidad, y finalmente las demás
-          según su fecha correspondiente.
-        </span>
-      </div>
-    </div>
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} busqueda={busquedaEventos} />}
     {ruta === "/hoy" && <Today onNotify={notify} />}
-    {ruta === "/progreso" && <Progreso />}
+    {ruta === "/progreso" && <Progreso busquedaEventos={busquedaEventos} />}
     {ruta === "/configuracion" && (<ConfiguracionUsuario onNotify={notify} />)}
     {detalleId && <DetalleEvento id={detalleId} volver={() => navegar("/eventos")} onNotify={notify} onEventosChanged={cargarEventos} />}
     {ruta === "/crear-evento" && <CrearEventoPage onCancelar={() => navegar("/eventos")} onCrear={crear} />}

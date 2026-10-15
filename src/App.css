@@ -1526,71 +1526,6 @@ small {
   background: #b8323b;
 }
 
-.help-widget {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 150;
-}
-
-.help-button {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  background: #315bd5;
-  color: #fff;
-  box-shadow: 0 5px 16px rgba(33, 70, 199, 0.3);
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.help-button:hover,
-.help-button:focus-visible {
-  background: #2448b8;
-}
-
-.help-button:focus-visible {
-  outline: 3px solid rgba(49, 91, 213, 0.3);
-  outline-offset: 3px;
-}
-
-.help-tooltip {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 10px);
-  display: flex;
-  width: min(340px, calc(100vw - 32px));
-  flex-direction: column;
-  gap: 7px;
-  padding: 14px 16px;
-  border: 1px solid #d5dbe5;
-  border-radius: 10px;
-  background: #fff;
-  color: #273044;
-  box-shadow: 0 10px 28px rgba(28, 48, 90, 0.16);
-  font-size: 13px;
-  line-height: 1.5;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(4px);
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
-}
-
-.help-tooltip strong {
-  color: #172033;
-  font-size: 14px;
-}
-
-.help-widget:hover .help-tooltip,
-.help-widget:focus-within .help-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
 @keyframes toastAppear {
   from {
     opacity: 0;
@@ -6495,8 +6430,15 @@ small {
   max-width: 640px;
 }
 
-.progress-filters-button {
+.progress-filters {
+  position: relative;
   flex: 0 0 auto;
+}
+
+.progress-filters-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 /* --- Rendimiento operativo --- */
@@ -6813,6 +6755,45 @@ small {
 .progress-event-detail {
   margin-top: auto;
   align-self: flex-start;
+}
+
+/* --- Tipografía: solo dos tamaños ---
+   Títulos 36px (igual que /eventos) · Texto normal 11px */
+
+.progress-page h1 {
+  margin: 0;
+  font-size: 36px;
+  letter-spacing: -1.3px;
+}
+
+.progress-page h2,
+.progress-page h3 {
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.progress-page p,
+.progress-page small,
+.progress-page label,
+.progress-page button,
+.progress-events-badge,
+.progress-breakdown-order,
+.progress-stat-card span,
+.progress-event-date,
+.progress-event-row span,
+.progress-event-count,
+.progress-tag,
+.progress-event-badge,
+.progress-filter-option {
+  font-size: 11px;
+}
+
+/* Los contadores numéricos mantienen el tamaño de título para ser
+   legibles como dato principal. */
+.progress-ring strong,
+.progress-stat-card strong,
+.progress-event-row strong {
+  font-size: 16px;
 }
 
 /* --- Responsive --- */
