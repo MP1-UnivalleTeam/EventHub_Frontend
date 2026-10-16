@@ -116,31 +116,64 @@ function etiquetaEstado(estado) {
   return "Pendiente";
 }
 
+// "Vencida" no se puede marcar: es un estado calculado a partir de la fecha
+// de gestión (ver `estadoEfectivoSubtarea`).
+const ESTADOS_EDITABLES = [
+  { valor: "pendiente", etiqueta: "Pendiente" },
+  { valor: "hecho", etiqueta: "Hecho" },
+  { valor: "pospuesto", etiqueta: "Pospuesto" },
+];
+
 // "Vencida" es una etiqueta derivada, no un valor de la columna `estado`
 // (que solo admite pendiente/pospuesto/hecho). Al guardar se traduce a
 // "pendiente": es el estado real de una gestión cuya fecha objetivo pasó.
 function normalizarEstadoAGuardar(estado) {
-  const valor = String(estado || "pendiente");
-  return valor === "vencida" ? "pendiente" : valor;
+  const valor = String(estado || "pendiente").trim().toLowerCase();
+
+  return valor === "vencida" || valor === "vencido" ? "pendiente" : valor;
 }
 
-// Una gestión sin completar cuya fecha objetivo es hoy o ya pasó está
-// vencida. Usa la misma regla que la vista Progreso y que el grupo de
-// "Gestiones Vencidas" de /hoy, para que las tres vistas coincidan.
-function estaVencida(subtarea) {
-  if (normalizarEstado(subtarea?.estado) === "hecho") return false;
+// Fecha de gestión de la subtarea en formato YYYY-MM-DD. Se lee siempre del
+// texto porque las fechas se guardan como `YYYY-MM-DD`: pasarlas por
+// `new Date()` las desplazaría un día al convertirlas a UTC.
+function obtenerFechaObjetivo(subtarea) {
+  const fecha = subtarea?.dia_objetivo || subtarea?.fechaObjetivo || "";
 
-  const fecha = String(subtarea?.dia_objetivo || "").slice(0, 10);
+  return String(fecha).slice(0, 10);
+}
 
-  return Boolean(fecha) && fecha <= obtenerFechaLocalHoy();
+// Estado efectivo de la subtarea: regla única que comparten /hoy,
+// /eventos/:id y /progreso para que las tres vistas muestren lo mismo.
+function estadoEfectivoSubtarea(
+  subtarea,
+  hoy = obtenerFechaLocalHoy()
+) {
+  const estado = normalizarEstado(subtarea?.estado);
+
+  if (estado === "hecho") return "hecho";
+
+  // Solo queda atrás cuando la fecha es ANTERIOR al día actual: una gestión
+  // con fecha límite de hoy todavía está vigente. La fecha usada es la
+  // vigente, es decir la reprogramada cuando la subtarea está pospuesta.
+  const fecha = obtenerFechaObjetivo(subtarea);
+  if (fecha && fecha < hoy) return "vencido";
+
+  if (estado === "pospuesto") return "pospuesto";
+
+  return "pendiente";
+}
+
+function estaVencida(subtarea, hoy = obtenerFechaLocalHoy()) {
+  return estadoEfectivoSubtarea(subtarea, hoy) === "vencido";
 }
 
 // Clave de clase CSS para el distintivo de estado del detalle del evento.
 function claveBadgeEstado(subtarea) {
-  const estado = normalizarEstado(subtarea?.estado);
+  const estado = estadoEfectivoSubtarea(subtarea);
 
   if (estado === "hecho") return "badge-success";
-  if (estaVencida(subtarea)) return "badge-danger";
+  if (estado === "pospuesto") return "badge-pospuesto";
+  if (estado === "vencido") return "badge-danger";
 
   return "badge-pending";
 }
@@ -148,13 +181,27 @@ function claveBadgeEstado(subtarea) {
 // Texto del distintivo: la vencimiento reemplaza a "Pendiente" porque es
 // la información accionable para el organizador.
 function etiquetaBadgeEstado(subtarea) {
-  const estado = normalizarEstado(subtarea?.estado);
+  const estado = estadoEfectivoSubtarea(subtarea);
 
   if (estado === "hecho") return "Hecho";
   if (estado === "pospuesto") return "Pospuesto";
-  if (estaVencida(subtarea)) return "Vencida";
+  if (estado === "vencido") return "Vencida";
 
   return "Pendiente";
+}
+
+function normalizarNota(valor) {
+  if (valor === null || valor === undefined) return "";
+
+  return String(valor).trim();
+}
+
+function obtenerNotaSubtarea(subtarea) {
+  const canonica = normalizarNota(subtarea?.notas);
+  if (canonica) return canonica;
+
+  // `GET /hoy` entrega la nota ya resuelta en este campo.
+  return normalizarNota(subtarea?.nota);
 }
 
 function obtenerHoras(item) {
@@ -2104,7 +2151,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
     ),
     // La nota ya guardada se precarga; si la API falla permanece en el
     // estado local y no se pierde.
-    notas: subtarea?.notas ?? "",
+    notas: obtenerNotaSubtarea(subtarea),
   });
 
   // La nota crece automáticamente a medida que el usuario escribe.
@@ -2342,13 +2389,11 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
             value={form.estado}
             onChange={actualizar}
           >
-            <option value="pendiente">Pendiente</option>
-            <option value="hecho">Hecho</option>
-            <option value="pospuesto">Pospuesto</option>
-            {/* "Vencida" no es un estado persistido: se deriva de que la
-                fecha objetivo ya pasó. Al elegirla se guarda como
-                pendiente, que es el estado real en la base de datos. */}
-            <option value="vencida">Vencida (fecha superada)</option>
+            {ESTADOS_EDITABLES.map((opcion) => (
+              <option key={opcion.valor} value={opcion.valor}>
+                {opcion.etiqueta}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -2586,9 +2631,10 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
           {subtareas.map((task) => {
             const estado = normalizarEstado(task.estado);
             const titulo = obtenerTituloSubtarea(task);
+            const nota = estado === "pospuesto" ? obtenerNotaSubtarea(task) : "";
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
               <span className={`task-check ${estado === "hecho" ? "completed" : ""}`}>{estado === "hecho" ? "✓" : ""}</span>
-              <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}</p></div>
+              <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p></div>
               <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>
               <div className="row-actions"><button className="btn ghost" onClick={() => setModal({ type: "edit-subtask", item: task })}><span className="edit-pencil" aria-hidden="true">✎</span> Editar</button><button className="btn danger-outline" onClick={() => setConfirmacion({ type: "subtarea", item: task })}><FaTrashAlt aria-hidden="true" /> Eliminar</button></div>
             </article>;
@@ -3372,7 +3418,7 @@ function Today({ onNotify }) {
 
   const [tareaPosponer, setTareaPosponer] = useState(null);
   const [nuevaFecha, setNuevaFecha] = useState("");
-  const [motivoPosposicion, setMotivoPosposicion] = useState("");
+  const [notaPosposicion, setNotaPosposicion] = useState("");
   const [horasPosposicion, setHorasPosposicion] = useState(0);
   const [conflictoJornada, setConflictoJornada] = useState(null);
   const [mesCalendario, setMesCalendario] = useState(() => {
@@ -3455,6 +3501,9 @@ function Today({ onNotify }) {
       ].map(resolverSubtarea);
       const gestionesVencidasBackend = (hoyData?.vencidas || [])
         .map(resolverSubtarea)
+        // Se confirma con la regla compartida usando la fecha de referencia que
+        // aplicó el backend.
+        .filter((subtarea) => estaVencida(subtarea, hoy))
         .sort((a, b) =>
           String(a.fechaObjetivo || "").localeCompare(
             String(b.fechaObjetivo || "")
@@ -3536,7 +3585,7 @@ function Today({ onNotify }) {
     setTareaPosponer(tarea);
     setNuevaFecha("");
     // Precarga la nota ya guardada para no perderla al reprogramar.
-    setMotivoPosposicion(tarea.motivo_posposicion || "");
+    setNotaPosposicion(obtenerNotaSubtarea(tarea));
     setConflictoJornada(null);
     setHorasPosposicion(obtenerHoras(tarea));
     setMesCalendario(() => {
@@ -3563,11 +3612,14 @@ function Today({ onNotify }) {
       return { actualizada: false, ...conflicto };
     }
 
+    // La nota es opcional: vacía se envía como `null`.
+    const nota = notaPosposicion.trim();
+
     const subtareaActualizada = await actualizarParcialSubtarea(tarea.id, {
       estado: "pospuesto",
       dia_objetivo: fecha,
       horas_estimadas: Number(horas),
-      motivo_posposicion: motivoPosposicion.trim() || null,
+      notas: nota || null,
     });
 
     return {
@@ -3608,7 +3660,7 @@ function Today({ onNotify }) {
 
       setTareaPosponer(null);
       setNuevaFecha("");
-      setMotivoPosposicion("");
+      setNotaPosposicion("");
       setConflictoJornada(null);
 
       await cargarHoy();
@@ -3659,7 +3711,7 @@ function Today({ onNotify }) {
       setConflictoJornada(null);
       setTareaPosponer(null);
       setNuevaFecha("");
-      setMotivoPosposicion("");
+      setNotaPosposicion("");
       await cargarHoy();
       onNotify("La fecha de la subtarea se actualizó correctamente.");
     } catch (errorActual) {
@@ -3848,6 +3900,7 @@ function Today({ onNotify }) {
     const nombreEvento = tarea.evento?.titulo || "Evento sin título";
     const horasTarea = obtenerHoras(tarea);
     const seleccionadaActual = seleccionada?.id === tarea.id;
+    const nota = estado === "pospuesto" ? obtenerNotaSubtarea(tarea) : "";
 
     return (
       <article
@@ -3896,11 +3949,11 @@ function Today({ onNotify }) {
                     : "Sin fecha específica"}
             </span>
 
-            {estado === "pospuesto" && tarea.motivo_posposicion && (
+            {nota && (
               <>
                 {" "}
-                <span>
-                  Razón: "{tarea.motivo_posposicion}"
+                <span className="today-task-note">
+                  Nota: {nota}
                 </span>
               </>
             )}
@@ -4199,8 +4252,11 @@ function Today({ onNotify }) {
                           </span>
 
                           <span className="today-overdue-badge">
-                            ⚠ Retraso: {diasVencidos}{" "}
-                            {diasVencidos === 1 ? "día" : "días"}
+                            <span aria-hidden="true">⚠</span>{" "}
+                            <span className="today-overdue-badge-label">
+                              Retraso:
+                            </span>{" "}
+                            {diasVencidos} {diasVencidos === 1 ? "día" : "días"}
                           </span>
 
                           <span className="today-hours">
@@ -4221,10 +4277,11 @@ function Today({ onNotify }) {
                           </p>
                         )}
 
-                        {/* FECHA EN QUE VENCÍA */}
+                        {/* FECHA EN QUE VENCIÓ */}
                         <div className="today-overdue-meta">
                           <span>
-                            📅 Vencía: {fecha.split("-").reverse().join("/")}
+                            📅 Vencimiento:{" "}
+                            {fecha.split("-").reverse().join("/")}
                           </span>
                         </div>
 
@@ -4427,6 +4484,11 @@ function Today({ onNotify }) {
                 (fechaTarea - fechaHoy) / (1000 * 60 * 60 * 24)
               );
 
+              const nota =
+                normalizarEstado(tarea.estado) === "pospuesto"
+                  ? obtenerNotaSubtarea(tarea)
+                  : "";
+
               return (
                 <article
                   className="today-upcoming-card"
@@ -4452,6 +4514,16 @@ function Today({ onNotify }) {
                       <span>
                         {formatearFecha(tarea.fechaObjetivo)}
                       </span>
+
+                      {nota && (
+                        <>
+                          <span>•</span>
+
+                          <span className="today-upcoming-note">
+                            Nota: {nota}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -4682,21 +4754,21 @@ function Today({ onNotify }) {
               </div>
 
               <div className="postpone-field">
-                <label htmlFor="motivo-posposicion">
-                  Nota opcional
-                </label>
+                <label htmlFor="nota-posposicion">Nota</label>
                 <textarea
-                  id="motivo-posposicion"
-                  value={motivoPosposicion}
+                  id="nota-posposicion"
+                  value={notaPosposicion}
                   onChange={(event) =>
-                    setMotivoPosposicion(event.target.value)
+                    setNotaPosposicion(event.target.value)
                   }
                   disabled={guardandoPosposicion}
-                  placeholder="Explica el motivo de la reprogramación (opcional)"
+                  placeholder="Añade una nota sobre la reprogramación (opcional)"
                   rows={3}
+                  maxLength={300}
                 />
                 <small>
-                  Puedes continuar sin nota si lo prefieres.
+                  Es opcional: puedes confirmar la reprogramación sin
+                  escribir nada.
                 </small>
               </div>
             </div>
@@ -4708,7 +4780,7 @@ function Today({ onNotify }) {
                 onClick={() => {
                   setTareaPosponer(null);
                   setNuevaFecha("");
-                  setMotivoPosposicion("");
+                  setNotaPosposicion("");
                 }}
                 disabled={guardandoPosposicion}
               >
@@ -4763,9 +4835,8 @@ function Today({ onNotify }) {
 // del componente no cambia.
 // ============================================================
 
-// `vencida` es una regla provisional del lado del cliente: son las
-// subtareas sin completar cuya fecha objetivo es hoy o ya pasó. El
-// equipo de producto/backend debe confirmar la regla definitiva.
+// El estado de cada subtarea lo decide `estadoEfectivoSubtarea`, la misma
+// regla que usan /hoy y /eventos/:id.
 //
 // Las categorías son DISJUNTAS: cada subtarea cuenta una sola vez, así la
 // suma de estados nunca supera el total de subtareas del evento.
@@ -4797,12 +4868,11 @@ function calcularProgreso(eventos, subtareas) {
     let pendientesEvento = 0;
 
     lista.forEach((item) => {
-      const estado = normalizarEstado(item.estado);
-      const fecha = String(item.dia_objetivo || "").slice(0, 10);
+      const estado = estadoEfectivoSubtarea(item, hoy);
 
       if (estado === "hecho") {
         completadasEvento += 1;
-      } else if (fecha && fecha <= hoy) {
+      } else if (estado === "vencido") {
         vencidasEvento += 1;
       } else if (estado === "pospuesto") {
         pospuestasEvento += 1;
@@ -4913,34 +4983,65 @@ function Progreso({ busquedaEventos = "" }) {
       .includes(termino)
   );
 
+  const porcentajeDe = (evento) => {
+    const valor = Number(evento?.porcentaje);
+
+    return Number.isFinite(valor) ? valor : 0;
+  };
+
+  const fechaOrdenDe = (evento) => {
+    const fecha = String(evento?.fecha || "").slice(0, 10);
+
+    return /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : "";
+  };
+
+  // Desempate estable para que dos elementos con la misma clave terminen
+  // siempre en el mismo orden entre recargas.
+  const desempateEventos = (a, b) =>
+    (Number(b?.total) || 0) - (Number(a?.total) || 0) ||
+    String(a?.titulo || "").localeCompare(String(b?.titulo || ""), "es") ||
+    String(a?.id || "").localeCompare(String(b?.id || ""));
+
   const ordenarEventos = (lista) => {
     const copia = lista.slice();
 
     if (orden === "asc") {
-      return copia.sort((a, b) => a.porcentaje - b.porcentaje);
-    }
-
-    if (orden === "fecha") {
-      return copia.sort((a, b) =>
-        String(a.fecha || "").localeCompare(String(b.fecha || ""))
+      return copia.sort(
+        (a, b) => porcentajeDe(a) - porcentajeDe(b) || desempateEventos(a, b)
       );
     }
 
-    return copia.sort((a, b) => b.porcentaje - a.porcentaje);
+    if (orden === "fecha") {
+      return copia.sort((a, b) => {
+        const fechaA = fechaOrdenDe(a);
+        const fechaB = fechaOrdenDe(b);
+
+        // Sin fecha utilizable el evento se queda al final del listado.
+        if (!fechaA && !fechaB) return desempateEventos(a, b);
+        if (!fechaA) return 1;
+        if (!fechaB) return -1;
+
+        return fechaB.localeCompare(fechaA) || desempateEventos(a, b);
+      });
+    }
+
+    return copia.sort(
+      (a, b) => porcentajeDe(b) - porcentajeDe(a) || desempateEventos(a, b)
+    );
   };
 
   const eventos = ordenarEventos(eventosFiltrados);
 
   const etiquetasOrden = {
-    asc: "Ascendente",
-    desc: "Descendente",
-    fecha: "Fecha",
+    desc: "Mayor porcentaje",
+    asc: "Menor porcentaje",
+    fecha: "Fecha: más recientes",
   };
 
   const opcionesOrden = [
-    { clave: "asc", etiqueta: "Ascendente" },
-    { clave: "desc", etiqueta: "Descendente" },
-    { clave: "fecha", etiqueta: "Fecha" },
+    { clave: "desc", etiqueta: "Mayor porcentaje" },
+    { clave: "asc", etiqueta: "Menor porcentaje" },
+    { clave: "fecha", etiqueta: "Fecha: más recientes" },
   ];
 
   return (
@@ -4962,15 +5063,14 @@ function Progreso({ busquedaEventos = "" }) {
           </p>
         </div>
 
-        <div className="progress-filters" style={{ position: 'relative' }}>
+        <div className="progress-filters">
           <button
             className="btn secondary progress-filters-button"
             type="button"
             onClick={() => setMostrarFiltros((valor) => !valor)}
             aria-expanded={mostrarFiltros}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
-            <FaFilter aria-hidden="true" style={{ width: '13px', height: '13px' }} /> 
+            <FaFilter aria-hidden="true" />
             Filtros avanzados
           </button>
 
@@ -4979,18 +5079,6 @@ function Progreso({ busquedaEventos = "" }) {
               className="progress-filters-panel"
               role="group"
               aria-label="Ordenar eventos"
-              style={{
-                position: 'absolute',
-                right: 0,
-                marginTop: '8px',
-                background: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                padding: '6px',
-                zIndex: 50,
-                minWidth: '160px'
-              }}
             >
               {opcionesOrden.map((opcion) => (
                 <button
@@ -5003,17 +5091,6 @@ function Progreso({ busquedaEventos = "" }) {
                   onClick={() => {
                     setOrden(opcion.clave);
                     setMostrarFiltros(false);
-                  }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: orden === opcion.clave ? '#f3f4f6' : 'transparent',
-                    fontWeight: orden === opcion.clave ? '600' : 'normal',
-                    cursor: 'pointer'
                   }}
                 >
                   {opcion.etiqueta}
@@ -5141,9 +5218,9 @@ function Progreso({ busquedaEventos = "" }) {
               </section>
 
               <section className="progress-breakdown">
-                <div className="progress-breakdown-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                <div className="progress-breakdown-header">
                   <h2>Eventos</h2>
-                  <span className="progress-breakdown-order" style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  <span className="progress-breakdown-order">
                     Ordenado por: {etiquetasOrden[orden]}
                   </span>
                 </div>
