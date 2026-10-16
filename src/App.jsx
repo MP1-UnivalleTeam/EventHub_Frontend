@@ -3426,6 +3426,13 @@ function Today({ onNotify }) {
     return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   });
   const [guardandoPosposicion, setGuardandoPosposicion] = useState(false);
+  const notaPosponerRef = useRef(null);
+  const ajustarNotaPosponer = () => {
+    const elemento = notaPosponerRef.current;
+    if (!elemento) return;
+    elemento.style.height = "auto";
+    elemento.style.height = `${elemento.scrollHeight}px`;
+  };
   const claveCompletadasHoy = `eventhub_completadas_hoy_${obtenerFechaLocalHoy()}`;
   const completadasHoyRef = useRef((() => {
     try {
@@ -3581,6 +3588,15 @@ function Today({ onNotify }) {
   useEffect(() => {
     cargarHoy();
   }, []);
+
+  // El campo arranca con tres líneas, pero se ajusta al contenido cuando el
+  // modal se abre con una nota larga ya guardada.
+  useEffect(() => {
+    if (!tareaPosponer) return;
+
+    ajustarNotaPosponer();
+  }, [tareaPosponer]);
+
   const abrirModalPosponer = (tarea) => {
     setTareaPosponer(tarea);
     setNuevaFecha("");
@@ -4754,10 +4770,12 @@ function Today({ onNotify }) {
                 <label htmlFor="nota-posposicion">Nota</label>
                 <textarea
                   id="nota-posposicion"
+                  ref={notaPosponerRef}
                   value={notaPosposicion}
                   onChange={(event) =>
                     setNotaPosposicion(event.target.value)
                   }
+                  onInput={ajustarNotaPosponer}
                   disabled={guardandoPosposicion}
                   placeholder="Añade una nota sobre la reprogramación (opcional)"
                   rows={3}

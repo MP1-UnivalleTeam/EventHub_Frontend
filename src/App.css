@@ -5368,8 +5368,9 @@ small {
   height: 42px;
 }
 
+/* Tres líneas de alto por defecto; el campo crece con el contenido. */
 .postpone-field textarea {
-  min-height: 95px;
+  min-height: 72px;
   resize: vertical;
 }
 
@@ -6559,7 +6560,11 @@ small {
   right: 0;
   z-index: 50;
 
-  min-width: 200px;
+  /* Ligeramente más ancho que el botón: entra "Fecha: más recientes" sin
+     cortarse y no sobredimensiona el desplegable. */
+  width: 184px;
+  max-width: calc(100vw - 32px);
+
   margin-top: 8px;
   padding: 6px;
 
@@ -7049,7 +7054,6 @@ small {
   .progress-filters-panel {
     right: auto;
     left: 0;
-    min-width: 180px;
   }
 
   .progress-breakdown-grid {
