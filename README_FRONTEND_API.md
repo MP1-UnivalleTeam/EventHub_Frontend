@@ -58,7 +58,7 @@ Body de reprogramación:
 {
   "dia_objetivo": "2026-11-28",
   "horas_estimadas": 4.5,
-  "motivo_posposicion": "Demora en cotización de proveedor"
+  "notas": "Demora en cotización de proveedor"
 }
 ```
 

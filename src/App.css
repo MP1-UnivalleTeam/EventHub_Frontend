@@ -12,6 +12,21 @@
   --eh-blue-dark: #2448b8;
   --eh-soft: #eef3ff;
   --eh-shadow: 0 10px 28px rgba(28, 48, 90, 0.08);
+
+  --eh-amber: #c98a12;
+  --eh-amber-soft: #fff4e0;
+
+  /* Estados de una gestión. Única fuente de color para las tarjetas de
+     /progreso, los badges del detalle del evento, los chips de /hoy y los
+     tags de /progreso: si cambia aquí, cambia en todas las vistas. */
+  --st-done-bg: #e7f7ef;
+  --st-done-fg: #0a8a5b;
+  --st-pending-bg: #eef3ff;
+  --st-pending-fg: var(--eh-blue);
+  --st-pospuesto-bg: var(--eh-amber-soft);
+  --st-pospuesto-fg: var(--eh-amber);
+  --st-risk-bg: #fdeaea;
+  --st-risk-fg: #c7353d;
 }
 
 * {
@@ -1030,6 +1045,26 @@ small {
   font-size: 12px;
 }
 
+.subtask-note {
+  color: #4e5b72;
+
+  overflow-wrap: anywhere;
+}
+
+/* Columna de estado: ancho fijo para que Vencida, Hecho, Pendiente y
+   Pospuesto queden centrados sobre el mismo eje vertical. */
+.subtask-status {
+  flex: 0 0 104px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  text-align: center;
+}
+
 .badge {
   border-radius: 18px;
 
@@ -1043,22 +1078,30 @@ small {
 }
 
 .badge-pending {
-  background: #eef2ff;
+  background: var(--st-pending-bg);
 
-  color: #3450a2;
+  color: var(--st-pending-fg);
 }
 
 .badge-success {
-  background: #e2f7ee;
+  background: var(--st-done-bg);
 
-  color: #087550;
+  color: var(--st-done-fg);
+}
+
+/* Una posposición no es un error: reutiliza el ámbar de /progreso en lugar
+   del rojo reservado a los vencimientos. */
+.badge-pospuesto {
+  background: var(--st-pospuesto-bg);
+
+  color: var(--st-pospuesto-fg);
 }
 
 /* Gestión sin completar cuya fecha objetivo ya pasó. */
 .badge-danger {
-  background: #fdeaea;
+  background: var(--st-risk-bg);
 
-  color: #c7353d;
+  color: var(--st-risk-fg);
 }
 
 .row-actions {
@@ -1509,7 +1552,9 @@ small {
 
   top: 88px;
 
-  z-index: 2000;
+  /* Por encima de todos los overlays (`.overlay` 1000 y
+     `.postpone-overlay` 3000): el mensaje nunca queda tapado. */
+  z-index: 4000;
 
   padding: 13px 17px;
 
@@ -2606,9 +2651,9 @@ small {
 }
 
 .done-count {
-  background: #edf9f4;
+  background: var(--st-done-bg);
 
-  color: #17835d;
+  color: var(--st-done-fg);
 }
 
 
@@ -2696,21 +2741,21 @@ small {
 }
 
 .status-pendiente {
-  background: #fff6e5;
+  background: var(--st-pending-bg);
 
-  color: #9b6800;
+  color: var(--st-pending-fg);
 }
 
 .status-pospuesto {
-  background: #fff0ea;
+  background: var(--st-pospuesto-bg);
 
-  color: #bd5839;
+  color: var(--st-pospuesto-fg);
 }
 
 .status-hecho {
-  background: #eaf8f1;
+  background: var(--st-done-bg);
 
-  color: #17835d;
+  color: var(--st-done-fg);
 }
 
 .today-hours {
@@ -2740,6 +2785,12 @@ small {
   color: var(--muted);
 
   font-size: 12px;
+}
+
+.today-task-note {
+  color: #4e5b72;
+
+  overflow-wrap: anywhere;
 }
 
 .today-task-actions {
@@ -3133,11 +3184,21 @@ small {
 
   align-items: center;
 
+  flex-wrap: wrap;
+
   gap: 7px;
 
   color: var(--muted);
 
   font-size: 11px;
+}
+
+.today-upcoming-note {
+  min-width: 0;
+
+  color: #4e5b72;
+
+  overflow-wrap: anywhere;
 }
 
 
@@ -3391,10 +3452,17 @@ small {
   color: #b91c1c;
 
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
+
+  /* Separación uniforme entre el icono, la etiqueta y los días. */
+  gap: 4px;
 
   line-height: 1;
   white-space: nowrap;
+}
+
+.today-overdue-badge-label {
+  font-weight: 400;
 }
 
 .today-overdue-top .today-hours {
@@ -3831,6 +3899,11 @@ small {
 
   .subtask-row {
     flex-wrap: wrap;
+  }
+
+  /* La columna de estado se estrecha para no robar espacio al título. */
+  .subtask-status {
+    flex-basis: 88px;
   }
 
   .task-main {
@@ -5331,8 +5404,9 @@ small {
   height: 42px;
 }
 
+/* Tres líneas de alto por defecto; el campo crece con el contenido. */
 .postpone-field textarea {
-  min-height: 95px;
+  min-height: 72px;
   resize: vertical;
 }
 
@@ -6481,7 +6555,6 @@ small {
 
 .progress-title-row h1 {
   margin: 0;
-  font-size: 30px;
 }
 
 .progress-events-badge {
@@ -6499,7 +6572,6 @@ small {
 .progress-header p {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 14px;
   max-width: 640px;
 }
 
@@ -6512,6 +6584,57 @@ small {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+.progress-filters-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.progress-filters-panel {
+  position: absolute;
+  right: 0;
+  z-index: 50;
+
+  /* Ligeramente más ancho que el botón: entra "Fecha: más recientes" sin
+     cortarse y no sobredimensiona el desplegable. */
+  width: 184px;
+  max-width: calc(100vw - 32px);
+
+  margin-top: 8px;
+  padding: 6px;
+
+  background: #fff;
+  border: 1px solid #d5dbe5;
+  border-radius: 12px;
+
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.progress-filter-option {
+  display: block;
+  width: 100%;
+
+  padding: 8px 12px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+  color: var(--ink);
+
+  text-align: left;
+}
+
+.progress-filter-option:hover {
+  background: var(--eh-soft);
+}
+
+.progress-filter-option.active {
+  background: var(--eh-soft);
+  color: var(--eh-blue);
+
+  font-weight: 700;
 }
 
 /* --- Rendimiento operativo --- */
@@ -6557,15 +6680,15 @@ small {
   transition: stroke-dashoffset 0.4s ease;
 }
 
+/* Los tamaños los fija el bloque único de tipografía del final de la
+   sección (`.progress-page ...`). */
 .progress-ring strong {
-  font-size: 32px;
   color: var(--ink);
 }
 
 .progress-ring small {
   position: absolute;
   bottom: 30px;
-  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--muted);
@@ -6579,20 +6702,17 @@ small {
   display: block;
   margin-bottom: 4px;
   color: var(--muted);
-  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
 
 .progress-rendimiento-info h2 {
   margin: 0 0 4px;
-  font-size: 22px;
 }
 
 .progress-rendimiento-info p {
   margin: 0 0 14px;
   color: var(--muted);
-  font-size: 13px;
 }
 
 .progress-track-lg {
@@ -6631,40 +6751,43 @@ small {
   gap: 7px;
 }
 
-.progress-stat-icon {
+/* El símbolo es texto plano: se dimensiona aquí, con un selector más
+   específico que las reglas generales de la página, que si no dejarían el
+   glifo en 12px. */
+.progress-stat-card .progress-stat-icon {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
+  border-radius: 10px;
+  font-size: 26px;
   font-weight: 800;
-  font-size: 13px;
+  line-height: 1;
 }
 
 .stat-done {
-  background: #e7f7ef;
-  color: #0a8a5b;
+  background: var(--st-done-bg);
+  color: var(--st-done-fg);
 }
 
 .stat-pending {
-  background: #eef3ff;
-  color: var(--eh-blue);
+  background: var(--st-pending-bg);
+  color: var(--st-pending-fg);
 }
 
 .stat-postponed {
-  background: #fff4e0;
-  color: #c98a12;
+  background: var(--st-pospuesto-bg);
+  color: var(--st-pospuesto-fg);
 }
 
 .stat-risk {
-  background: #fdeaea;
-  color: #c7353d;
+  background: var(--st-risk-bg);
+  color: var(--st-risk-fg);
 }
 
 .progress-stat-card small {
   display: block;
-  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -6672,7 +6795,6 @@ small {
 
 .progress-stat-card strong {
   display: block;
-  font-size: 21px;
   line-height: 1.15;
 }
 
@@ -6680,34 +6802,31 @@ small {
    limita el selector a los span que no son icono. */
 .progress-stat-card>span {
   display: block;
-  font-size: 11px;
   color: var(--muted);
 }
 
 /* --- Desglose por evento --- */
 
+/* «Eventos» arriba y el criterio de ordenamiento justo debajo. */
 .progress-breakdown-header {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin-bottom: 16px;
 }
 
 .progress-breakdown-header h2 {
   margin: 0;
-  font-size: 20px;
 }
 
 .progress-breakdown-header p {
   margin: 2px 0 0;
   color: var(--muted);
-  font-size: 13px;
 }
 
 .progress-breakdown-order {
   color: var(--muted);
-  font-size: 12px;
 }
 
 .progress-breakdown-grid {
@@ -6733,7 +6852,6 @@ small {
 
 .progress-event-top h3 {
   margin: 0;
-  font-size: 16px;
   line-height: 1.3;
 }
 
@@ -6741,18 +6859,17 @@ small {
   flex: 0 0 auto;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 11px;
   font-weight: 700;
 }
 
 .badge-completado {
-  background: #e7f7ef;
-  color: #0a8a5b;
+  background: var(--st-done-bg);
+  color: var(--st-done-fg);
 }
 
 .badge-preparacion {
-  background: #eef3ff;
-  color: var(--eh-blue);
+  background: var(--st-pending-bg);
+  color: var(--st-pending-fg);
 }
 
 .badge-planificacion {
@@ -6762,7 +6879,6 @@ small {
 
 .progress-event-date {
   color: var(--muted);
-  font-size: 12px;
 }
 
 .progress-event-row {
@@ -6774,11 +6890,9 @@ small {
 
 .progress-event-row span {
   color: var(--muted);
-  font-size: 12px;
 }
 
 .progress-event-row strong {
-  font-size: 16px;
   color: var(--eh-blue);
 }
 
@@ -6799,7 +6913,6 @@ small {
 
 .progress-event-count {
   margin: 0;
-  font-size: 13px;
   color: var(--muted);
 }
 
@@ -6813,28 +6926,27 @@ small {
 .progress-tag {
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 11px;
   font-weight: 700;
 }
 
 .tag-postponed {
-  background: #fff4e0;
-  color: #c98a12;
+  background: var(--st-pospuesto-bg);
+  color: var(--st-pospuesto-fg);
 }
 
 .tag-pending {
-  background: #eef3ff;
-  color: var(--eh-blue);
+  background: var(--st-pending-bg);
+  color: var(--st-pending-fg);
 }
 
 .tag-risk {
-  background: #fdeaea;
-  color: #c7353d;
+  background: var(--st-risk-bg);
+  color: var(--st-risk-fg);
 }
 
 .tag-done {
-  background: #e7f7ef;
-  color: #0a8a5b;
+  background: var(--st-done-bg);
+  color: var(--st-done-fg);
 }
 
 .progress-event-detail {
@@ -6843,11 +6955,14 @@ small {
 }
 
 /* --- Tipografía ---
-   Se iguala a /eventos y /hoy:
+   Escala única de /progreso, igualada a /eventos y /hoy. Todas las piezas de
+   la vista toman su tamaño de aquí (las reglas de cada bloque solo aportan
+   color, espaciado y forma):
    · Título de página  36px   (igual que .heading h1)
-   · Subtítulos        20px   (tarjetas de /hoy usan 22px para cifras)
-   · Texto             13px   (igual que .event-card p)
-   · Etiquetas small   12px   (etiquetas de estado) */
+   · Subtítulos        20px
+   · Texto             13px   (descripciones, botones y etiquetas de campo)
+   · Etiquetas         12px   (small, tags de estado y textos auxiliares)
+   · Cifras resumen    22px   (como .today-summary-card strong) */
 
 .progress-page h1 {
   margin: 0;
@@ -6864,25 +6979,27 @@ small {
 /* Texto normal: descripciones y párrafos, igual que /eventos */
 .progress-page p,
 .progress-page label,
-.progress-page button {
+.progress-page button,
+.progress-filter-option {
   font-size: 13px;
 }
 
-/* Etiquetas: small y tags de estado */
+/* Etiquetas: small, tags y textos auxiliares. El selector del descriptor es
+   de hijo directo: el span del icono cuelga de `.progress-stat-figure` y
+   tiene su propio tamaño. */
 .progress-page small,
 .progress-events-badge,
 .progress-breakdown-order,
-.progress-stat-card span,
+.progress-stat-card>span,
 .progress-event-date,
 .progress-event-row span,
 .progress-event-count,
 .progress-tag,
-.progress-event-badge,
-.progress-filter-option {
+.progress-event-badge {
   font-size: 12px;
 }
 
-/* Cifras de las tarjetas resumen: 22px como las de /hoy */
+/* Cifras de las tarjetas resumen y de cada evento: 22px como las de /hoy */
 .progress-stat-card strong,
 .progress-event-row strong {
   font-size: 22px;
@@ -6892,6 +7009,35 @@ small {
    tamaño de título (36px) para mantener la jerarquía. */
 .progress-ring strong {
   font-size: 36px;
+}
+
+/* --- Sin resultados --- */
+
+.progress-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  min-height: 220px;
+  padding: 38px 28px;
+
+  text-align: center;
+}
+
+.progress-no-results .empty-icon {
+  margin: 0 auto 12px;
+}
+
+.progress-no-results h3 {
+  margin: 0 0 8px;
+}
+
+.progress-no-results p {
+  max-width: 520px;
+
+  margin: 0 auto 18px;
+
+  color: var(--muted);
 }
 
 /* --- Responsive --- */
@@ -6938,6 +7084,18 @@ small {
 
   .progress-rendimiento-stats {
     grid-template-columns: 1fr;
+  }
+
+  /* El icono baja un punto para que no se solape con la cifra. */
+  .progress-stat-card .progress-stat-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 21px;
+  }
+
+  .progress-filters-panel {
+    right: auto;
+    left: 0;
   }
 
   .progress-breakdown-grid {
