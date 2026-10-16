@@ -1526,7 +1526,9 @@ small {
 
   top: 88px;
 
-  z-index: 2000;
+  /* Por encima de todos los overlays (`.overlay` 1000 y
+     `.postpone-overlay` 3000): el mensaje nunca queda tapado. */
+  z-index: 4000;
 
   padding: 13px 17px;
 

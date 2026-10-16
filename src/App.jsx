@@ -3,6 +3,7 @@ import logo_EventHub from "./assets/Logo.png";
 import logo_Jaguar from "./assets/Logo_Jaguar.png";
 import { FaLock, FaEye, FaEyeSlash, FaDoorOpen, FaSyncAlt, FaTrashAlt, FaStickyNote, FaFilter } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   actualizarEvento,
   actualizarSubtarea,
@@ -600,7 +601,12 @@ function buscarConflictoSubtareasNuevas({
 
 function Toast({ type = "success", message }) {
   if (!message) return null;
-  return <div className={`toast toast-${type}`} role={type === "error" ? "alert" : "status"}>{type === "success" ? "✓" : "!"} {message}</div>;
+  // Se monta en el body para que ningún overlay, modal o contexto de
+  // apilamiento del árbol de la aplicación pueda tapar el mensaje.
+  return createPortal(
+    <div className={`toast toast-${type}`} role={type === "error" ? "alert" : "status"}>{type === "success" ? "✓" : "!"} {message}</div>,
+    document.body,
+  );
 }
 
 function Modal({ title, subtitle, close, children, wide = false }) {
