@@ -1054,6 +1054,13 @@ small {
   color: #087550;
 }
 
+/* Gestión sin completar cuya fecha objetivo ya pasó. */
+.badge-danger {
+  background: #fdeaea;
+
+  color: #c7353d;
+}
+
 .row-actions {
   display: flex;
 
@@ -6599,26 +6606,40 @@ small {
   gap: 12px;
 }
 
+/* Card centrada: etiqueta arriba, icono pegado al número y descripción
+   abajo. */
 .progress-stat-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 4px;
   min-width: 0;
   padding: 14px 16px;
   border: 1px solid #d5dbe5;
   border-radius: 11px;
   background: #fff;
+  text-align: center;
+}
+
+/* Agrupa el icono y la cifra para que el icono quede a la izquierda
+   del número, formando una sola unidad visual. */
+.progress-stat-figure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
 .progress-stat-icon {
-  flex: 0 0 38px;
-  width: 38px;
-  height: 38px;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 7px;
   font-weight: 800;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .stat-done {
@@ -6641,10 +6662,6 @@ small {
   color: #c7353d;
 }
 
-.progress-stat-card > div {
-  min-width: 0;
-}
-
 .progress-stat-card small {
   display: block;
   font-size: 10px;
@@ -6659,7 +6676,9 @@ small {
   line-height: 1.15;
 }
 
-.progress-stat-card span {
+/* Descripción bajo la cifra. El icono tiene reglas propias, por eso se
+   limita el selector a los span que no son icono. */
+.progress-stat-card>span {
   display: block;
   font-size: 11px;
   color: var(--muted);

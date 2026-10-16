@@ -116,6 +116,47 @@ function etiquetaEstado(estado) {
   return "Pendiente";
 }
 
+// "Vencida" es una etiqueta derivada, no un valor de la columna `estado`
+// (que solo admite pendiente/pospuesto/hecho). Al guardar se traduce a
+// "pendiente": es el estado real de una gestión cuya fecha objetivo pasó.
+function normalizarEstadoAGuardar(estado) {
+  const valor = String(estado || "pendiente");
+  return valor === "vencida" ? "pendiente" : valor;
+}
+
+// Una gestión sin completar cuya fecha objetivo es hoy o ya pasó está
+// vencida. Usa la misma regla que la vista Progreso y que el grupo de
+// "Gestiones Vencidas" de /hoy, para que las tres vistas coincidan.
+function estaVencida(subtarea) {
+  if (normalizarEstado(subtarea?.estado) === "hecho") return false;
+
+  const fecha = String(subtarea?.dia_objetivo || "").slice(0, 10);
+
+  return Boolean(fecha) && fecha <= obtenerFechaLocalHoy();
+}
+
+// Clave de clase CSS para el distintivo de estado del detalle del evento.
+function claveBadgeEstado(subtarea) {
+  const estado = normalizarEstado(subtarea?.estado);
+
+  if (estado === "hecho") return "badge-success";
+  if (estaVencida(subtarea)) return "badge-danger";
+
+  return "badge-pending";
+}
+
+// Texto del distintivo: la vencimiento reemplaza a "Pendiente" porque es
+// la información accionable para el organizador.
+function etiquetaBadgeEstado(subtarea) {
+  const estado = normalizarEstado(subtarea?.estado);
+
+  if (estado === "hecho") return "Hecho";
+  if (estado === "pospuesto") return "Pospuesto";
+  if (estaVencida(subtarea)) return "Vencida";
+
+  return "Pendiente";
+}
+
 function obtenerHoras(item) {
   const value = Number(item?.horas_estimadas ?? item?.horas ?? item?.hours ?? 0);
   return Number.isFinite(value) ? value : 0;
@@ -2122,8 +2163,11 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
   // jornada y por eso queda fuera de la comprobacion.
   const guardarConValidacionLocal = async ({ fecha, horas }) => {
     const titulo = form.nombre.trim();
+    // "Vencida" es una etiqueta derivada: la columna `estado` solo admite
+    // pendiente/pospuesto/hecho, así que se persiste como "pendiente".
+    const estadoAGuardar = normalizarEstadoAGuardar(form.estado);
 
-    if (normalizarEstado(form.estado) !== "hecho") {
+    if (normalizarEstado(estadoAGuardar) !== "hecho") {
       const { agenda, capacidadDiaria } = await cargarAgendaYCapacidad();
 
       // excluirId saca del calculo la subtarea que se esta editando, para no
@@ -2150,7 +2194,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
       titulo,
       dia_objetivo: fecha,
       horas_estimadas: Number(horas),
-      estado: form.estado,
+      estado: estadoAGuardar,
       notas: form.notas.trim() || null,
     });
 
@@ -2301,6 +2345,10 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
             <option value="pendiente">Pendiente</option>
             <option value="hecho">Hecho</option>
             <option value="pospuesto">Pospuesto</option>
+            {/* "Vencida" no es un estado persistido: se deriva de que la
+                fecha objetivo ya pasó. Al elegirla se guarda como
+                pendiente, que es el estado real en la base de datos. */}
+            <option value="vencida">Vencida (fecha superada)</option>
           </select>
         </div>
       </div>
@@ -2541,7 +2589,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
               <span className={`task-check ${estado === "hecho" ? "completed" : ""}`}>{estado === "hecho" ? "✓" : ""}</span>
               <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}</p></div>
-              <span className={`badge ${estado === "hecho" ? "badge-success" : "badge-pending"}`}>{etiquetaEstado(estado)}</span>
+              <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>
               <div className="row-actions"><button className="btn ghost" onClick={() => setModal({ type: "edit-subtask", item: task })}><span className="edit-pencil" aria-hidden="true">✎</span> Editar</button><button className="btn danger-outline" onClick={() => setConfirmacion({ type: "subtarea", item: task })}><FaTrashAlt aria-hidden="true" /> Eliminar</button></div>
             </article>;
           })}
@@ -5050,44 +5098,44 @@ function Progreso({ busquedaEventos = "" }) {
 
                 <div className="progress-rendimiento-stats">
                   <article className="progress-stat-card stat-done">
-                    <span className="progress-stat-icon">✓</span>
-                    <div>
-                      <small>COMPLETADAS</small>
+                    <small>COMPLETADAS</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">✓</span>
                       <strong>{resumen.completadas}</strong>
-                      <span>
-                        {resumen.total
-                          ? Math.round((resumen.completadas / resumen.total) * 100)
-                          : 0}
-                        % del total
-                      </span>
                     </div>
+                    <span>
+                      {resumen.total
+                        ? Math.round((resumen.completadas / resumen.total) * 100)
+                        : 0}
+                      % del total
+                    </span>
                   </article>
 
                   <article className="progress-stat-card stat-pending">
-                    <span className="progress-stat-icon">○</span>
-                    <div>
-                      <small>PENDIENTES</small>
+                    <small>PENDIENTES</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">○</span>
                       <strong>{resumen.pendientes}</strong>
-                      <span>En ritmo ordinario</span>
                     </div>
+                    <span>En ritmo ordinario</span>
                   </article>
 
                   <article className="progress-stat-card stat-postponed">
-                    <span className="progress-stat-icon">◷</span>
-                    <div>
-                      <small>POSPUESTAS</small>
+                    <small>POSPUESTAS</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">◷</span>
                       <strong>{resumen.pospuestas}</strong>
-                      <span>Reprogramadas</span>
                     </div>
+                    <span>Reprogramadas</span>
                   </article>
 
                   <article className="progress-stat-card stat-risk">
-                    <span className="progress-stat-icon">!</span>
-                    <div>
-                      <small>VENCIDAS</small>
+                    <small>VENCIDAS</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">!</span>
                       <strong>{resumen.vencidas}</strong>
-                      <span>Requieren atención</span>
                     </div>
+                    <span>Requieren atención</span>
                   </article>
                 </div>
               </section>
