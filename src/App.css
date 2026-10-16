@@ -1054,8 +1054,17 @@ small {
   color: #087550;
 }
 
+/* Gestión sin completar cuya fecha objetivo ya pasó. */
+.badge-danger {
+  background: #fdeaea;
+
+  color: #c7353d;
+}
+
 .row-actions {
   display: flex;
+
+  flex-wrap: wrap;
 
   gap: 7px;
 }
@@ -1327,6 +1336,111 @@ small {
   gap: 16px;
 }
 
+.form-two-columns > div {
+  min-width: 0;
+}
+
+.form-two-columns textarea {
+  width: 100%;
+
+  min-height: 118px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #cbd3e0;
+
+  border-radius: 7px;
+
+  background: #ffffff;
+
+  color: #172033;
+
+  font-family: inherit;
+
+  font-size: 14px;
+
+  resize: vertical;
+
+  box-sizing: border-box;
+}
+
+.form-two-columns textarea:focus {
+  outline: 3px solid rgba(33, 70, 199, 0.15);
+
+  border-color: #2146c7;
+}
+
+.field-header label span.optional-tag {
+  color: #6c7487;
+
+  font-size: 11px;
+
+  font-weight: 500;
+}
+
+.field-info-icon {
+  color: #6c7487;
+
+  font-size: 13px;
+
+  cursor: help;
+}
+
+/* Card de nota opcional (mismo ancho que el input de fecha) */
+.note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid #d5dbe5;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.note-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.note-card-header > svg {
+  color: var(--eh-blue);
+  font-size: 15px;
+}
+
+.note-card-header label {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.note-card-hint {
+  margin-left: auto;
+  color: #6c7487;
+  font-size: 11px;
+}
+
+.note-card textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #cbd3e0;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #172033;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.note-card textarea:focus {
+  outline: 3px solid rgba(33, 70, 199, 0.15);
+  border-color: #2146c7;
+}
+
 .helper {
   color: #70798a !important;
 
@@ -1419,6 +1533,7 @@ small {
   background: #b8323b;
 }
 
+/* Widget de ayuda — solo visible en la vista Hoy */
 .help-widget {
   position: fixed;
   right: 24px;
@@ -5227,6 +5342,13 @@ small {
   border-color: #2146c7;
 }
 
+.postpone-field small {
+  display: block;
+  margin-top: 5px;
+  color: #6c7487;
+  font-size: 11px;
+}
+
 .postpone-actions {
   display: flex;
   justify-content: flex-end;
@@ -6328,5 +6450,497 @@ small {
 
   .onboarding-start {
     min-width: 145px;
+  }
+}
+
+
+/* =========================================================
+   PROGRESO
+   ========================================================= */
+
+.progress-page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+}
+
+.progress-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.progress-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.progress-title-row h1 {
+  margin: 0;
+  font-size: 30px;
+}
+
+.progress-events-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #eef3ff;
+  color: var(--eh-blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.progress-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 640px;
+}
+
+.progress-filters {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.progress-filters-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* --- Rendimiento operativo --- */
+
+.progress-rendimiento {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  margin-bottom: 30px;
+  padding: 26px 28px;
+  box-shadow: var(--eh-shadow);
+}
+
+.progress-ring {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: grid;
+  place-items: center;
+}
+
+.progress-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.progress-ring circle {
+  fill: none;
+  stroke-width: 13;
+  stroke-linecap: round;
+}
+
+.progress-ring-bg {
+  stroke: #e6ebf4;
+}
+
+.progress-ring-fill {
+  stroke: var(--eh-blue);
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.progress-ring strong {
+  font-size: 32px;
+  color: var(--ink);
+}
+
+.progress-ring small {
+  position: absolute;
+  bottom: 30px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.progress-rendimiento-info {
+  min-width: 0;
+}
+
+.progress-rendimiento-info > small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.progress-rendimiento-info h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.progress-rendimiento-info p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.progress-track-lg {
+  height: 10px;
+  max-width: 460px;
+}
+
+.progress-rendimiento-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* Card centrada: etiqueta arriba, icono pegado al número y descripción
+   abajo. */
+.progress-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid #d5dbe5;
+  border-radius: 11px;
+  background: #fff;
+  text-align: center;
+}
+
+/* Agrupa el icono y la cifra para que el icono quede a la izquierda
+   del número, formando una sola unidad visual. */
+.progress-stat-figure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.progress-stat-icon {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.stat-done {
+  background: #e7f7ef;
+  color: #0a8a5b;
+}
+
+.stat-pending {
+  background: #eef3ff;
+  color: var(--eh-blue);
+}
+
+.stat-postponed {
+  background: #fff4e0;
+  color: #c98a12;
+}
+
+.stat-risk {
+  background: #fdeaea;
+  color: #c7353d;
+}
+
+.progress-stat-card small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.progress-stat-card strong {
+  display: block;
+  font-size: 21px;
+  line-height: 1.15;
+}
+
+/* Descripción bajo la cifra. El icono tiene reglas propias, por eso se
+   limita el selector a los span que no son icono. */
+.progress-stat-card>span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* --- Desglose por evento --- */
+
+.progress-breakdown-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.progress-breakdown-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.progress-breakdown-header p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.progress-breakdown-order {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.progress-event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  box-shadow: var(--eh-shadow);
+}
+
+.progress-event-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.progress-event-top h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.progress-event-badge {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-completado {
+  background: #e7f7ef;
+  color: #0a8a5b;
+}
+
+.badge-preparacion {
+  background: #eef3ff;
+  color: var(--eh-blue);
+}
+
+.badge-planificacion {
+  background: #eef0f4;
+  color: #6c7487;
+}
+
+.progress-event-date {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-event-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.progress-event-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-event-row strong {
+  font-size: 16px;
+  color: var(--eh-blue);
+}
+
+.progress-event-bar {
+  height: 7px;
+  background: #e3e7ee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-event-bar span {
+  display: block;
+  height: 100%;
+  background: var(--eh-blue);
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
+.progress-event-count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.progress-event-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.progress-tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tag-postponed {
+  background: #fff4e0;
+  color: #c98a12;
+}
+
+.tag-pending {
+  background: #eef3ff;
+  color: var(--eh-blue);
+}
+
+.tag-risk {
+  background: #fdeaea;
+  color: #c7353d;
+}
+
+.tag-done {
+  background: #e7f7ef;
+  color: #0a8a5b;
+}
+
+.progress-event-detail {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+/* --- Tipografía ---
+   Se iguala a /eventos y /hoy:
+   · Título de página  36px   (igual que .heading h1)
+   · Subtítulos        20px   (tarjetas de /hoy usan 22px para cifras)
+   · Texto             13px   (igual que .event-card p)
+   · Etiquetas small   12px   (etiquetas de estado) */
+
+.progress-page h1 {
+  margin: 0;
+  font-size: 36px;
+  letter-spacing: -1.3px;
+}
+
+.progress-page h2,
+.progress-page h3 {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+/* Texto normal: descripciones y párrafos, igual que /eventos */
+.progress-page p,
+.progress-page label,
+.progress-page button {
+  font-size: 13px;
+}
+
+/* Etiquetas: small y tags de estado */
+.progress-page small,
+.progress-events-badge,
+.progress-breakdown-order,
+.progress-stat-card span,
+.progress-event-date,
+.progress-event-row span,
+.progress-event-count,
+.progress-tag,
+.progress-event-badge,
+.progress-filter-option {
+  font-size: 12px;
+}
+
+/* Cifras de las tarjetas resumen: 22px como las de /hoy */
+.progress-stat-card strong,
+.progress-event-row strong {
+  font-size: 22px;
+}
+
+/* La cifra del anillo es el dato principal de la vista: usa el
+   tamaño de título (36px) para mantener la jerarquía. */
+.progress-ring strong {
+  font-size: 36px;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 1000px) {
+  .progress-rendimiento {
+    grid-template-columns: auto 1fr;
+  }
+
+  .progress-rendimiento-stats {
+    grid-column: 1 / -1;
+  }
+
+  .progress-breakdown-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .progress-rendimiento {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .progress-rendimiento-info {
+    width: 100%;
+  }
+
+  .progress-track-lg {
+    margin: 0 auto;
+  }
+
+  .progress-breakdown-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 650px) {
+  .progress-header {
+    flex-direction: column;
+  }
+
+  .progress-rendimiento-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-breakdown-grid {
+    grid-template-columns: 1fr;
   }
 }

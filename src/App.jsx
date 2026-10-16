@@ -1,7 +1,7 @@
 import "./App.css";
 import logo_EventHub from "./assets/Logo.png";
 import logo_Jaguar from "./assets/Logo_Jaguar.png";
-import { FaLock, FaEye, FaEyeSlash, FaDoorOpen, FaSyncAlt, FaTrashAlt } from "react-icons/fa";
+import { FaLock, FaEye, FaEyeSlash, FaDoorOpen, FaSyncAlt, FaTrashAlt, FaStickyNote, FaFilter } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import {
   actualizarEvento,
@@ -26,7 +26,7 @@ import {
   guardarSesion,
 } from "./services/auth.js";
 
-const rutas = ["/login", "/registro", "/registro/onboarding", "/eventos", "/hoy", "/crear-evento", "/configuracion"];
+const rutas = ["/login", "/registro", "/registro/onboarding", "/eventos", "/hoy", "/progreso", "/crear-evento", "/configuracion"];
 
 // Deshabilita temporalmente el paso de "Personalización de tu espacio de
 // trabajo" durante este sprint. El componente OnboardingRegistro y sus
@@ -113,6 +113,47 @@ function etiquetaEstado(estado) {
   const value = normalizarEstado(estado);
   if (value === "hecho") return "Hecho";
   if (value === "pospuesto") return "Pospuesto";
+  return "Pendiente";
+}
+
+// "Vencida" es una etiqueta derivada, no un valor de la columna `estado`
+// (que solo admite pendiente/pospuesto/hecho). Al guardar se traduce a
+// "pendiente": es el estado real de una gestión cuya fecha objetivo pasó.
+function normalizarEstadoAGuardar(estado) {
+  const valor = String(estado || "pendiente");
+  return valor === "vencida" ? "pendiente" : valor;
+}
+
+// Una gestión sin completar cuya fecha objetivo es hoy o ya pasó está
+// vencida. Usa la misma regla que la vista Progreso y que el grupo de
+// "Gestiones Vencidas" de /hoy, para que las tres vistas coincidan.
+function estaVencida(subtarea) {
+  if (normalizarEstado(subtarea?.estado) === "hecho") return false;
+
+  const fecha = String(subtarea?.dia_objetivo || "").slice(0, 10);
+
+  return Boolean(fecha) && fecha <= obtenerFechaLocalHoy();
+}
+
+// Clave de clase CSS para el distintivo de estado del detalle del evento.
+function claveBadgeEstado(subtarea) {
+  const estado = normalizarEstado(subtarea?.estado);
+
+  if (estado === "hecho") return "badge-success";
+  if (estaVencida(subtarea)) return "badge-danger";
+
+  return "badge-pending";
+}
+
+// Texto del distintivo: la vencimiento reemplaza a "Pendiente" porque es
+// la información accionable para el organizador.
+function etiquetaBadgeEstado(subtarea) {
+  const estado = normalizarEstado(subtarea?.estado);
+
+  if (estado === "hecho") return "Hecho";
+  if (estado === "pospuesto") return "Pospuesto";
+  if (estaVencida(subtarea)) return "Vencida";
+
   return "Pendiente";
 }
 
@@ -582,27 +623,40 @@ function Header({
           >
             Hoy
           </button>
+
+          <button
+            className={ruta === "/progreso" ? "nav-link active" : "nav-link"}
+            onClick={() => navegar("/progreso")}
+          >
+            Progreso
+          </button>
         </nav>
 
         <div className="header-spacer" />
 
-        <form
-          className="search-placeholder"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            navegar("/eventos");
-          }}
-        >
-          <label htmlFor="header-event-search" aria-label="Buscar eventos">⌕</label>
-          <input
-            id="header-event-search"
-            type="search"
-            placeholder="Buscar eventos..."
-            value={busquedaEventos}
-            onChange={(event) => onBuscarEventos(event.target.value)}
-          />
-        </form>
+        {/* La búsqueda no aparece en /hoy. En /progreso filtra dentro de la
+            misma pestaña; en el resto de rutas lleva a la lista de eventos. */}
+        {ruta !== "/hoy" && (
+          <form
+            className="search-placeholder"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (ruta !== "/progreso") {
+                navegar("/eventos");
+              }
+            }}
+          >
+            <label htmlFor="header-event-search" aria-label="Buscar eventos">⌕</label>
+            <input
+              id="header-event-search"
+              type="search"
+              placeholder="Buscar eventos..."
+              value={busquedaEventos}
+              onChange={(event) => onBuscarEventos(event.target.value)}
+            />
+          </form>
+        )}
 
         <button
           className="btn primary header-create"
@@ -2048,7 +2102,19 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
       subtarea?.dia_objetivo || eventoFecha,
       eventoFecha
     ),
+    // La nota ya guardada se precarga; si la API falla permanece en el
+    // estado local y no se pierde.
+    notas: subtarea?.notas ?? "",
   });
+
+  // La nota crece automáticamente a medida que el usuario escribe.
+  const notaRef = useRef(null);
+  const expandirNota = () => {
+    const elemento = notaRef.current;
+    if (!elemento) return;
+    elemento.style.height = "auto";
+    elemento.style.height = `${elemento.scrollHeight}px`;
+  };
 
   const [errores, setErrores] = useState({});
   const [errorServidor, setErrorServidor] = useState("");
@@ -2097,8 +2163,11 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
   // jornada y por eso queda fuera de la comprobacion.
   const guardarConValidacionLocal = async ({ fecha, horas }) => {
     const titulo = form.nombre.trim();
+    // "Vencida" es una etiqueta derivada: la columna `estado` solo admite
+    // pendiente/pospuesto/hecho, así que se persiste como "pendiente".
+    const estadoAGuardar = normalizarEstadoAGuardar(form.estado);
 
-    if (normalizarEstado(form.estado) !== "hecho") {
+    if (normalizarEstado(estadoAGuardar) !== "hecho") {
       const { agenda, capacidadDiaria } = await cargarAgendaYCapacidad();
 
       // excluirId saca del calculo la subtarea que se esta editando, para no
@@ -2125,7 +2194,8 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
       titulo,
       dia_objetivo: fecha,
       horas_estimadas: Number(horas),
-      estado: form.estado,
+      estado: estadoAGuardar,
+      notas: form.notas.trim() || null,
     });
 
     return { guardada: true };
@@ -2275,6 +2345,10 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
             <option value="pendiente">Pendiente</option>
             <option value="hecho">Hecho</option>
             <option value="pospuesto">Pospuesto</option>
+            {/* "Vencida" no es un estado persistido: se deriva de que la
+                fecha objetivo ya pasó. Al elegirla se guarda como
+                pendiente, que es el estado real en la base de datos. */}
+            <option value="vencida">Vencida (fecha superada)</option>
           </select>
         </div>
       </div>
@@ -2303,6 +2377,27 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
           {errores.dia_objetivo}
         </p>
       )}
+
+      {/* Nota opcional: card del mismo ancho que la fecha, auto-expandible */}
+      <div className="note-card">
+        <div className="note-card-header">
+          <FaStickyNote aria-hidden="true" />
+          <label htmlFor="edit-sub-notas">Nota opcional</label>
+          <span className="note-card-hint">Se guarda al editar</span>
+        </div>
+
+        <textarea
+          id="edit-sub-notas"
+          name="notas"
+          ref={notaRef}
+          value={form.notas}
+          onChange={actualizar}
+          onInput={expandirNota}
+          rows={1}
+          maxLength={300}
+          placeholder="Añade una nota (opcional)"
+        />
+      </div>
 
       {errorServidor && (
         <div className="alert alert-error" role="alert">
@@ -2395,8 +2490,30 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
     setEstadoSubtareas("loading"); setErrorSubtareas("");
     try {
       const data = await obtenerSubtareas(id);
-      setSubtareas(Array.isArray(data) ? data : []);
-      setEstadoSubtareas(Array.isArray(data) && data.length ? "success" : "empty");
+      const lista = Array.isArray(data) ? data : [];
+
+      // Orden cronológico por fecha objetivo. Ante el mismo día se
+      // desempata por horas (menor esfuerzo primero) y, si empatan, por
+      // título: así el listado es estable y reproducible entre recargas.
+      const ordenadas = lista.slice().sort((a, b) => {
+        const fechaA = String(a.dia_objetivo || "").slice(0, 10);
+        const fechaB = String(b.dia_objetivo || "").slice(0, 10);
+
+        if (fechaA !== fechaB) return fechaA.localeCompare(fechaB);
+
+        const horasA = obtenerHoras(a);
+        const horasB = obtenerHoras(b);
+
+        if (horasA !== horasB) return horasA - horasB;
+
+        return obtenerTituloSubtarea(a).localeCompare(
+          obtenerTituloSubtarea(b),
+          "es"
+        );
+      });
+
+      setSubtareas(ordenadas);
+      setEstadoSubtareas(lista.length ? "success" : "empty");
     } catch (error) { setErrorSubtareas(error.message); setEstadoSubtareas("error"); }
   };
   useEffect(() => { cargar(); cargarSubtareas(); }, [id]);
@@ -2471,15 +2588,15 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
             const titulo = obtenerTituloSubtarea(task);
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
               <span className={`task-check ${estado === "hecho" ? "completed" : ""}`}>{estado === "hecho" ? "✓" : ""}</span>
-              <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}</p></div>
-              <span className={`badge ${estado === "hecho" ? "badge-success" : "badge-pending"}`}>{etiquetaEstado(estado)}</span>
+              <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}</p></div>
+              <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>
               <div className="row-actions"><button className="btn ghost" onClick={() => setModal({ type: "edit-subtask", item: task })}><span className="edit-pencil" aria-hidden="true">✎</span> Editar</button><button className="btn danger-outline" onClick={() => setConfirmacion({ type: "subtarea", item: task })}><FaTrashAlt aria-hidden="true" /> Eliminar</button></div>
             </article>;
           })}
         </div>}
       </section>
 
-      <section className="progress-card card"><div className="progress-icon">✓</div><div><h2>Progreso global de subtareas</h2><p>{completadas} de {subtareas.length} completadas ({porcentaje}%) • {horasRegistradas} horas totales registradas</p></div><strong>{porcentaje}%</strong><div className="progress-track"><span style={{ width: `${porcentaje}%` }} /></div></section>
+      <section className="progress-card card"><div className="progress-icon">✓</div><div><h2>Progreso global de subtareas</h2><p>{subtareas.length === 0 ? "Sin gestiones registradas (0%)." : `${completadas} de ${subtareas.length} completadas (${porcentaje}%) • ${horasRegistradas} horas totales registradas`}</p></div><strong>{porcentaje}%</strong><div className="progress-track" role="progressbar" aria-valuenow={porcentaje} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso global de subtareas"><span style={{ width: `${porcentaje}%` }} /></div></section>
 
       {modal === "create-subtask" && <Modal title="Crear subtarea" subtitle="Agrega una nueva tarea para este evento." close={() => setModal(null)}><CrearSubtareaForm eventoId={id} eventoFecha={evento.fecha} eventoTitulo={evento.titulo} onCancelar={() => setModal(null)} onCreada={async () => { setModal(null); onNotify("Subtarea creada correctamente"); await cargarSubtareas(); }} /></Modal>}
       {modal === "edit-event" && <Modal title="Editar evento" subtitle="Actualiza la información del evento." close={() => setModal(null)} wide><EditarEventoForm evento={evento} subtareas={subtareas} onCancelar={() => setModal(null)} onGuardado={eventoActualizado} /></Modal>}
@@ -2632,6 +2749,7 @@ function ConfiguracionUsuario({ onNotify }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [errorCampo, setErrorCampo] = useState("");
+  const [conflictoConfiguracion, setConflictoConfiguracion] = useState(null);
 
   useEffect(() => {
     const cargarConfiguracion = async () => {
@@ -2711,9 +2829,35 @@ function ConfiguracionUsuario({ onNotify }) {
         );
 
         if (obtenerHorasPendientes(gestionesDeHoy) > nuevasHoras) {
-          setErrorCampo(
-            "las horas asignadas superan a la capacidad del dia actual"
-          );
+          const agenda = gestionesDeHoy.map((item) => ({
+            ...item,
+            fechaObjetivo: item.dia_objetivo || null,
+          }));
+
+          const detalle = agenda.map((subtarea) => ({
+            id: subtarea.id,
+            titulo: obtenerTituloSubtarea(subtarea),
+            evento: subtarea.evento?.titulo || "Evento sin título",
+            horas_estimadas: obtenerHoras(subtarea),
+            es_subtarea_reprogramada: false,
+          }));
+
+          const horasTotales = obtenerHorasPendientes(gestionesDeHoy);
+
+          setConflictoConfiguracion({
+            limite_excedido: true,
+            fecha_objetivo: fechaHoy,
+            horas_asignadas: horasTotales,
+            limite_horas: nuevasHoras,
+            exceso_horas: horasTotales - nuevasHoras,
+            horas_disponibles: 0,
+            horas_causa: 0,
+            horas_otras: horasTotales,
+            horas_recomendadas: 0,
+            fecha_recomendada: null,
+            agenda: detalle,
+            id_subtarea_causa: null,
+          });
           return;
         }
       }
@@ -2825,6 +2969,31 @@ function ConfiguracionUsuario({ onNotify }) {
             </div>
           </form>
         </section>
+      )}
+
+      {conflictoConfiguracion && (
+        <ModalResolucionSobrecarga
+          conflicto={conflictoConfiguracion}
+          titulo="Sobrecarga al reducir el límite"
+          descripcion={`Al reducir el límite a ${conflictoConfiguracion.limite_horas}h, las subtareas del ${formatearFecha(conflictoConfiguracion.fecha_objetivo)} superan la nueva capacidad.`}
+          horasCausa={0}
+          tituloCausa="Reducción del límite diario"
+          guardando={guardando}
+          permitirResolucion={false}
+          etiquetaAccion="Aplicar de todas formas"
+          onCancelar={() => setConflictoConfiguracion(null)}
+          onAccion={async () => {
+            setConflictoConfiguracion(null);
+            try {
+              const data = await actualizarConfiguracionUsuario(conflictoConfiguracion.limite_horas);
+              setHorasDia(Number(data.horas_dia));
+              setHorasGuardadas(Number(data.horas_dia));
+              onNotify("Configuración guardada correctamente.");
+            } catch (errorActual) {
+              onNotify(errorActual.message || "No fue posible guardar la configuración.", "error");
+            }
+          }}
+        />
       )}
     </section>
   );
@@ -3366,7 +3535,8 @@ function Today({ onNotify }) {
   const abrirModalPosponer = (tarea) => {
     setTareaPosponer(tarea);
     setNuevaFecha("");
-    setMotivoPosposicion("");
+    // Precarga la nota ya guardada para no perderla al reprogramar.
+    setMotivoPosposicion(tarea.motivo_posposicion || "");
     setConflictoJornada(null);
     setHorasPosposicion(obtenerHoras(tarea));
     setMesCalendario(() => {
@@ -3397,7 +3567,7 @@ function Today({ onNotify }) {
       estado: "pospuesto",
       dia_objetivo: fecha,
       horas_estimadas: Number(horas),
-      motivo_posposicion: motivoPosposicion.trim(),
+      motivo_posposicion: motivoPosposicion.trim() || null,
     });
 
     return {
@@ -3406,7 +3576,7 @@ function Today({ onNotify }) {
     };
   };
   const confirmarPosposicion = async () => {
-    if (!tareaPosponer || !nuevaFecha || !motivoPosposicion.trim()) {
+    if (!tareaPosponer || !nuevaFecha) {
       return;
     }
 
@@ -4513,32 +4683,21 @@ function Today({ onNotify }) {
 
               <div className="postpone-field">
                 <label htmlFor="motivo-posposicion">
-                  Motivo del imprevisto <span>Requerido</span>
+                  Nota opcional
                 </label>
-                <select
+                <textarea
                   id="motivo-posposicion"
                   value={motivoPosposicion}
                   onChange={(event) =>
                     setMotivoPosposicion(event.target.value)
                   }
                   disabled={guardandoPosposicion}
-                  required
-                >
-                  <option value="">Selecciona el motivo del imprevisto</option>
-                  <option value="Demora en cotización de proveedor">
-                    Demora en cotización de proveedor
-                  </option>
-                  <option value="Cambio de prioridades">
-                    Cambio de prioridades
-                  </option>
-                  <option value="Disponibilidad del equipo">
-                    Disponibilidad del equipo
-                  </option>
-                  <option value="Imprevisto operativo">
-                    Imprevisto operativo
-                  </option>
-                  <option value="Otro">Otro</option>
-                </select>
+                  placeholder="Explica el motivo de la reprogramación (opcional)"
+                  rows={3}
+                />
+                <small>
+                  Puedes continuar sin nota si lo prefieres.
+                </small>
               </div>
             </div>
 
@@ -4562,7 +4721,6 @@ function Today({ onNotify }) {
                 onClick={confirmarPosposicion}
                 disabled={
                   !nuevaFecha ||
-                  !motivoPosposicion.trim() ||
                   !horasPosposicion ||
                   guardandoPosposicion
                 }
@@ -4588,6 +4746,491 @@ function Today({ onNotify }) {
           }}
           onAccion={aplicarResolucionSobrecarga}
         />
+      )}
+    </section>
+  );
+}
+
+// ============================================================
+// PROGRESO — cálculo en el frontend
+// ------------------------------------------------------------
+// La vista de Progreso consolida el avance de todos los eventos. Por
+// ahora el cálculo se hace en el cliente combinando los datos de
+// `GET /eventos` y `GET /subtareas`, el mismo patrón que ya usa la
+// vista Hoy. Si el equipo de backend habilita el listado enriquecido
+// (indicadores por evento en `GET /eventos`), basta reemplazar el
+// cuerpo de `calcularProgreso` para consumir esos campos; el resto
+// del componente no cambia.
+// ============================================================
+
+// `vencida` es una regla provisional del lado del cliente: son las
+// subtareas sin completar cuya fecha objetivo es hoy o ya pasó. El
+// equipo de producto/backend debe confirmar la regla definitiva.
+//
+// Las categorías son DISJUNTAS: cada subtarea cuenta una sola vez, así la
+// suma de estados nunca supera el total de subtareas del evento.
+// Prioridad: hecho -> vencida -> pospuesta -> pendiente.
+function calcularProgreso(eventos, subtareas) {
+  const hoy = obtenerFechaLocalHoy();
+  const subtareasPorEvento = new Map();
+
+  subtareas.forEach((subtarea) => {
+    const clave = String(subtarea.evento_id);
+    const lista = subtareasPorEvento.get(clave) || [];
+    lista.push(subtarea);
+    subtareasPorEvento.set(clave, lista);
+  });
+
+  let total = 0;
+  let completadas = 0;
+  let vencidas = 0;
+  let pospuestas = 0;
+  let pendientes = 0;
+
+  const detalleEventos = eventos.map((evento) => {
+    const lista = (subtareasPorEvento.get(String(evento.id)) || []).slice();
+    const totalEvento = lista.length;
+
+    let completadasEvento = 0;
+    let vencidasEvento = 0;
+    let pospuestasEvento = 0;
+    let pendientesEvento = 0;
+
+    lista.forEach((item) => {
+      const estado = normalizarEstado(item.estado);
+      const fecha = String(item.dia_objetivo || "").slice(0, 10);
+
+      if (estado === "hecho") {
+        completadasEvento += 1;
+      } else if (fecha && fecha <= hoy) {
+        vencidasEvento += 1;
+      } else if (estado === "pospuesto") {
+        pospuestasEvento += 1;
+      } else {
+        pendientesEvento += 1;
+      }
+    });
+
+    const porcentaje = totalEvento
+      ? Math.round((completadasEvento / totalEvento) * 100)
+      : 0;
+
+    total += totalEvento;
+    completadas += completadasEvento;
+    vencidas += vencidasEvento;
+    pospuestas += pospuestasEvento;
+    pendientes += pendientesEvento;
+
+    return {
+      id: evento.id,
+      titulo: evento.titulo,
+      fecha: evento.fecha,
+      estado: derivarEstadoEvento(porcentaje, totalEvento),
+      porcentaje,
+      total: totalEvento,
+      completadas: completadasEvento,
+      vencidas: vencidasEvento,
+      pospuestas: pospuestasEvento,
+      pendientes: pendientesEvento,
+    };
+  });
+
+  const porcentajeGlobal = total
+    ? Math.round((completadas / total) * 100)
+    : 0;
+
+  return {
+    resumen: {
+      total,
+      completadas,
+      vencidas,
+      pospuestas,
+      pendientes,
+      porcentaje: porcentajeGlobal,
+    },
+    eventos: detalleEventos,
+  };
+}
+
+// El modelo de evento no tiene un campo `estado` persistido, así que el
+// distintivo se deriva del porcentaje de avance mientras el equipo de
+// backend define el origen real.
+function derivarEstadoEvento(porcentaje, total) {
+  if (total > 0 && porcentaje === 100) {
+    return { clave: "completado", etiqueta: "Completado" };
+  }
+
+  if (porcentaje > 0) {
+    return { clave: "preparacion", etiqueta: "En preparación" };
+  }
+
+  return { clave: "planificacion", etiqueta: "Planificación" };
+}
+
+function Progreso({ busquedaEventos = "" }) {
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [datos, setDatos] = useState({ resumen: null, eventos: [] });
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  // "asc" | "desc" | "fecha"
+  const [orden, setOrden] = useState("desc");
+
+  const cargar = async () => {
+    setCargando(true);
+    setError("");
+
+    try {
+      const [eventosData, subtareasData] = await Promise.all([
+        obtenerEventos(),
+        obtenerSubtareas(),
+      ]);
+
+      const eventos = Array.isArray(eventosData) ? eventosData : [];
+      const subtareas = Array.isArray(subtareasData) ? subtareasData : [];
+
+      setDatos(calcularProgreso(eventos, subtareas));
+    } catch (errorActual) {
+      setError(
+        errorActual.message ||
+          "No fue posible cargar el progreso de los eventos."
+      );
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  const { resumen } = datos;
+
+  // La búsqueda de la cabecera filtra los eventos dentro de esta pestaña.
+  const termino = busquedaEventos.trim().toLocaleLowerCase("es");
+  const eventosFiltrados = datos.eventos.filter((evento) =>
+    String(evento.titulo || "")
+      .toLocaleLowerCase("es")
+      .includes(termino)
+  );
+
+  const ordenarEventos = (lista) => {
+    const copia = lista.slice();
+
+    if (orden === "asc") {
+      return copia.sort((a, b) => a.porcentaje - b.porcentaje);
+    }
+
+    if (orden === "fecha") {
+      return copia.sort((a, b) =>
+        String(a.fecha || "").localeCompare(String(b.fecha || ""))
+      );
+    }
+
+    return copia.sort((a, b) => b.porcentaje - a.porcentaje);
+  };
+
+  const eventos = ordenarEventos(eventosFiltrados);
+
+  const etiquetasOrden = {
+    asc: "Ascendente",
+    desc: "Descendente",
+    fecha: "Fecha",
+  };
+
+  const opcionesOrden = [
+    { clave: "asc", etiqueta: "Ascendente" },
+    { clave: "desc", etiqueta: "Descendente" },
+    { clave: "fecha", etiqueta: "Fecha" },
+  ];
+
+  return (
+    <section className="page progress-page">
+      <div className="progress-header">
+        <div>
+          <div className="progress-title-row">
+            <h1>Progreso</h1>
+            <span className="progress-events-badge">
+              {datos.eventos.length}{" "}
+              {datos.eventos.length === 1
+                ? "evento registrado"
+                : "eventos registrados"}
+            </span>
+          </div>
+          <p>
+            Consulta y monitorea el avance en tiempo real de todos los eventos
+            logísticos y sus subtareas.
+          </p>
+        </div>
+
+        <div className="progress-filters" style={{ position: 'relative' }}>
+          <button
+            className="btn secondary progress-filters-button"
+            type="button"
+            onClick={() => setMostrarFiltros((valor) => !valor)}
+            aria-expanded={mostrarFiltros}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          >
+            <FaFilter aria-hidden="true" style={{ width: '13px', height: '13px' }} /> 
+            Filtros avanzados
+          </button>
+
+          {mostrarFiltros && (
+            <div
+              className="progress-filters-panel"
+              role="group"
+              aria-label="Ordenar eventos"
+              style={{
+                position: 'absolute',
+                right: 0,
+                marginTop: '8px',
+                background: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                padding: '6px',
+                zIndex: 50,
+                minWidth: '160px'
+              }}
+            >
+              {opcionesOrden.map((opcion) => (
+                <button
+                  key={opcion.clave}
+                  type="button"
+                  className={`progress-filter-option ${
+                    orden === opcion.clave ? "active" : ""
+                  }`}
+                  aria-pressed={orden === opcion.clave}
+                  onClick={() => {
+                    setOrden(opcion.clave);
+                    setMostrarFiltros(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: orden === opcion.clave ? '#f3f4f6' : 'transparent',
+                    fontWeight: orden === opcion.clave ? '600' : 'normal',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {opcion.etiqueta}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {cargando && (
+        <section className="card state-card">
+          <span className="spinner" /> Cargando progreso...
+        </section>
+      )}
+
+      {!cargando && error && (
+        <section className="card state-card error-state" role="alert">
+          <div>
+            <b>No se pudo cargar el progreso.</b>
+            <p>{error}</p>
+          </div>
+
+          <button className="btn ghost" type="button" onClick={cargar}>
+            Reintentar
+          </button>
+        </section>
+      )}
+
+      {!cargando && !error && resumen && (
+        <>
+          {resumen.total === 0 ? (
+            <section className="card state-card empty-state">
+              <div className="empty-icon">✓</div>
+              <h2>Sin gestiones registradas</h2>
+              <p>
+                Aún no hay subtareas en tus eventos para medir el avance.
+              </p>
+            </section>
+          ) : (
+            <>
+              <section className="card progress-rendimiento">
+                <div
+                  className="progress-ring"
+                  role="img"
+                  aria-label={`Progreso general ${resumen.porcentaje} por ciento`}
+                >
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <circle
+                      className="progress-ring-bg"
+                      cx="60"
+                      cy="60"
+                      r="52"
+                    />
+                    <circle
+                      className="progress-ring-fill"
+                      cx="60"
+                      cy="60"
+                      r="52"
+                      style={{
+                        strokeDasharray: 2 * Math.PI * 52,
+                        strokeDashoffset:
+                          2 * Math.PI * 52 * (1 - resumen.porcentaje / 100),
+                      }}
+                    />
+                  </svg>
+                  <strong>{resumen.porcentaje}%</strong>
+                  <small>GLOBAL</small>
+                </div>
+
+                <div className="progress-rendimiento-info">
+                  <small>RENDIMIENTO OPERATIVO</small>
+                  <h2>Progreso general</h2>
+                  <p>
+                    {resumen.completadas} de {resumen.total} subtareas
+                    completadas en activo.
+                  </p>
+                  <div className="progress-track progress-track-lg">
+                    <span style={{ width: `${resumen.porcentaje}%` }} />
+                  </div>
+                </div>
+
+                <div className="progress-rendimiento-stats">
+                  <article className="progress-stat-card stat-done">
+                    <small>COMPLETADAS</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">✓</span>
+                      <strong>{resumen.completadas}</strong>
+                    </div>
+                    <span>
+                      {resumen.total
+                        ? Math.round((resumen.completadas / resumen.total) * 100)
+                        : 0}
+                      % del total
+                    </span>
+                  </article>
+
+                  <article className="progress-stat-card stat-pending">
+                    <small>PENDIENTES</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">○</span>
+                      <strong>{resumen.pendientes}</strong>
+                    </div>
+                    <span>En ritmo ordinario</span>
+                  </article>
+
+                  <article className="progress-stat-card stat-postponed">
+                    <small>POSPUESTAS</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">◷</span>
+                      <strong>{resumen.pospuestas}</strong>
+                    </div>
+                    <span>Reprogramadas</span>
+                  </article>
+
+                  <article className="progress-stat-card stat-risk">
+                    <small>VENCIDAS</small>
+                    <div className="progress-stat-figure">
+                      <span className="progress-stat-icon">!</span>
+                      <strong>{resumen.vencidas}</strong>
+                    </div>
+                    <span>Requieren atención</span>
+                  </article>
+                </div>
+              </section>
+
+              <section className="progress-breakdown">
+                <div className="progress-breakdown-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                  <h2>Eventos</h2>
+                  <span className="progress-breakdown-order" style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Ordenado por: {etiquetasOrden[orden]}
+                  </span>
+                </div>
+
+                <div className="progress-breakdown-grid">
+                  {eventos.map((evento) => (
+                    <article
+                      className="progress-event-card card"
+                      key={evento.id ?? evento.titulo}
+                    >
+                      <div className="progress-event-top">
+                        <h3>{evento.titulo}</h3>
+                        <span
+                          className={`progress-event-badge badge-${evento.estado.clave}`}
+                        >
+                          {evento.estado.etiqueta}
+                        </span>
+                      </div>
+
+                      <span className="progress-event-date">
+                        {formatearFecha(evento.fecha)}
+                      </span>
+
+                      <div className="progress-event-row">
+                        <span>Progreso acumulado</span>
+                        <strong>{evento.porcentaje}%</strong>
+                      </div>
+
+                      <div
+                        className="progress-event-bar"
+                        role="progressbar"
+                        aria-valuenow={evento.porcentaje}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`Progreso de ${evento.titulo}`}
+                      >
+                        <span style={{ width: `${evento.porcentaje}%` }} />
+                      </div>
+
+                      <p className="progress-event-count">
+                        {evento.completadas} de {evento.total} subtareas
+                        realizadas
+                      </p>
+
+                      <div className="progress-event-tags">
+                        {evento.pospuestas > 0 && (
+                          <span className="progress-tag tag-postponed">
+                            {evento.pospuestas} pospuesta
+                            {evento.pospuestas !== 1 ? "s" : ""}
+                          </span>
+                        )}
+
+                        {evento.pendientes > 0 && (
+                          <span className="progress-tag tag-pending">
+                            {evento.pendientes} pendiente
+                            {evento.pendientes !== 1 ? "s" : ""}
+                          </span>
+                        )}
+
+                        {evento.vencidas > 0 && (
+                          <span className="progress-tag tag-risk">
+                            {evento.vencidas} vencida
+                            {evento.vencidas !== 1 ? "s" : ""}
+                          </span>
+                        )}
+
+                        {evento.total > 0 && evento.porcentaje === 100 && (
+                          <span className="progress-tag tag-done">
+                            ✓ Listo para ejecución
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        className="btn secondary progress-event-detail"
+                        type="button"
+                        onClick={() => navegar(`/eventos/${evento.id}`)}
+                      >
+                        Ver detalle →
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+        </>
       )}
     </section>
   );
@@ -5402,30 +6045,35 @@ export default function App() {
       onBuscarEventos={setBusquedaEventos}
     />
     <Toast type={toast.type} message={toast.message} />
-    <div className="help-widget">
-      <button
-        type="button"
-        className="help-button"
-        aria-label="Ayuda sobre el orden de las gestiones"
-        aria-describedby="gestiones-help-tooltip"
-      >
-        ?
-      </button>
-      <div
-        id="gestiones-help-tooltip"
-        className="help-tooltip"
-        role="tooltip"
-      >
-        <strong>¿Cómo se ordena esto?</strong>
-        <span>
-          Las gestiones se ordenan priorizando primero las más urgentes, luego
-          aquellas con mayor prioridad y proximidad, y finalmente las demás
-          según su fecha correspondiente.
-        </span>
-      </div>
-    </div>
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} busqueda={busquedaEventos} />}
     {ruta === "/hoy" && <Today onNotify={notify} />}
+    {/* El widget de ayuda explica el orden y el uso de la vista Hoy, por
+        eso solo aparece en esa ruta. */}
+    {ruta === "/hoy" && (
+      <div className="help-widget">
+        <button
+          type="button"
+          className="help-button"
+          aria-label="Ayuda sobre el orden de las gestiones"
+          aria-describedby="gestiones-help-tooltip"
+        >
+          ?
+        </button>
+        <div
+          id="gestiones-help-tooltip"
+          className="help-tooltip"
+          role="tooltip"
+        >
+          <strong>¿Cómo se ordena esto?</strong>
+          <span>
+            Las gestiones se ordenan priorizando primero las más urgentes, luego
+            aquellas con mayor prioridad y proximidad, y finalmente las demás
+            según su fecha correspondiente.
+          </span>
+        </div>
+      </div>
+    )}
+    {ruta === "/progreso" && <Progreso busquedaEventos={busquedaEventos} />}
     {ruta === "/configuracion" && (<ConfiguracionUsuario onNotify={notify} />)}
     {detalleId && <DetalleEvento id={detalleId} volver={() => navegar("/eventos")} onNotify={notify} onEventosChanged={cargarEventos} />}
     {ruta === "/crear-evento" && <CrearEventoPage onCancelar={() => navegar("/eventos")} onCrear={crear} />}
