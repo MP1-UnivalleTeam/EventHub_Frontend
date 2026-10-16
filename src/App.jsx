@@ -2641,7 +2641,9 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
               <span className={`task-check ${estado === "hecho" ? "completed" : ""}`}>{estado === "hecho" ? "✓" : ""}</span>
               <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p></div>
-              <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>
+              <div className="subtask-status">
+                <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>
+              </div>
               <div className="row-actions"><button className="btn ghost" onClick={() => setModal({ type: "edit-subtask", item: task })}><span className="edit-pencil" aria-hidden="true">✎</span> Editar</button><button className="btn danger-outline" onClick={() => setConfirmacion({ type: "subtarea", item: task })}><FaTrashAlt aria-hidden="true" /> Eliminar</button></div>
             </article>;
           })}

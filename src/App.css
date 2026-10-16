@@ -1039,6 +1039,20 @@ small {
   overflow-wrap: anywhere;
 }
 
+/* Columna de estado: ancho fijo para que Vencida, Hecho, Pendiente y
+   Pospuesto queden centrados sobre el mismo eje vertical. */
+.subtask-status {
+  flex: 0 0 104px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  text-align: center;
+}
+
 .badge {
   border-radius: 18px;
 
@@ -3873,6 +3887,11 @@ small {
 
   .subtask-row {
     flex-wrap: wrap;
+  }
+
+  /* La columna de estado se estrecha para no robar espacio al título. */
+  .subtask-status {
+    flex-basis: 88px;
   }
 
   .task-main {
