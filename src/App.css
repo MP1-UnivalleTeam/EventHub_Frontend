@@ -15,6 +15,18 @@
 
   --eh-amber: #c98a12;
   --eh-amber-soft: #fff4e0;
+
+  /* Estados de una gestión. Única fuente de color para las tarjetas de
+     /progreso, los badges del detalle del evento, los chips de /hoy y los
+     tags de /progreso: si cambia aquí, cambia en todas las vistas. */
+  --st-done-bg: #e7f7ef;
+  --st-done-fg: #0a8a5b;
+  --st-pending-bg: #eef3ff;
+  --st-pending-fg: var(--eh-blue);
+  --st-pospuesto-bg: var(--eh-amber-soft);
+  --st-pospuesto-fg: var(--eh-amber);
+  --st-risk-bg: #fdeaea;
+  --st-risk-fg: #c7353d;
 }
 
 * {
@@ -1066,30 +1078,30 @@ small {
 }
 
 .badge-pending {
-  background: #eef2ff;
+  background: var(--st-pending-bg);
 
-  color: #3450a2;
+  color: var(--st-pending-fg);
 }
 
 .badge-success {
-  background: #e2f7ee;
+  background: var(--st-done-bg);
 
-  color: #087550;
+  color: var(--st-done-fg);
 }
 
 /* Una posposición no es un error: reutiliza el ámbar de /progreso en lugar
    del rojo reservado a los vencimientos. */
 .badge-pospuesto {
-  background: var(--eh-amber-soft);
+  background: var(--st-pospuesto-bg);
 
-  color: var(--eh-amber);
+  color: var(--st-pospuesto-fg);
 }
 
 /* Gestión sin completar cuya fecha objetivo ya pasó. */
 .badge-danger {
-  background: #fdeaea;
+  background: var(--st-risk-bg);
 
-  color: #c7353d;
+  color: var(--st-risk-fg);
 }
 
 .row-actions {
@@ -2639,9 +2651,9 @@ small {
 }
 
 .done-count {
-  background: #edf9f4;
+  background: var(--st-done-bg);
 
-  color: #17835d;
+  color: var(--st-done-fg);
 }
 
 
@@ -2729,21 +2741,21 @@ small {
 }
 
 .status-pendiente {
-  background: #fff6e5;
+  background: var(--st-pending-bg);
 
-  color: #9b6800;
+  color: var(--st-pending-fg);
 }
 
 .status-pospuesto {
-  background: #fff0ea;
+  background: var(--st-pospuesto-bg);
 
-  color: #bd5839;
+  color: var(--st-pospuesto-fg);
 }
 
 .status-hecho {
-  background: #eaf8f1;
+  background: var(--st-done-bg);
 
-  color: #17835d;
+  color: var(--st-done-fg);
 }
 
 .today-hours {
@@ -6755,23 +6767,23 @@ small {
 }
 
 .stat-done {
-  background: #e7f7ef;
-  color: #0a8a5b;
+  background: var(--st-done-bg);
+  color: var(--st-done-fg);
 }
 
 .stat-pending {
-  background: #eef3ff;
-  color: var(--eh-blue);
+  background: var(--st-pending-bg);
+  color: var(--st-pending-fg);
 }
 
 .stat-postponed {
-  background: var(--eh-amber-soft);
-  color: var(--eh-amber);
+  background: var(--st-pospuesto-bg);
+  color: var(--st-pospuesto-fg);
 }
 
 .stat-risk {
-  background: #fdeaea;
-  color: #c7353d;
+  background: var(--st-risk-bg);
+  color: var(--st-risk-fg);
 }
 
 .progress-stat-card small {
@@ -6851,13 +6863,13 @@ small {
 }
 
 .badge-completado {
-  background: #e7f7ef;
-  color: #0a8a5b;
+  background: var(--st-done-bg);
+  color: var(--st-done-fg);
 }
 
 .badge-preparacion {
-  background: #eef3ff;
-  color: var(--eh-blue);
+  background: var(--st-pending-bg);
+  color: var(--st-pending-fg);
 }
 
 .badge-planificacion {
@@ -6918,23 +6930,23 @@ small {
 }
 
 .tag-postponed {
-  background: var(--eh-amber-soft);
-  color: var(--eh-amber);
+  background: var(--st-pospuesto-bg);
+  color: var(--st-pospuesto-fg);
 }
 
 .tag-pending {
-  background: #eef3ff;
-  color: var(--eh-blue);
+  background: var(--st-pending-bg);
+  color: var(--st-pending-fg);
 }
 
 .tag-risk {
-  background: #fdeaea;
-  color: #c7353d;
+  background: var(--st-risk-bg);
+  color: var(--st-risk-fg);
 }
 
 .tag-done {
-  background: #e7f7ef;
-  color: #0a8a5b;
+  background: var(--st-done-bg);
+  color: var(--st-done-fg);
 }
 
 .progress-event-detail {
