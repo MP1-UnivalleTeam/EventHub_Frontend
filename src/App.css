@@ -6717,15 +6717,18 @@ small {
   gap: 7px;
 }
 
-.progress-stat-icon {
+/* El símbolo es texto plano: se dimensiona aquí, con un selector más
+   específico que las reglas generales de la página, que si no dejarían el
+   glifo en 12px. */
+.progress-stat-card .progress-stat-icon {
   flex: 0 0 auto;
   width: 38px;
   height: 38px;
   display: grid;
   place-items: center;
   border-radius: 10px;
+  font-size: 26px;
   font-weight: 800;
-  font-size: 21px;
   line-height: 1;
 }
 
@@ -6947,11 +6950,13 @@ small {
   font-size: 13px;
 }
 
-/* Etiquetas: small, tags y textos auxiliares */
+/* Etiquetas: small, tags y textos auxiliares. El selector del descriptor es
+   de hijo directo: el span del icono cuelga de `.progress-stat-figure` y
+   tiene su propio tamaño. */
 .progress-page small,
 .progress-events-badge,
 .progress-breakdown-order,
-.progress-stat-card span,
+.progress-stat-card>span,
 .progress-event-date,
 .progress-event-row span,
 .progress-event-count,
@@ -7047,10 +7052,11 @@ small {
     grid-template-columns: 1fr;
   }
 
-  .progress-stat-icon {
+  /* El icono baja un punto para que no se solape con la cifra. */
+  .progress-stat-card .progress-stat-icon {
     width: 32px;
     height: 32px;
-    font-size: 18px;
+    font-size: 21px;
   }
 
   .progress-filters-panel {
