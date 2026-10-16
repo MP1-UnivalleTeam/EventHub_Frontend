@@ -3426,7 +3426,10 @@ small {
   color: #b91c1c;
 
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
+
+  /* Separación uniforme entre el icono, la etiqueta y los días. */
+  gap: 4px;
 
   line-height: 1;
   white-space: nowrap;

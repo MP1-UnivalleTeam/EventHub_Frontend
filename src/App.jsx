@@ -4274,10 +4274,10 @@ function Today({ onNotify }) {
                           </span>
 
                           <span className="today-overdue-badge">
-                            <span aria-hidden="true">⚠</span>{" "}
+                            <span aria-hidden="true">⚠</span>
                             <span className="today-overdue-badge-label">
                               Retraso:
-                            </span>{" "}
+                            </span>
                             {diasVencidos} {diasVencidos === 1 ? "día" : "días"}
                           </span>
 
