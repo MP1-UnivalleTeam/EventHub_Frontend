@@ -2442,8 +2442,30 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
     setEstadoSubtareas("loading"); setErrorSubtareas("");
     try {
       const data = await obtenerSubtareas(id);
-      setSubtareas(Array.isArray(data) ? data : []);
-      setEstadoSubtareas(Array.isArray(data) && data.length ? "success" : "empty");
+      const lista = Array.isArray(data) ? data : [];
+
+      // Orden cronológico por fecha objetivo. Ante el mismo día se
+      // desempata por horas (menor esfuerzo primero) y, si empatan, por
+      // título: así el listado es estable y reproducible entre recargas.
+      const ordenadas = lista.slice().sort((a, b) => {
+        const fechaA = String(a.dia_objetivo || "").slice(0, 10);
+        const fechaB = String(b.dia_objetivo || "").slice(0, 10);
+
+        if (fechaA !== fechaB) return fechaA.localeCompare(fechaB);
+
+        const horasA = obtenerHoras(a);
+        const horasB = obtenerHoras(b);
+
+        if (horasA !== horasB) return horasA - horasB;
+
+        return obtenerTituloSubtarea(a).localeCompare(
+          obtenerTituloSubtarea(b),
+          "es"
+        );
+      });
+
+      setSubtareas(ordenadas);
+      setEstadoSubtareas(lista.length ? "success" : "empty");
     } catch (error) { setErrorSubtareas(error.message); setEstadoSubtareas("error"); }
   };
   useEffect(() => { cargar(); cargarSubtareas(); }, [id]);
@@ -5977,6 +5999,32 @@ export default function App() {
     <Toast type={toast.type} message={toast.message} />
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} busqueda={busquedaEventos} />}
     {ruta === "/hoy" && <Today onNotify={notify} />}
+    {/* El widget de ayuda explica el orden y el uso de la vista Hoy, por
+        eso solo aparece en esa ruta. */}
+    {ruta === "/hoy" && (
+      <div className="help-widget">
+        <button
+          type="button"
+          className="help-button"
+          aria-label="Ayuda sobre el orden de las gestiones"
+          aria-describedby="gestiones-help-tooltip"
+        >
+          ?
+        </button>
+        <div
+          id="gestiones-help-tooltip"
+          className="help-tooltip"
+          role="tooltip"
+        >
+          <strong>¿Cómo se ordena esto?</strong>
+          <span>
+            Las gestiones se ordenan priorizando primero las más urgentes, luego
+            aquellas con mayor prioridad y proximidad, y finalmente las demás
+            según su fecha correspondiente.
+          </span>
+        </div>
+      </div>
+    )}
     {ruta === "/progreso" && <Progreso busquedaEventos={busquedaEventos} />}
     {ruta === "/configuracion" && (<ConfiguracionUsuario onNotify={notify} />)}
     {detalleId && <DetalleEvento id={detalleId} volver={() => navegar("/eventos")} onNotify={notify} onEventosChanged={cargarEventos} />}
