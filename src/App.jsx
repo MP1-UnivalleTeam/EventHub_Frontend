@@ -2530,6 +2530,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const [modal, setModal] = useState(null);
   const [confirmacion, setConfirmacion] = useState(null);
   const [eliminando, setEliminando] = useState(false);
+  const [actualizandoEstadoSubtarea, setActualizandoEstadoSubtarea] = useState(null);
 
   const cargar = async () => {
     setCargandoEvento(true); setErrorEvento("");
@@ -2577,6 +2578,26 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
     typeof responsable === "object"
       ? responsable?.nombre
       : responsable;
+
+  const marcarSubtareaComoHecha = async (task) => {
+    if (!task?.id || normalizarEstado(task.estado) === "hecho" || actualizandoEstadoSubtarea !== null) {
+      return;
+    }
+
+    setActualizandoEstadoSubtarea(task.id);
+    try {
+      // Persistimos el cambio en el backend para que Eventos, Hoy y Progreso
+      // lean el mismo estado al consultar nuevamente las subtareas.
+      await actualizarParcialSubtarea(task.id, { estado: "hecho" });
+      await cargarSubtareas();
+      onEventosChanged?.();
+      onNotify("Subtarea marcada como hecha correctamente.");
+    } catch (error) {
+      onNotify(error.message || "No se pudo actualizar el estado de la tarea.", "error");
+    } finally {
+      setActualizandoEstadoSubtarea(null);
+    }
+  };
 
   const eventoActualizado = async () => {
     setModal(null); await cargar(); onEventosChanged?.(); onNotify("Evento actualizado correctamente");
@@ -2639,7 +2660,18 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
             const titulo = obtenerTituloSubtarea(task);
             const nota = obtenerNotaSubtarea(task);
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
-              <span className={`task-check ${estado === "hecho" ? "completed" : ""}`}>{estado === "hecho" ? "✓" : ""}</span>
+              <button
+                type="button"
+                className={`task-check ${estado === "hecho" ? "completed" : ""}`}
+                role="checkbox"
+                aria-checked={estado === "hecho"}
+                aria-label={estado === "hecho" ? `${titulo}: tarea hecha` : `Marcar ${titulo} como hecha`}
+                title={estado === "hecho" ? "Tarea hecha" : "Marcar como hecha"}
+                disabled={estado === "hecho" || actualizandoEstadoSubtarea === task.id}
+                onClick={() => marcarSubtareaComoHecha(task)}
+              >
+                {actualizandoEstadoSubtarea === task.id ? <span className="mini-spinner" aria-label="Guardando" /> : estado === "hecho" ? "✓" : ""}
+              </button>
               <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p></div>
               <div className="subtask-status">
                 <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>

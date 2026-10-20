@@ -1000,17 +1000,27 @@ small {
 .task-check {
   width: 21px;
   height: 21px;
-
+  padding: 0;
+  appearance: none;
+  background: #fff;
   border: 1.5px solid #aab4c6;
-
   border-radius: 4px;
-
   display: grid;
   place-items: center;
-
   color: #fff;
-
+  font: inherit;
   flex: 0 0 21px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.task-check:focus-visible {
+  outline: 2px solid var(--blue-2);
+  outline-offset: 2px;
+}
+
+.task-check:disabled {
+  cursor: default;
 }
 
 .task-check.completed {
