@@ -2531,6 +2531,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const [confirmacion, setConfirmacion] = useState(null);
   const [eliminando, setEliminando] = useState(false);
   const [actualizandoEstadoSubtarea, setActualizandoEstadoSubtarea] = useState(null);
+  const [conflictoCheckbox, setConflictoCheckbox] = useState(null);
 
   const cargar = async () => {
     setCargandoEvento(true); setErrorEvento("");
@@ -2580,28 +2581,83 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
       : responsable;
 
   const alternarEstadoSubtarea = async (task) => {
-    if (!task?.id || actualizandoEstadoSubtarea !== null) return;
+    if (!task?.id || actualizandoEstadoSubtarea !== null || conflictoCheckbox) return;
 
-    // El checkbox alterna entre Hecho y Pendiente. Si estaba pospuesta u otro
-    // estado no completado, al marcarla pasa a Hecho; al desmarcarla vuelve a Pendiente.
+    // Al desmarcar una tarea hecha, primero se valida la capacidad diaria.
+    // Si genera sobrecarga, se abre el modal de resolución existente y no se
+    // cambia el estado hasta que el usuario elija una solución válida.
     const estadoActual = normalizarEstado(task.estado);
     const estadoNuevo = estadoActual === "hecho" ? "pendiente" : "hecho";
+
+    if (estadoNuevo === "pendiente") {
+      setActualizandoEstadoSubtarea(task.id);
+      try {
+        const [subtareasData, hoyData] = await Promise.all([
+          obtenerSubtareas(),
+          obtenerHoy(),
+        ]);
+        const agenda = (Array.isArray(subtareasData) ? subtareasData : [])
+          .filter((item) => normalizarEstado(item.estado) !== "hecho")
+          .map((item) => ({ ...item, fechaObjetivo: item.dia_objetivo || null }));
+        const limiteRaw = Number(hoyData?.resumen?.limite_horas_dia);
+        const capacidadDiaria = Number.isFinite(limiteRaw) && limiteRaw > 0 ? limiteRaw : 6;
+        const fecha = String(task.dia_objetivo || "").slice(0, 10);
+        const conflictoDetectado = construirConflictoSobrecarga({
+          agenda,
+          fecha,
+          horas: obtenerHoras(task),
+          capacidadDiaria,
+          excluirId: task.id,
+          fechaLimite: obtenerFechaLimiteSubtarea(evento?.fecha),
+          titulo: obtenerTituloSubtarea(task),
+          eventoTitulo: evento?.titulo || "Evento sin título",
+          idSubtareaCausa: task.id,
+        });
+
+        if (conflictoDetectado) {
+          setConflictoCheckbox({ conflicto: conflictoDetectado, tarea: task });
+          return;
+        }
+      } catch (error) {
+        onNotify(error.message || "No se pudo comprobar la capacidad diaria.", "error");
+        return;
+      } finally {
+        setActualizandoEstadoSubtarea(null);
+      }
+    }
 
     setActualizandoEstadoSubtarea(task.id);
     try {
       await actualizarParcialSubtarea(task.id, { estado: estadoNuevo });
       await cargarSubtareas();
-      // Notifica al contenedor para que las vistas compartidas refresquen sus datos.
       onEventosChanged?.();
-      onNotify(
-        estadoNuevo === "hecho"
-          ? "Subtarea marcada como hecha correctamente."
-          : "Subtarea marcada como pendiente correctamente."
-      );
+      onNotify(estadoNuevo === "hecho"
+        ? "Subtarea marcada como hecha correctamente."
+        : "Subtarea marcada como pendiente correctamente.");
     } catch (error) {
-      // Releer del servidor evita dejar un estado visual distinto al persistido.
       await cargarSubtareas();
       onNotify(error.message || "No se pudo actualizar el estado de la tarea.", "error");
+    } finally {
+      setActualizandoEstadoSubtarea(null);
+    }
+  };
+
+  const resolverConflictoCheckbox = async ({ fecha, horas }) => {
+    const pendiente = conflictoCheckbox;
+    if (!pendiente?.tarea?.id) return;
+    setActualizandoEstadoSubtarea(pendiente.tarea.id);
+    try {
+      await actualizarParcialSubtarea(pendiente.tarea.id, {
+        estado: "pendiente",
+        dia_objetivo: fecha,
+        horas_estimadas: Number(horas),
+      });
+      setConflictoCheckbox(null);
+      await cargarSubtareas();
+      onEventosChanged?.();
+      onNotify("Conflicto resuelto. La subtarea quedó pendiente con la planificación actualizada.");
+    } catch (error) {
+      onNotify(error.message || "No se pudo aplicar la resolución del conflicto.", "error");
     } finally {
       setActualizandoEstadoSubtarea(null);
     }
@@ -2697,6 +2753,19 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
       {modal?.type === "edit-subtask" && <Modal title="Editar subtarea" subtitle="Actualiza la información de la subtarea." close={() => setModal(null)}><EditarSubtareaForm subtarea={modal.item} eventoId={id} eventoFecha={evento.fecha} onCancelar={() => setModal(null)} onGuardado={subtareaActualizada} /></Modal>}
       {confirmacion?.type === "evento" && <ConfirmModal title="¿Eliminar evento?" message="Esta acción eliminará el evento y sus subtareas. No se puede deshacer." close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
       {confirmacion?.type === "subtarea" && <ConfirmModal title="¿Eliminar subtarea?" message={`Esta acción eliminará “${obtenerTituloSubtarea(confirmacion.item)}”. No se puede deshacer.`} close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
+      {conflictoCheckbox && (
+        <ModalResolucionSobrecarga
+          key={`checkbox-${conflictoCheckbox.tarea.id}-${conflictoCheckbox.conflicto.fecha_objetivo}-${conflictoCheckbox.conflicto.horas_asignadas}`}
+          conflicto={conflictoCheckbox.conflicto}
+          horasCausa={obtenerHoras(conflictoCheckbox.tarea)}
+          tituloCausa={obtenerTituloSubtarea(conflictoCheckbox.tarea)}
+          titulo="Límite de jornada excedido"
+          descripcion={`Al volver a poner esta subtarea como pendiente, superarías la capacidad diaria configurada para el ${formatearFecha(conflictoCheckbox.conflicto.fecha_objetivo)}.`}
+          guardando={actualizandoEstadoSubtarea === conflictoCheckbox.tarea.id}
+          onCancelar={() => setConflictoCheckbox(null)}
+          onAccion={resolverConflictoCheckbox}
+        />
+      )}
     </section>
   );
 }
