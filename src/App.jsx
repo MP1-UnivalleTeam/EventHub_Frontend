@@ -2994,21 +2994,46 @@ function ConfiguracionUsuario({ onNotify }) {
         if (obtenerHorasPendientes(gestionesDeHoy) > nuevasHoras) {
           // Completa los datos desde el endpoint de subtareas para conservar
           // evento_id y todos los campos necesarios para persistir la fecha nueva.
-          const todasLasSubtareas = await obtenerSubtareas();
+          const [todasLasSubtareas, eventosData] = await Promise.all([
+            obtenerSubtareas(),
+            obtenerEventos(),
+          ]);
+          const listaTodasLasSubtareas = Array.isArray(todasLasSubtareas)
+            ? todasLasSubtareas
+            : [];
+          const listaEventos = Array.isArray(eventosData) ? eventosData : [];
           const subtareasPorId = new Map(
-            (Array.isArray(todasLasSubtareas) ? todasLasSubtareas : []).map((item) => [String(item.id), item])
+            listaTodasLasSubtareas.map((item) => [String(item.id), item])
           );
-          const agenda = gestionesDeHoy.map((item) => ({
-            ...(subtareasPorId.get(String(item.id)) || {}),
-            ...item,
-            evento_id:
+          const eventosPorId = new Map(
+            listaEventos.map((evento) => [String(evento.id), evento])
+          );
+          const agenda = gestionesDeHoy.map((item) => {
+            const subtareaCompleta = subtareasPorId.get(String(item.id)) || {};
+            const eventoId =
               item.evento_id ??
               item.evento?.id ??
-              subtareasPorId.get(String(item.id))?.evento_id ??
-              subtareasPorId.get(String(item.id))?.evento?.id ??
-              null,
-            fechaObjetivo: item.dia_objetivo || null,
-          }));
+              subtareaCompleta.evento_id ??
+              subtareaCompleta.evento?.id ??
+              null;
+            const evento = eventosPorId.get(String(eventoId)) ||
+              item.evento ||
+              subtareaCompleta.evento ||
+              null;
+
+            return {
+              ...subtareaCompleta,
+              ...item,
+              evento_id: eventoId,
+              evento,
+              evento_titulo:
+                evento?.titulo ??
+                item.evento_titulo ??
+                subtareaCompleta.evento_titulo ??
+                null,
+              fechaObjetivo: item.dia_objetivo || null,
+            };
+          });
 
           const detalle = agenda.map((subtarea) => ({
             ...subtarea,
@@ -3019,7 +3044,11 @@ function ConfiguracionUsuario({ onNotify }) {
               subtarea.evento?.evento_id ??
               null,
             titulo: obtenerTituloSubtarea(subtarea),
-            evento: subtarea.evento?.titulo || subtarea.evento_titulo || "Evento sin título",
+            evento:
+              subtarea.evento?.titulo ||
+              subtarea.evento_titulo ||
+              eventosPorId.get(String(subtarea.evento_id))?.titulo ||
+              "Evento sin título",
             dia_objetivo: subtarea.dia_objetivo || fechaHoy,
             horas_estimadas: obtenerHoras(subtarea),
             estado: normalizarEstadoAGuardar(subtarea.estado),
