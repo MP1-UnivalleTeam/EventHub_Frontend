@@ -2579,20 +2579,28 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
       ? responsable?.nombre
       : responsable;
 
-  const marcarSubtareaComoHecha = async (task) => {
-    if (!task?.id || normalizarEstado(task.estado) === "hecho" || actualizandoEstadoSubtarea !== null) {
-      return;
-    }
+  const alternarEstadoSubtarea = async (task) => {
+    if (!task?.id || actualizandoEstadoSubtarea !== null) return;
+
+    // El checkbox alterna entre Hecho y Pendiente. Si estaba pospuesta u otro
+    // estado no completado, al marcarla pasa a Hecho; al desmarcarla vuelve a Pendiente.
+    const estadoActual = normalizarEstado(task.estado);
+    const estadoNuevo = estadoActual === "hecho" ? "pendiente" : "hecho";
 
     setActualizandoEstadoSubtarea(task.id);
     try {
-      // Persistimos el cambio en el backend para que Eventos, Hoy y Progreso
-      // lean el mismo estado al consultar nuevamente las subtareas.
-      await actualizarParcialSubtarea(task.id, { estado: "hecho" });
+      await actualizarParcialSubtarea(task.id, { estado: estadoNuevo });
       await cargarSubtareas();
+      // Notifica al contenedor para que las vistas compartidas refresquen sus datos.
       onEventosChanged?.();
-      onNotify("Subtarea marcada como hecha correctamente.");
+      onNotify(
+        estadoNuevo === "hecho"
+          ? "Subtarea marcada como hecha correctamente."
+          : "Subtarea marcada como pendiente correctamente."
+      );
     } catch (error) {
+      // Releer del servidor evita dejar un estado visual distinto al persistido.
+      await cargarSubtareas();
       onNotify(error.message || "No se pudo actualizar el estado de la tarea.", "error");
     } finally {
       setActualizandoEstadoSubtarea(null);
@@ -2665,10 +2673,10 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
                 className={`task-check ${estado === "hecho" ? "completed" : ""}`}
                 role="checkbox"
                 aria-checked={estado === "hecho"}
-                aria-label={estado === "hecho" ? `${titulo}: tarea hecha` : `Marcar ${titulo} como hecha`}
-                title={estado === "hecho" ? "Tarea hecha" : "Marcar como hecha"}
-                disabled={estado === "hecho" || actualizandoEstadoSubtarea === task.id}
-                onClick={() => marcarSubtareaComoHecha(task)}
+                aria-label={estado === "hecho" ? `Marcar ${titulo} como pendiente` : `Marcar ${titulo} como hecha`}
+                title={estado === "hecho" ? "Desmarcar y volver a pendiente" : "Marcar como hecha"}
+                disabled={actualizandoEstadoSubtarea === task.id}
+                onClick={() => alternarEstadoSubtarea(task)}
               >
                 {actualizandoEstadoSubtarea === task.id ? <span className="mini-spinner" aria-label="Guardando" /> : estado === "hecho" ? "✓" : ""}
               </button>
