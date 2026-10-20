@@ -3469,6 +3469,9 @@ function Today({ onNotify }) {
   const [notaPosposicion, setNotaPosposicion] = useState("");
   const [horasPosposicion, setHorasPosposicion] = useState(0);
   const [conflictoJornada, setConflictoJornada] = useState(null);
+  // Estado que se guardará al resolver la sobrecarga: pospuesto al reprogramar,
+  // pendiente si el usuario está desmarcando una subtarea hecha.
+  const [estadoResolucionJornada, setEstadoResolucionJornada] = useState("pospuesto");
   const [mesCalendario, setMesCalendario] = useState(() => {
     const hoy = new Date();
     return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -3651,6 +3654,7 @@ function Today({ onNotify }) {
     // Precarga la nota ya guardada para no perderla al reprogramar.
     setNotaPosposicion(obtenerNotaSubtarea(tarea));
     setConflictoJornada(null);
+    setEstadoResolucionJornada("pospuesto");
     setHorasPosposicion(obtenerHoras(tarea));
     setMesCalendario(() => {
       const hoy = new Date();
@@ -3679,12 +3683,17 @@ function Today({ onNotify }) {
     // La nota es opcional: vacía se envía como `null`.
     const nota = notaPosposicion.trim();
 
-    const subtareaActualizada = await actualizarParcialSubtarea(tarea.id, {
-      estado: "pospuesto",
+    const datosActualizacion = {
+      estado: estadoResolucionJornada,
       dia_objetivo: fecha,
       horas_estimadas: Number(horas),
-      notas: nota || null,
-    });
+    };
+    // Solo se modifica la nota en el flujo de posposición; al resolver una
+    // sobrecarga al volver a pendiente se conserva la nota existente.
+    if (estadoResolucionJornada === "pospuesto") {
+      datosActualizacion.notas = nota || null;
+    }
+    const subtareaActualizada = await actualizarParcialSubtarea(tarea.id, datosActualizacion);
 
     return {
       actualizada: true,
@@ -3692,6 +3701,7 @@ function Today({ onNotify }) {
     };
   };
   const confirmarPosposicion = async () => {
+    setEstadoResolucionJornada("pospuesto");
     if (!tareaPosponer || !nuevaFecha) {
       return;
     }
@@ -3793,6 +3803,37 @@ function Today({ onNotify }) {
     const estadoNuevo =
       nuevoEstado ||
       (estadoActual === "hecho" ? "pendiente" : "hecho");
+
+    // Al desmarcar una subtarea hecha, volverá a consumir horas de la jornada.
+    // Si eso supera el límite, abre el modal de resolución existente en lugar
+    // de dejar que el backend responda únicamente con una alerta roja.
+    if (estadoActual === "hecho" && estadoNuevo === "pendiente") {
+      const fechaTarea = String(
+        tarea.fechaObjetivo || tarea.dia_objetivo || tarea.evento?.fecha || ""
+      ).slice(0, 10);
+      if (fechaTarea) {
+        const conflictoCapacidad = construirConflictoSobrecarga({
+          agenda: subtareasAgenda,
+          fecha: fechaTarea,
+          horas: obtenerHoras(tarea),
+          capacidadDiaria,
+          excluirId: tarea.id,
+          fechaLimite: obtenerFechaLimiteSubtarea(tarea.evento?.fecha),
+          titulo: obtenerTituloSubtarea(tarea),
+          eventoTitulo: tarea.evento?.titulo,
+          idSubtareaCausa: tarea.id,
+        });
+        if (conflictoCapacidad) {
+          setTareaPosponer(tarea);
+          setHorasPosposicion(obtenerHoras(tarea));
+          setNuevaFecha(fechaTarea);
+          setNotaPosposicion(obtenerNotaSubtarea(tarea));
+          setEstadoResolucionJornada("pendiente");
+          setConflictoJornada(conflictoCapacidad);
+          return;
+        }
+      }
+    }
 
     setActualizando(tarea.id);
 
@@ -4874,6 +4915,7 @@ function Today({ onNotify }) {
           onCancelar={() => {
             setConflictoJornada(null);
             setTareaPosponer(null);
+            setEstadoResolucionJornada("pospuesto");
           }}
           onAccion={aplicarResolucionSobrecarga}
         />
