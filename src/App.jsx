@@ -2992,16 +2992,38 @@ function ConfiguracionUsuario({ onNotify }) {
         );
 
         if (obtenerHorasPendientes(gestionesDeHoy) > nuevasHoras) {
+          // Completa los datos desde el endpoint de subtareas para conservar
+          // evento_id y todos los campos necesarios para persistir la fecha nueva.
+          const todasLasSubtareas = await obtenerSubtareas();
+          const subtareasPorId = new Map(
+            (Array.isArray(todasLasSubtareas) ? todasLasSubtareas : []).map((item) => [String(item.id), item])
+          );
           const agenda = gestionesDeHoy.map((item) => ({
+            ...(subtareasPorId.get(String(item.id)) || {}),
             ...item,
+            evento_id:
+              item.evento_id ??
+              item.evento?.id ??
+              subtareasPorId.get(String(item.id))?.evento_id ??
+              subtareasPorId.get(String(item.id))?.evento?.id ??
+              null,
             fechaObjetivo: item.dia_objetivo || null,
           }));
 
           const detalle = agenda.map((subtarea) => ({
+            ...subtarea,
             id: subtarea.id,
+            evento_id:
+              subtarea.evento_id ??
+              subtarea.evento?.id ??
+              subtarea.evento?.evento_id ??
+              null,
             titulo: obtenerTituloSubtarea(subtarea),
-            evento: subtarea.evento?.titulo || "Evento sin título",
+            evento: subtarea.evento?.titulo || subtarea.evento_titulo || "Evento sin título",
+            dia_objetivo: subtarea.dia_objetivo || fechaHoy,
             horas_estimadas: obtenerHoras(subtarea),
+            estado: normalizarEstadoAGuardar(subtarea.estado),
+            notas: obtenerNotaSubtarea(subtarea),
             es_subtarea_reprogramada: false,
           }));
 
@@ -3019,6 +3041,17 @@ function ConfiguracionUsuario({ onNotify }) {
             horas_recomendadas: 0,
             fecha_recomendada: null,
             agenda: detalle,
+            cargaExistente: (Array.isArray(todasLasSubtareas) ? todasLasSubtareas : [])
+              .filter((item) =>
+                !gestionesDeHoy.some((gestion) => String(gestion.id) === String(item.id)) &&
+                normalizarEstado(item.estado) !== "hecho" &&
+                Boolean(String(item.dia_objetivo || "").slice(0, 10))
+              )
+              .map((item) => ({
+                id: item.id,
+                fecha: String(item.dia_objetivo).slice(0, 10),
+                horas_estimadas: obtenerHoras(item),
+              })),
             id_subtarea_causa: null,
           });
           return;
@@ -3135,25 +3168,37 @@ function ConfiguracionUsuario({ onNotify }) {
       )}
 
       {conflictoConfiguracion && (
-        <ModalResolucionSobrecarga
+        <ModalReprogramarLimite
           conflicto={conflictoConfiguracion}
-          titulo="Sobrecarga al reducir el límite"
-          descripcion={`Al reducir el límite a ${conflictoConfiguracion.limite_horas}h, las subtareas del ${formatearFecha(conflictoConfiguracion.fecha_objetivo)} superan la nueva capacidad.`}
-          horasCausa={0}
-          tituloCausa="Reducción del límite diario"
           guardando={guardando}
-          permitirResolucion={false}
-          etiquetaAccion="Aplicar de todas formas"
           onCancelar={() => setConflictoConfiguracion(null)}
-          onAccion={async () => {
-            setConflictoConfiguracion(null);
+          onGuardar={async (reprogramaciones) => {
+            setGuardando(true);
             try {
+              // Reprogramar primero las subtareas elegidas. Si falla una, no se guarda el nuevo límite.
+              for (const tarea of reprogramaciones) {
+                if (tarea.fecha === tarea.fechaOriginal) continue;
+                if (!tarea.evento_id) {
+                  throw new Error(`No se pudo identificar el evento de "${tarea.titulo}". Comprueba la subtarea e inténtalo de nuevo.`);
+                }
+                await actualizarSubtarea(tarea.id, {
+                  evento_id: tarea.evento_id,
+                  titulo: tarea.titulo,
+                  dia_objetivo: tarea.fecha,
+                  horas_estimadas: Number(tarea.horas_estimadas),
+                  estado: tarea.estado || "pendiente",
+                  notas: tarea.notas || null,
+                });
+              }
               const data = await actualizarConfiguracionUsuario(conflictoConfiguracion.limite_horas);
               setHorasDia(Number(data.horas_dia));
               setHorasGuardadas(Number(data.horas_dia));
-              onNotify("Configuración guardada correctamente.");
+              setConflictoConfiguracion(null);
+              onNotify("Subtareas reprogramadas y límite diario actualizado correctamente.");
             } catch (errorActual) {
-              onNotify(errorActual.message || "No fue posible guardar la configuración.", "error");
+              onNotify(errorActual.message || "No fue posible reprogramar las subtareas o guardar el límite.", "error");
+            } finally {
+              setGuardando(false);
             }
           }}
         />
@@ -3168,6 +3213,100 @@ function obtenerFechaLocalHoy() {
   const month = String(hoy.getMonth() + 1).padStart(2, "0");
   const day = String(hoy.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function ModalReprogramarLimite({ conflicto, guardando, onCancelar, onGuardar }) {
+  const agendaInicial = Array.isArray(conflicto?.agenda) ? conflicto.agenda : [];
+  const [fechas, setFechas] = useState(() => Object.fromEntries(
+    agendaInicial.map((tarea) => [String(tarea.id), String(tarea.dia_objetivo || conflicto.fecha_objetivo || "").slice(0, 10)])
+  ));
+  const [errorLocal, setErrorLocal] = useState("");
+  const tareas = agendaInicial.map((tarea) => ({
+    ...tarea,
+    fechaOriginal: String(tarea.dia_objetivo || conflicto.fecha_objetivo || "").slice(0, 10),
+    fecha: fechas[String(tarea.id)] || String(tarea.dia_objetivo || conflicto.fecha_objetivo || "").slice(0, 10),
+    horas_estimadas: Number(tarea.horas_estimadas) || 0,
+  }));
+  // Incluye también las subtareas que ya estaban programadas en otras fechas,
+  // para no recomendar un destino que parezca libre pero ya tenga carga.
+  const cargaPorFecha = (Array.isArray(conflicto?.cargaExistente) ? conflicto.cargaExistente : [])
+    .reduce((acumulado, tarea) => {
+      const fecha = String(tarea.fecha || "").slice(0, 10);
+      if (fecha) acumulado[fecha] = (acumulado[fecha] || 0) + (Number(tarea.horas_estimadas) || 0);
+      return acumulado;
+    }, {});
+  tareas.forEach((tarea) => {
+    cargaPorFecha[tarea.fecha] = (cargaPorFecha[tarea.fecha] || 0) + tarea.horas_estimadas;
+  });
+  const limite = Number(conflicto?.limite_horas) || 0;
+  const fechasConExceso = Object.entries(cargaPorFecha)
+    .filter(([, horas]) => horas > limite + 1e-9)
+    .map(([fecha, horas]) => ({ fecha, horas, exceso: horas - limite }));
+  const hayExceso = fechasConExceso.length > 0;
+  const cambios = tareas.filter((tarea) => tarea.fecha !== tarea.fechaOriginal).length;
+  const maximoDiario = Object.values(cargaPorFecha).reduce((max, horas) => Math.max(max, horas), 0);
+
+  const guardar = async () => {
+    setErrorLocal("");
+    if (tareas.some((tarea) => !tarea.fecha)) {
+      setErrorLocal("Selecciona una fecha para cada subtarea.");
+      return;
+    }
+    if (hayExceso) {
+      setErrorLocal("Todavía hay días que superan el límite. Reprograma más subtareas antes de guardar.");
+      return;
+    }
+    if (cambios === 0) {
+      setErrorLocal("Reprograma al menos una subtarea para resolver la sobrecarga.");
+      return;
+    }
+    await onGuardar(tareas);
+  };
+  if (!conflicto) return null;
+
+  return (
+    <div className="postpone-overlay">
+      <div className="agenda-modal agenda-reschedule-limit-modal" role="dialog" aria-modal="true" aria-labelledby="limit-reschedule-title">
+        <button type="button" className="postpone-close" aria-label="Cerrar" disabled={guardando} onClick={onCancelar}>×</button>
+        <div className="agenda-modal-title">
+          <span className="agenda-warning-icon">⚠</span>
+          <div>
+            <h2 id="limit-reschedule-title">Sobrecarga al reducir el límite</h2>
+            <p>Al reducir el límite a {limite}h, las subtareas del {formatearFecha(conflicto.fecha_objetivo)} superan la nueva capacidad. Selecciona una nueva fecha para cada tarea que quieras reprogramar.</p>
+          </div>
+        </div>
+        <div className="agenda-capacity-card">
+          <div>
+            <strong>{maximoDiario.toFixed(1)}h <small>máximo por día tras los cambios</small></strong>
+            <span>{limite.toFixed(1)}h de tope · {hayExceso ? `+${fechasConExceso.reduce((sum, item) => sum + item.exceso, 0).toFixed(1)}h de exceso` : "sin sobrecarga"}</span>
+          </div>
+          <div className="agenda-capacity-track"><span style={{ width: `${Math.min((maximoDiario / Math.max(limite, 1)) * 100, 100)}%`, background: hayExceso ? "#c7353d" : "#07835b" }} /></div>
+        </div>
+        <small className="agenda-breakdown-label">REPROGRAMAR SUBTAREAS</small>
+        <div className="agenda-reschedule-limit-list">
+          {tareas.map((tarea) => {
+            const excesoEnFecha = (cargaPorFecha[tarea.fecha] || 0) > limite + 1e-9;
+            return (
+              <div className="agenda-reschedule-limit-item" key={tarea.id}>
+                <div className="agenda-reschedule-limit-info">
+                  <strong>{tarea.titulo}</strong>
+                  <small>{tarea.evento || "Evento sin título"} · {tarea.horas_estimadas.toFixed(1)}h</small>
+                  <small>Fecha actual: {formatearFecha(tarea.fechaOriginal)}</small>
+                </div>
+                <label><span>Nueva fecha</span><input type="date" value={tarea.fecha} min={obtenerFechaLocalHoy()} disabled={guardando} aria-label={`Nueva fecha para ${tarea.titulo}`} onChange={(event) => setFechas((actuales) => ({ ...actuales, [String(tarea.id)]: event.target.value }))} /></label>
+                {excesoEnFecha && <small className="agenda-reschedule-date-error">Esta fecha todavía supera las {limite}h disponibles.</small>}
+              </div>
+            );
+          })}
+        </div>
+        {errorLocal && <p className="inline-error" role="alert">{errorLocal}</p>}
+        <div className="agenda-modal-actions">
+          <button type="button" className="btn secondary" disabled={guardando} onClick={onCancelar}>Cancelar</button>
+          <button type="button" className="btn primary" disabled={guardando || hayExceso || cambios === 0} onClick={guardar}>{guardando ? "Guardando..." : "Reprogramar y guardar"}</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ModalResolucionSobrecarga({

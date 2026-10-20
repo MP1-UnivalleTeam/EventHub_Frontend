@@ -7112,3 +7112,17 @@ small {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Modal para reprogramar subtareas al reducir el límite diario */
+.agenda-reschedule-limit-modal { max-width: 760px; width: min(760px, calc(100vw - 32px)); }
+.agenda-reschedule-limit-list { display: flex; flex-direction: column; gap: 0; max-height: min(36vh, 310px); overflow-y: auto; padding-right: 4px; }
+.agenda-reschedule-limit-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 235px); gap: 8px 18px; align-items: center; padding: 14px 0; border-bottom: 1px solid #edf0f5; }
+.agenda-reschedule-limit-info { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.agenda-reschedule-limit-info strong { color: #273044; font-size: 14px; overflow-wrap: anywhere; }
+.agenda-reschedule-limit-info small { color: #64748b; font-size: 12px; }
+.agenda-reschedule-limit-item label { display: flex; flex-direction: column; gap: 5px; color: #64748b; font-size: 12px; font-weight: 600; }
+.agenda-reschedule-limit-item input[type="date"] { width: 100%; min-width: 0; min-height: 40px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; color: #172033; background: #fff; font: inherit; }
+.agenda-reschedule-limit-item input[type="date"]:focus { outline: 2px solid rgba(49, 91, 213, 0.2); border-color: #315bd5; }
+.agenda-reschedule-date-error { grid-column: 1 / -1; color: #c7353d; font-size: 12px; }
+@media (max-width: 640px) { .agenda-reschedule-limit-item { grid-template-columns: 1fr; } }
