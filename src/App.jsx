@@ -5452,7 +5452,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
 
   const { resumen } = datos;
 
-  // La búsqueda de la cabecera filtra los eventos dentro de esta pestaña.
+  // La búsqueda de la cabecera filtra los eventos dentro de esta pestaña..
   const termino = busquedaEventos.trim().toLocaleLowerCase("es");
   const eventosFiltrados = datos.eventos.filter((evento) =>
     String(evento.titulo || "")
