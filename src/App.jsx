@@ -3533,8 +3533,10 @@ function ModalResolucionSobrecarga({
     if (["sin fecha", "sin_fecha", "sin-fecha", "null", "undefined"].includes(normalizada)) {
       return false;
     }
-    return /^\\d{4}-\\d{2}-\\d{2}$/.test(fecha) ||
-      /^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(fecha);
+    return ( 
+      /^\d{4}-\d{2}-\d{2}$/.test(fecha) ||
+      /^\d{2}\/\d{2}\/\d{4}$/.test(fecha)
+  );
   })();
   const [estrategia, setEstrategia] = useState(
     fechaRecomendadaValida ? "mover" : "manual"
@@ -6755,3 +6757,4 @@ export default function App() {
   </main>;
 
 }
+
