@@ -7595,9 +7595,10 @@ small {
     display: flex;
     position: fixed;
     z-index: 9002;
-    left: 50%;
+    left: auto;
+    right: 24px;
     bottom: calc(54px + env(safe-area-inset-bottom));
-    transform: translate(-50%, -50%);
+    transform: none;
     align-items: center;
     justify-content: center;
     width: 56px;
@@ -7615,7 +7616,7 @@ small {
   }
 
   .mobile-create-fab:active {
-    transform: translate(-50%, -50%) scale(.96);
+    transform: scale(.96);
   }
 
   /* Deja espacio para la navegación fija sin afectar la vista de escritorio. */
