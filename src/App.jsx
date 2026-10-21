@@ -291,7 +291,7 @@ function construirConflictoSobrecarga({
     .map((subtarea) => ({
       id: subtarea.id,
       titulo: obtenerTituloSubtarea(subtarea),
-      evento: subtarea.evento?.titulo || "Evento sin título",
+      evento: subtarea.evento?.titulo || subtarea.evento_titulo || subtarea.titulo_evento || "Evento sin título",
       horas_estimadas: obtenerHoras(subtarea),
       es_subtarea_reprogramada: false,
     }));
@@ -359,12 +359,11 @@ function construirConflictoSobrecarga({
     (candidata) =>
       candidata.horasAsignadas + horasCausa <= capacidadDiaria
   );
-  // Solo se recomienda mover la subtarea si existe un día dentro del rango
-  // permitido donde quepa completa sin superar la capacidad diaria. Si todos
-  // los días están llenos, fecha_recomendada queda null y el modal fuerza el
-  // ajuste manual de duración.
-  const recomendada = horasConCapacidad.length
-    ? horasConCapacidad.reduce(
+  const fechasParaRecomendar = horasConCapacidad.length
+    ? horasConCapacidad
+    : fechasFuturas;
+  const recomendada = fechasParaRecomendar.length
+    ? fechasParaRecomendar.reduce(
         (menosCargada, candidata) =>
           candidata.horasAsignadas < menosCargada.horasAsignadas
             ? candidata
@@ -1084,15 +1083,21 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
   };
 
   const cargarAgenda = async () => {
-    const [subtareasData, hoyData] = await Promise.all([
+    const [subtareasData, hoyData, eventosData] = await Promise.all([
       obtenerSubtareas(),
       obtenerHoy(),
+      obtenerEventos(),
     ]);
 
     const lista = Array.isArray(subtareasData) ? subtareasData : [];
+    const eventosPorId = new Map(
+      (Array.isArray(eventosData) ? eventosData : []).map((evento) => [String(evento.id), evento])
+    );
     const agendaCargada = lista
       .map((item) => ({
         ...item,
+        evento: eventosPorId.get(String(item.evento_id)) || null,
+        evento_titulo: eventosPorId.get(String(item.evento_id))?.titulo || null,
         fechaObjetivo: item.dia_objetivo || null,
       }))
       .filter((item) => normalizarEstado(item.estado) !== "hecho");
@@ -1578,15 +1583,21 @@ function CrearSubtareaForm({
   const [capacidad, setCapacidad] = useState(6);
 
   const cargarAgenda = async () => {
-    const [subtareasData, hoyData] = await Promise.all([
+    const [subtareasData, hoyData, eventosData] = await Promise.all([
       obtenerSubtareas(),
       obtenerHoy(),
+      obtenerEventos(),
     ]);
 
     const lista = Array.isArray(subtareasData) ? subtareasData : [];
+    const eventosPorId = new Map(
+      (Array.isArray(eventosData) ? eventosData : []).map((evento) => [String(evento.id), evento])
+    );
     const agendaCargada = lista
       .map((subtarea) => ({
         ...subtarea,
+        evento: eventosPorId.get(String(subtarea.evento_id)) || null,
+        evento_titulo: eventosPorId.get(String(subtarea.evento_id))?.titulo || null,
         fechaObjetivo: subtarea.dia_objetivo || null,
       }))
       .filter((subtarea) => normalizarEstado(subtarea.estado) !== "hecho");
@@ -2147,7 +2158,7 @@ function EditarEventoForm({ evento, subtareas = [], onCancelar, onGuardado }) {
   );
 }
 
-function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGuardado }) {
+function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onCancelar, onGuardado }) {
   const [form, setForm] = useState({
     nombre: subtarea?.titulo ?? subtarea?.nombre ?? "",
     horas: subtarea?.horas_estimadas ?? subtarea?.horas ?? "",
@@ -2192,14 +2203,22 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
   };
 
   const cargarAgendaYCapacidad = async () => {
-    const [subtareasData, hoyData] = await Promise.all([
+    const [subtareasData, hoyData, eventosData] = await Promise.all([
       obtenerSubtareas(),
       obtenerHoy(),
+      obtenerEventos(),
     ]);
 
+    // La API de subtareas devuelve evento_id, pero no necesariamente incluye
+    // el objeto evento completo. Enriquecemos cada subtarea con su evento para
+    // que los modales de conflicto puedan mostrar el nombre correcto.
+    const eventos = Array.isArray(eventosData) ? eventosData : [];
+    const eventosPorId = new Map(eventos.map((evento) => [String(evento.id), evento]));
     const agenda = (Array.isArray(subtareasData) ? subtareasData : [])
       .map((item) => ({
         ...item,
+        evento: eventosPorId.get(String(item.evento_id)) || null,
+        evento_titulo: eventosPorId.get(String(item.evento_id))?.titulo || null,
         fechaObjetivo: item.dia_objetivo || null,
       }))
       .filter((item) => normalizarEstado(item.estado) !== "hecho");
@@ -2234,7 +2253,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, onCancelar, onGua
         excluirId: subtarea.id,
         fechaLimite: obtenerFechaLimiteSubtarea(eventoFecha),
         titulo,
-        eventoTitulo: "Evento sin título",
+        eventoTitulo: eventoTitulo || eventosPorId.get(String(eventoId))?.titulo || "Evento sin título",
         idSubtareaCausa: subtarea.id,
       });
 
@@ -2593,13 +2612,22 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
     if (estadoNuevo === "pendiente") {
       setActualizandoEstadoSubtarea(task.id);
       try {
-        const [subtareasData, hoyData] = await Promise.all([
+        const [subtareasData, hoyData, eventosData] = await Promise.all([
           obtenerSubtareas(),
           obtenerHoy(),
+          obtenerEventos(),
         ]);
+        const eventosPorId = new Map(
+          (Array.isArray(eventosData) ? eventosData : []).map((evento) => [String(evento.id), evento])
+        );
         const agenda = (Array.isArray(subtareasData) ? subtareasData : [])
           .filter((item) => normalizarEstado(item.estado) !== "hecho")
-          .map((item) => ({ ...item, fechaObjetivo: item.dia_objetivo || null }));
+          .map((item) => ({
+            ...item,
+            evento: eventosPorId.get(String(item.evento_id)) || null,
+            evento_titulo: eventosPorId.get(String(item.evento_id))?.titulo || null,
+            fechaObjetivo: item.dia_objetivo || null,
+          }));
         const limiteRaw = Number(hoyData?.resumen?.limite_horas_dia);
         const capacidadDiaria = Number.isFinite(limiteRaw) && limiteRaw > 0 ? limiteRaw : 6;
         const fecha = String(task.dia_objetivo || "").slice(0, 10);
@@ -2751,7 +2779,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
 
       {modal === "create-subtask" && <Modal title="Crear subtarea" subtitle="Agrega una nueva tarea para este evento." close={() => setModal(null)}><CrearSubtareaForm eventoId={id} eventoFecha={evento.fecha} eventoTitulo={evento.titulo} onCancelar={() => setModal(null)} onCreada={async () => { setModal(null); onNotify("Subtarea creada correctamente"); await cargarSubtareas(); }} /></Modal>}
       {modal === "edit-event" && <Modal title="Editar evento" subtitle="Actualiza la información del evento." close={() => setModal(null)} wide><EditarEventoForm evento={evento} subtareas={subtareas} onCancelar={() => setModal(null)} onGuardado={eventoActualizado} /></Modal>}
-      {modal?.type === "edit-subtask" && <Modal title="Editar subtarea" subtitle="Actualiza la información de la subtarea." close={() => setModal(null)}><EditarSubtareaForm subtarea={modal.item} eventoId={id} eventoFecha={evento.fecha} onCancelar={() => setModal(null)} onGuardado={subtareaActualizada} /></Modal>}
+      {modal?.type === "edit-subtask" && <Modal title="Editar subtarea" subtitle="Actualiza la información de la subtarea." close={() => setModal(null)}><EditarSubtareaForm subtarea={modal.item} eventoId={id} eventoFecha={evento.fecha} eventoTitulo={evento.titulo} onCancelar={() => setModal(null)} onGuardado={subtareaActualizada} /></Modal>}
       {confirmacion?.type === "evento" && <ConfirmModal title="¿Eliminar evento?" message="Esta acción eliminará el evento y sus subtareas. No se puede deshacer." close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
       {confirmacion?.type === "subtarea" && <ConfirmModal title="¿Eliminar subtarea?" message={`Esta acción eliminará “${obtenerTituloSubtarea(confirmacion.item)}”. No se puede deshacer.`} close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
       {conflictoCheckbox && (
@@ -2995,46 +3023,21 @@ function ConfiguracionUsuario({ onNotify }) {
         if (obtenerHorasPendientes(gestionesDeHoy) > nuevasHoras) {
           // Completa los datos desde el endpoint de subtareas para conservar
           // evento_id y todos los campos necesarios para persistir la fecha nueva.
-          const [todasLasSubtareas, eventosData] = await Promise.all([
-            obtenerSubtareas(),
-            obtenerEventos(),
-          ]);
-          const listaTodasLasSubtareas = Array.isArray(todasLasSubtareas)
-            ? todasLasSubtareas
-            : [];
-          const listaEventos = Array.isArray(eventosData) ? eventosData : [];
+          const todasLasSubtareas = await obtenerSubtareas();
           const subtareasPorId = new Map(
-            listaTodasLasSubtareas.map((item) => [String(item.id), item])
+            (Array.isArray(todasLasSubtareas) ? todasLasSubtareas : []).map((item) => [String(item.id), item])
           );
-          const eventosPorId = new Map(
-            listaEventos.map((evento) => [String(evento.id), evento])
-          );
-          const agenda = gestionesDeHoy.map((item) => {
-            const subtareaCompleta = subtareasPorId.get(String(item.id)) || {};
-            const eventoId =
+          const agenda = gestionesDeHoy.map((item) => ({
+            ...(subtareasPorId.get(String(item.id)) || {}),
+            ...item,
+            evento_id:
               item.evento_id ??
               item.evento?.id ??
-              subtareaCompleta.evento_id ??
-              subtareaCompleta.evento?.id ??
-              null;
-            const evento = eventosPorId.get(String(eventoId)) ||
-              item.evento ||
-              subtareaCompleta.evento ||
-              null;
-
-            return {
-              ...subtareaCompleta,
-              ...item,
-              evento_id: eventoId,
-              evento,
-              evento_titulo:
-                evento?.titulo ??
-                item.evento_titulo ??
-                subtareaCompleta.evento_titulo ??
-                null,
-              fechaObjetivo: item.dia_objetivo || null,
-            };
-          });
+              subtareasPorId.get(String(item.id))?.evento_id ??
+              subtareasPorId.get(String(item.id))?.evento?.id ??
+              null,
+            fechaObjetivo: item.dia_objetivo || null,
+          }));
 
           const detalle = agenda.map((subtarea) => ({
             ...subtarea,
@@ -3045,11 +3048,7 @@ function ConfiguracionUsuario({ onNotify }) {
               subtarea.evento?.evento_id ??
               null,
             titulo: obtenerTituloSubtarea(subtarea),
-            evento:
-              subtarea.evento?.titulo ||
-              subtarea.evento_titulo ||
-              eventosPorId.get(String(subtarea.evento_id))?.titulo ||
-              "Evento sin título",
+            evento: subtarea.evento?.titulo || subtarea.evento_titulo || "Evento sin título",
             dia_objetivo: subtarea.dia_objetivo || fechaHoy,
             horas_estimadas: obtenerHoras(subtarea),
             estado: normalizarEstadoAGuardar(subtarea.estado),
@@ -3668,26 +3667,19 @@ function ModalResolucionSobrecarga({
             <div className="resolution-options">
               <button
                 type="button"
-                className={`resolution-option ${estrategia === "mover" ? "selected" : ""} ${!conflicto.fecha_recomendada ? "disabled" : ""}`}
+                className={`resolution-option ${estrategia === "mover" ? "selected" : ""}`}
                 aria-pressed={estrategia === "mover"}
-                aria-disabled={!conflicto.fecha_recomendada}
-                disabled={!conflicto.fecha_recomendada || guardando}
-                onClick={() => {
-                  if (conflicto.fecha_recomendada) setEstrategia("mover");
-                }}
+                onClick={() => setEstrategia("mover")}
               >
                 <span className="resolution-radio" />
                 <span>
                   <strong>
-                    {conflicto.fecha_recomendada
-                      ? `Mover a ${formatearFecha(conflicto.fecha_recomendada)}`
-                      : "Agenda llena"}
-                    {conflicto.fecha_recomendada && <em>Recomendada</em>}
+                    Mover a {formatearFecha(conflicto.fecha_recomendada)}
+                    <em>Recomendada</em>
                   </strong>
                   <small>
-                    {conflicto.fecha_recomendada
-                      ? "Reubica la gestión completa al día con menor carga que permita mantener su duración."
-                      : "No hay días disponibles dentro del rango permitido. Reduce las horas de esta subtarea para resolver la sobrecarga."}
+                    Reubica la gestión completa al día con menor carga que
+                    permita mantener su duración.
                   </small>
                 </span>
               </button>
