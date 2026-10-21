@@ -5943,26 +5943,6 @@ small {
   text-align: left;
 }
 
-.resolution-option:disabled,
-.resolution-option.disabled {
-  cursor: not-allowed;
-  opacity: 0.62;
-  background: #f3f5f9;
-  border-color: #d7deea;
-  box-shadow: none;
-}
-
-.resolution-option:disabled:hover,
-.resolution-option.disabled:hover {
-  border-color: #d7deea;
-  background: #f3f5f9;
-}
-
-.resolution-option:disabled .resolution-radio {
-  border-color: #cbd5e1;
-  background: #e2e8f0;
-}
-
 .resolution-option.selected {
   border: 2px solid #315bd5;
   padding: 11px;
@@ -7116,7 +7096,7 @@ small {
     grid-template-columns: 1fr;
   }
 
-  /* El icono baja un punto para que no se solape con la cifra.. */
+  /* El icono baja un punto para que no se solape con la cifra. */
   .progress-stat-card .progress-stat-icon {
     width: 32px;
     height: 32px;
@@ -7163,5 +7143,117 @@ small {
   }
   .agenda-reschedule-one-button {
     justify-self: start;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE HEADER: móvil y tablet
+   Mantiene accesibles navegación, búsqueda, configuración y cierre de sesión.
+   ========================================================= */
+@media (max-width: 760px) {
+  header {
+    box-sizing: border-box;
+    height: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "brand avatar logout"
+      "create create create"
+      "nav nav nav"
+      "search search search";
+    align-items: center;
+    gap: 10px 12px;
+    padding: 12px 16px;
+    overflow: visible;
+  }
+
+  header > .brand {
+    grid-area: brand;
+    min-width: 0;
+    justify-self: start;
+    font-size: clamp(18px, 4.5vw, 21px);
+  }
+
+  header > nav {
+    grid-area: nav;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    gap: 4px;
+    padding: 4px;
+    justify-content: stretch;
+  }
+
+  header > nav .nav-link {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 6px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  header > .header-spacer {
+    display: none;
+  }
+
+  header > .search-placeholder {
+    grid-area: search;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    flex-shrink: 1;
+  }
+
+  header > .header-create {
+    grid-area: create;
+    justify-self: stretch;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 14px;
+    white-space: nowrap;
+  }
+
+  header > .avatar {
+    grid-area: avatar;
+    justify-self: end;
+    width: 40px;
+    height: 40px;
+  }
+
+  header > .logout-button {
+    grid-area: logout;
+    justify-self: end;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 380px) {
+  header {
+    padding: 10px 12px;
+    gap: 9px 8px;
+  }
+
+  header > .brand {
+    gap: 6px;
+    font-size: 17px;
+  }
+
+  header > .brand-logo {
+    width: 29px !important;
+    height: 29px !important;
+    max-width: 29px !important;
+    max-height: 29px !important;
+  }
+
+  header > nav .nav-link {
+    padding: 9px 3px;
+    font-size: 12px;
+  }
+
+  header > .header-create {
+    font-size: 14px;
   }
 }
