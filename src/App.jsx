@@ -636,6 +636,7 @@ function Header({
   onBuscarEventos,
 }) {
   const [mostrarCerrarSesion, setMostrarCerrarSesion] = useState(false);
+  const [mostrarMenuMovil, setMostrarMenuMovil] = useState(false);
 
   const confirmarCerrarSesion = () => {
     cerrarSesion();
@@ -720,6 +721,16 @@ function Header({
         </button>
 
         <button
+          className="mobile-tools-button"
+          type="button"
+          aria-label="Abrir herramientas"
+          aria-expanded={mostrarMenuMovil}
+          onClick={() => setMostrarMenuMovil(true)}
+        >
+          ☰ <span>Herramientas</span>
+        </button>
+
+        <button
           className="avatar"
           type="button"
           aria-label="Abrir configuración"
@@ -738,6 +749,82 @@ function Header({
           <FaDoorOpen aria-hidden="true" />
         </button>
       </header>
+
+      {mostrarMenuMovil && (
+        <div
+          className="mobile-tools-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setMostrarMenuMovil(false);
+          }}
+        >
+          <aside className="mobile-tools-drawer" role="dialog" aria-modal="true" aria-label="Herramientas de EventHub">
+            <div className="mobile-tools-heading">
+              <strong>Herramientas</strong>
+              <button type="button" aria-label="Cerrar herramientas" onClick={() => setMostrarMenuMovil(false)}>×</button>
+            </div>
+
+            <button
+              className="btn primary mobile-create-event"
+              type="button"
+              onClick={() => {
+                setMostrarMenuMovil(false);
+                abrirCrear();
+              }}
+            >
+              ＋ Crear Evento
+            </button>
+
+            <form
+              className="mobile-tools-search"
+              role="search"
+              onSubmit={(event) => {
+                event.preventDefault();
+                navegar("/eventos");
+                setMostrarMenuMovil(false);
+              }}
+            >
+              <label htmlFor="mobile-event-search">Buscar evento</label>
+              <div className="mobile-tools-search-input">
+                <span aria-hidden="true">⌕</span>
+                <input
+                  id="mobile-event-search"
+                  type="search"
+                  placeholder="Nombre del evento..."
+                  value={busquedaEventos}
+                  onChange={(event) => onBuscarEventos(event.target.value)}
+                />
+              </div>
+              <button className="btn primary" type="submit">Buscar</button>
+            </form>
+
+            <button
+              className="mobile-tools-link"
+              type="button"
+              onClick={() => {
+                navegar("/configuracion");
+                setMostrarMenuMovil(false);
+              }}
+            >
+              <span aria-hidden="true">⚙</span>
+              <span><strong>Capacidad diaria</strong><small>Configurar el límite de horas por día</small></span>
+              <span aria-hidden="true">›</span>
+            </button>
+
+            <button
+              className="mobile-tools-link"
+              type="button"
+              onClick={() => {
+                setMostrarMenuMovil(false);
+                setMostrarCerrarSesion(true);
+              }}
+            >
+              <span aria-hidden="true">↪</span>
+              <span><strong>Cerrar sesión</strong><small>Salir de tu cuenta de EventHub</small></span>
+              <span aria-hidden="true">›</span>
+            </button>
+          </aside>
+        </div>
+      )}
 
       {mostrarCerrarSesion && (
         <Modal
@@ -3457,8 +3544,10 @@ function ModalResolucionSobrecarga({
     if (["sin fecha", "sin_fecha", "sin-fecha", "null", "undefined"].includes(normalizada)) {
       return false;
     }
-    return /^\d{4}-\d{2}-\d{2}$/.test(fecha) ||
-    /^\d{2}\/\d{2}\/\d{4}$/.test(fecha);
+    return (
+     /^\d{4}-\d{2}-\d{2}$/.test(fecha) ||
+      /^\d{2}\/\d{2}\/\d{4}$/.test(fecha)
+  );
   })();
   const [estrategia, setEstrategia] = useState(
     fechaRecomendadaValida ? "mover" : "manual"
@@ -5452,7 +5541,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
 
   const { resumen } = datos;
 
-  // La búsqueda de la cabecera filtra los eventos dentro de esta pestaña..
+  // La búsqueda de la cabecera filtra los eventos dentro de esta pestaña.
   const termino = busquedaEventos.trim().toLocaleLowerCase("es");
   const eventosFiltrados = datos.eventos.filter((evento) =>
     String(evento.titulo || "")
@@ -6638,6 +6727,18 @@ export default function App() {
       busquedaEventos={busquedaEventos}
       onBuscarEventos={setBusquedaEventos}
     />
+    <nav className="mobile-bottom-nav" aria-label="Navegación móvil">
+      <button type="button" className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/eventos")}>
+        <span aria-hidden="true">✦</span><span>Eventos</span>
+      </button>
+      <button type="button" className={ruta === "/hoy" ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/hoy")}>
+        <span aria-hidden="true">◷</span><span>Hoy</span>
+      </button>
+      <button type="button" className={ruta === "/progreso" ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/progreso")}>
+        <span aria-hidden="true">▥</span><span>Progreso</span>
+      </button>
+    </nav>
+    <button className="mobile-create-fab" type="button" aria-label="Crear evento" title="Crear evento" onClick={() => navegar("/crear-evento")}>+</button>
     <Toast type={toast.type} message={toast.message} />
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} busqueda={busquedaEventos} />}
     {ruta === "/hoy" && <Today onNotify={notify} />}
