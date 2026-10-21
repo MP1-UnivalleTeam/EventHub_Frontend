@@ -3448,8 +3448,20 @@ function ModalResolucionSobrecarga({
   guardando,
 }) {
   const [resolucion, setResolucion] = useState(false);
+  // "Sin fecha" no es un destino válido para resolver una sobrecarga:
+  // solo se puede mover si existe una fecha real recomendada.
+  const fechaRecomendadaValida = (() => {
+    const fecha = conflicto?.fecha_recomendada;
+    if (!fecha || typeof fecha !== "string") return false;
+    const normalizada = fecha.trim().toLowerCase();
+    if (["sin fecha", "sin_fecha", "sin-fecha", "null", "undefined"].includes(normalizada)) {
+      return false;
+    }
+    return /^\d{4}-\d{2}-\d{2}$/.test(fecha) ||
+    /^\d{2}\/\d{2}\/\d{4}$/.test(fecha);
+  })();
   const [estrategia, setEstrategia] = useState(
-    conflicto?.fecha_recomendada ? "mover" : "manual"
+    fechaRecomendadaValida ? "mover" : "manual"
   );
   const [horasManuales, setHorasManuales] = useState(() =>
     calcularHorasManualesIniciales(conflicto, horasCausa)
@@ -3478,7 +3490,7 @@ function ModalResolucionSobrecarga({
   });
 
   const comenzarResolucion = () => {
-    setEstrategia(conflicto?.fecha_recomendada ? "mover" : "manual");
+    setEstrategia(fechaRecomendadaValida ? "mover" : "manual");
     setHorasManuales(
       calcularHorasManualesIniciales(conflicto, horasCausaConflicto)
     );
@@ -3487,6 +3499,7 @@ function ModalResolucionSobrecarga({
 
   const aplicarSolucion = () => {
     if (!resolucionActual.valido) return;
+    if (estrategia === "mover" && !fechaRecomendadaValida) return;
 
     onAccion?.({
       tipo: resolucionActual.estrategia,
@@ -3667,19 +3680,26 @@ function ModalResolucionSobrecarga({
             <div className="resolution-options">
               <button
                 type="button"
-                className={`resolution-option ${estrategia === "mover" ? "selected" : ""}`}
+                className={`resolution-option ${estrategia === "mover" ? "selected" : ""} ${!fechaRecomendadaValida ? "disabled" : ""}`}
                 aria-pressed={estrategia === "mover"}
-                onClick={() => setEstrategia("mover")}
+                aria-disabled={!fechaRecomendadaValida}
+                disabled={!fechaRecomendadaValida}
+                onClick={() => {
+                  if (fechaRecomendadaValida) setEstrategia("mover");
+                }}
               >
                 <span className="resolution-radio" />
                 <span>
                   <strong>
-                    Mover a {formatearFecha(conflicto.fecha_recomendada)}
-                    <em>Recomendada</em>
+                    {fechaRecomendadaValida
+                      ? `Mover a ${formatearFecha(conflicto.fecha_recomendada)}`
+                      : "Agenda llena"}
+                    {fechaRecomendadaValida && <em>Recomendada</em>}
                   </strong>
                   <small>
-                    Reubica la gestión completa al día con menor carga que
-                    permita mantener su duración.
+                    {fechaRecomendadaValida
+                      ? "Reubica la gestión completa al día con menor carga que permita mantener su duración."
+                      : "No hay otro día con capacidad suficiente. Reduce las horas de la subtarea para resolver el conflicto."}
                   </small>
                 </span>
               </button>
