@@ -7116,7 +7116,7 @@ small {
     grid-template-columns: 1fr;
   }
 
-  /* El icono baja un punto para que no se solape con la cifra. */
+  /* El icono baja un punto para que no se solape con la cifra.. */
   .progress-stat-card .progress-stat-icon {
     width: 32px;
     height: 32px;
