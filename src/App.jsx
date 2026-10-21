@@ -359,11 +359,12 @@ function construirConflictoSobrecarga({
     (candidata) =>
       candidata.horasAsignadas + horasCausa <= capacidadDiaria
   );
-  const fechasParaRecomendar = horasConCapacidad.length
-    ? horasConCapacidad
-    : fechasFuturas;
-  const recomendada = fechasParaRecomendar.length
-    ? fechasParaRecomendar.reduce(
+  // Solo se recomienda mover la subtarea si existe un día dentro del rango
+  // permitido donde quepa completa sin superar la capacidad diaria. Si todos
+  // los días están llenos, fecha_recomendada queda null y el modal fuerza el
+  // ajuste manual de duración.
+  const recomendada = horasConCapacidad.length
+    ? horasConCapacidad.reduce(
         (menosCargada, candidata) =>
           candidata.horasAsignadas < menosCargada.horasAsignadas
             ? candidata
@@ -3667,19 +3668,26 @@ function ModalResolucionSobrecarga({
             <div className="resolution-options">
               <button
                 type="button"
-                className={`resolution-option ${estrategia === "mover" ? "selected" : ""}`}
+                className={`resolution-option ${estrategia === "mover" ? "selected" : ""} ${!conflicto.fecha_recomendada ? "disabled" : ""}`}
                 aria-pressed={estrategia === "mover"}
-                onClick={() => setEstrategia("mover")}
+                aria-disabled={!conflicto.fecha_recomendada}
+                disabled={!conflicto.fecha_recomendada || guardando}
+                onClick={() => {
+                  if (conflicto.fecha_recomendada) setEstrategia("mover");
+                }}
               >
                 <span className="resolution-radio" />
                 <span>
                   <strong>
-                    Mover a {formatearFecha(conflicto.fecha_recomendada)}
-                    <em>Recomendada</em>
+                    {conflicto.fecha_recomendada
+                      ? `Mover a ${formatearFecha(conflicto.fecha_recomendada)}`
+                      : "Agenda llena"}
+                    {conflicto.fecha_recomendada && <em>Recomendada</em>}
                   </strong>
                   <small>
-                    Reubica la gestión completa al día con menor carga que
-                    permita mantener su duración.
+                    {conflicto.fecha_recomendada
+                      ? "Reubica la gestión completa al día con menor carga que permita mantener su duración."
+                      : "No hay días disponibles dentro del rango permitido. Reduce las horas de esta subtarea para resolver la sobrecarga."}
                   </small>
                 </span>
               </button>

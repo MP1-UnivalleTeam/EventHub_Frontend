@@ -5943,6 +5943,26 @@ small {
   text-align: left;
 }
 
+.resolution-option:disabled,
+.resolution-option.disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  background: #f3f5f9;
+  border-color: #d7deea;
+  box-shadow: none;
+}
+
+.resolution-option:disabled:hover,
+.resolution-option.disabled:hover {
+  border-color: #d7deea;
+  background: #f3f5f9;
+}
+
+.resolution-option:disabled .resolution-radio {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+}
+
 .resolution-option.selected {
   border: 2px solid #315bd5;
   padding: 11px;
