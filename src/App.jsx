@@ -763,6 +763,17 @@ function Header({
               <button type="button" aria-label="Cerrar herramientas" onClick={() => setMostrarMenuMovil(false)}>×</button>
             </div>
 
+            <button
+              className="btn primary mobile-create-event"
+              type="button"
+              onClick={() => {
+                setMostrarMenuMovil(false);
+                abrirCrear();
+              }}
+            >
+              ＋ Crear Evento
+            </button>
+
             <form
               className="mobile-tools-search"
               role="search"
@@ -3533,8 +3544,8 @@ function ModalResolucionSobrecarga({
     if (["sin fecha", "sin_fecha", "sin-fecha", "null", "undefined"].includes(normalizada)) {
       return false;
     }
-    return ( 
-      /^\d{4}-\d{2}-\d{2}$/.test(fecha) ||
+    return (
+     /^\d{4}-\d{2}-\d{2}$/.test(fecha) ||
       /^\d{2}\/\d{2}\/\d{4}$/.test(fecha)
   );
   })();
@@ -6716,6 +6727,18 @@ export default function App() {
       busquedaEventos={busquedaEventos}
       onBuscarEventos={setBusquedaEventos}
     />
+    <nav className="mobile-bottom-nav" aria-label="Navegación móvil">
+      <button type="button" className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/eventos")}>
+        <span aria-hidden="true">✦</span><span>Eventos</span>
+      </button>
+      <button type="button" className={ruta === "/hoy" ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/hoy")}>
+        <span aria-hidden="true">◷</span><span>Hoy</span>
+      </button>
+      <button type="button" className={ruta === "/progreso" ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/progreso")}>
+        <span aria-hidden="true">▥</span><span>Progreso</span>
+      </button>
+    </nav>
+    <button className="mobile-create-fab" type="button" aria-label="Crear evento" title="Crear evento" onClick={() => navegar("/crear-evento")}>+</button>
     <Toast type={toast.type} message={toast.message} />
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} busqueda={busquedaEventos} />}
     {ruta === "/hoy" && <Today onNotify={notify} />}
@@ -6757,4 +6780,3 @@ export default function App() {
   </main>;
 
 }
-
