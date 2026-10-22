@@ -88,7 +88,7 @@ EventHub_Frontend/
 1. Clona este repositorio:
 
 ```bash
-git clone <URL_DEL_REPOSITORIO_FRONTEND>
+git clone https://github.com/MP1-UnivalleTeam/EventHub_Frontend.git
 cd EventHub_Frontend
 ```
 
@@ -177,7 +177,7 @@ Conecta este repositorio a Vercel y configura la variable de entorno `VITE_API_U
 
 Este frontend depende del backend de EventHub, que vive en un **repositorio separado**:
 
-- Repositorio backend: `EventHub_Backend` (FastAPI + Supabase, desplegado en Render).
+- Repositorio backend: `https://github.com/MP1-UnivalleTeam/EventHub_Backend.git` (FastAPI + Supabase, desplegado en Render).
 - Contrato de API: los endpoints y payloads están documentados en `README_FRONTEND_API.md` (dentro de este repositorio).
 
 Cada repositorio es independiente: clona, configura y despliega cada uno por separado.
