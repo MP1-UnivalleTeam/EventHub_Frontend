@@ -7915,3 +7915,224 @@ header > .theme-toggle {
     grid-area: avatar !important;
   }
 }
+
+/* =========================================================
+   AJUSTES DE CONTRASTE PARA MODO OSCURO
+   Login, registro y modales de reprogramación/cierre de sesión
+   ========================================================= */
+.theme-dark .login-card,
+.theme-dark .onboarding-page,
+.theme-dark .onboarding-container {
+  color: #f3f6ff;
+}
+
+.theme-dark .login-card {
+  background: #1e293b;
+  border-color: #39475d;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .28);
+}
+
+.theme-dark .login-brand .login-subtitle,
+.theme-dark .login-field label,
+.theme-dark .onboarding-heading h1,
+.theme-dark .onboarding-option-title h2,
+.theme-dark .onboarding-option-title,
+.theme-dark .onboarding-step strong,
+.theme-dark .onboarding-page label,
+.theme-dark .onboarding-container label {
+  color: #f8fafc;
+}
+
+.theme-dark .login-brand p,
+.theme-dark .onboarding-heading small,
+.theme-dark .onboarding-option p,
+.theme-dark .onboarding-footer,
+.theme-dark .onboarding-footer small,
+.theme-dark .onboarding-step,
+.theme-dark .onboarding-option-footer {
+  color: #c2cee0;
+}
+
+.theme-dark .login-input-wrapper input,
+.theme-dark .login-input-wrapper input:hover,
+.theme-dark .login-input-wrapper input:focus,
+.theme-dark .login-input-wrapper input.input-error,
+.theme-dark .login-input-wrapper input.input-error:focus {
+  background: #0b1426;
+  color: #f8fafc;
+  caret-color: #93b4ff;
+  border-color: #465873;
+}
+
+.theme-dark .login-input-wrapper input:focus {
+  border-color: #6d95ff;
+  box-shadow: 0 0 0 2px rgba(109, 149, 255, .22);
+}
+
+.theme-dark .login-input-wrapper input::placeholder {
+  color: #94a3b8;
+}
+
+.theme-dark .login-input-icon,
+.theme-dark .login-password-toggle {
+  color: #b6c5dc;
+}
+
+.theme-dark .security-badge {
+  background: #243b67;
+  color: #c6d7ff;
+}
+
+.theme-dark .onboarding-page {
+  background: #0f172a;
+}
+
+.theme-dark .onboarding-step,
+.theme-dark .onboarding-option,
+.theme-dark .onboarding-option.selected {
+  background: #1e293b;
+  border-color: #42516a;
+}
+
+.theme-dark .onboarding-option:hover {
+  background: #26354b;
+}
+
+.theme-dark .onboarding-option-title span,
+.theme-dark .onboarding-option-footer span,
+.theme-dark .onboarding-option-footer small {
+  color: #bdcbe0;
+}
+
+/* Modal genérico y formularios dentro de él */
+.theme-dark .modal,
+.theme-dark .confirm-modal,
+.theme-dark .postpone-modal,
+.theme-dark .agenda-modal,
+.theme-dark .postpone-schedule-modal,
+.theme-dark .logout-confirmation {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-color: #40506a;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .42);
+}
+
+.theme-dark .modal h2,
+.theme-dark .modal h3,
+.theme-dark .modal label,
+.theme-dark .confirm-modal h2,
+.theme-dark .postpone-modal h2,
+.theme-dark .postpone-field label,
+.theme-dark .agenda-modal-title h2,
+.theme-dark .agenda-modal > h2,
+.theme-dark .resolution-modal > h2 {
+  color: #f8fafc;
+}
+
+.theme-dark .modal-subtitle,
+.theme-dark .modal p,
+.theme-dark .confirm-modal p,
+.theme-dark .postpone-modal > p,
+.theme-dark .agenda-modal-title p,
+.theme-dark .agenda-modal > p,
+.theme-dark .resolution-modal > p {
+  color: #c4d0e2;
+}
+
+.theme-dark .modal input,
+.theme-dark .modal textarea,
+.theme-dark .modal select,
+.theme-dark .postpone-modal input,
+.theme-dark .postpone-modal textarea,
+.theme-dark .postpone-modal select,
+.theme-dark .agenda-modal input,
+.theme-dark .agenda-modal textarea,
+.theme-dark .agenda-modal select {
+  background: #0b1426;
+  color: #f8fafc;
+  border-color: #4a5b75;
+  caret-color: #93b4ff;
+}
+
+.theme-dark .modal input::placeholder,
+.theme-dark .modal textarea::placeholder,
+.theme-dark .postpone-modal input::placeholder,
+.theme-dark .postpone-modal textarea::placeholder {
+  color: #94a3b8;
+}
+
+.theme-dark .modal input:focus,
+.theme-dark .modal textarea:focus,
+.theme-dark .modal select:focus,
+.theme-dark .postpone-modal input:focus,
+.theme-dark .postpone-modal textarea:focus,
+.theme-dark .postpone-modal select:focus,
+.theme-dark .agenda-modal input:focus,
+.theme-dark .agenda-modal textarea:focus,
+.theme-dark .agenda-modal select:focus {
+  outline: 2px solid rgba(109, 149, 255, .28);
+  border-color: #7da0ff;
+}
+
+.theme-dark .close,
+.theme-dark .postpone-close {
+  background: #29384e;
+  color: #e2e8f0;
+}
+
+.theme-dark .close:hover,
+.theme-dark .postpone-close:hover {
+  background: #3a4b64;
+  color: #fff;
+}
+
+.theme-dark .logout-confirmation-icon {
+  background: #263d68;
+  color: #c6d7ff;
+}
+
+.theme-dark .logout-confirmation p {
+  color: #d4deec;
+}
+
+/* Calendario y selector de fecha del modal de reprogramación */
+.theme-dark .postpone-schedule-modal,
+.theme-dark .agenda-modal {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.theme-dark .postpone-schedule-modal button,
+.theme-dark .agenda-modal button {
+  color: #e8eef9;
+}
+
+.theme-dark .postpone-schedule-modal .calendar-day,
+.theme-dark .agenda-modal .calendar-day,
+.theme-dark .postpone-schedule-modal [class*="day-cell"],
+.theme-dark .agenda-modal [class*="day-cell"] {
+  background: #26354b;
+  border-color: #455771;
+  color: #eaf0fb;
+}
+
+.theme-dark .postpone-schedule-modal .calendar-day:hover,
+.theme-dark .agenda-modal .calendar-day:hover,
+.theme-dark .postpone-schedule-modal [class*="day-cell"]:hover,
+.theme-dark .agenda-modal [class*="day-cell"]:hover {
+  background: #344967;
+}
+
+.theme-dark .postpone-schedule-modal .calendar-day.selected,
+.theme-dark .agenda-modal .calendar-day.selected,
+.theme-dark .postpone-schedule-modal [aria-pressed="true"],
+.theme-dark .agenda-modal [aria-pressed="true"] {
+  background: #315bd5;
+  color: #fff;
+  border-color: #7da0ff;
+}
+
+.theme-dark .postpone-schedule-modal .postpone-actions .btn,
+.theme-dark .agenda-modal-actions .btn {
+  border-color: #52647f;
+}
