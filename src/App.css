@@ -7882,3 +7882,36 @@ body[data-theme="dark"] .event-card-content {
 @media (max-width: 768px) {
   .theme-toggle { width: 40px; height: 40px; flex-basis: 40px; }
 }
+
+
+/* Corrección de visibilidad del selector de tema en el encabezado */
+header > .theme-toggle {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-items: center;
+  cursor: pointer;
+  position: relative;
+  z-index: 3;
+}
+
+@media (max-width: 760px) {
+  header {
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    grid-template-areas: "brand theme-toggle avatar" !important;
+    column-gap: 10px !important;
+  }
+
+  header > .theme-toggle {
+    display: grid !important;
+    grid-area: theme-toggle !important;
+    justify-self: end;
+    margin: 0;
+  }
+
+  header > .avatar {
+    grid-area: avatar !important;
+  }
+}
