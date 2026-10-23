@@ -8315,3 +8315,17 @@ body[data-theme="dark"] .logout-confirmation p {
   padding: 0 !important;
   margin: 14px 0 0 !important;
 }
+
+
+/* Correccion final: eliminar relieve y sombra del modal de cierre de sesion */
+body[data-theme="dark"] .logout-confirmation {
+  box-shadow: none !important;
+  filter: none !important;
+  outline: none !important;
+  border: 0 !important;
+}
+body[data-theme="dark"] .logout-confirmation::before,
+body[data-theme="dark"] .logout-confirmation::after {
+  box-shadow: none !important;
+  filter: none !important;
+}
