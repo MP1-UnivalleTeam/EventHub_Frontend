@@ -7884,255 +7884,222 @@ body[data-theme="dark"] .event-card-content {
 }
 
 
-/* Corrección de visibilidad del selector de tema en el encabezado */
-header > .theme-toggle {
-  display: grid;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  align-items: center;
-  justify-items: center;
-  cursor: pointer;
-  position: relative;
-  z-index: 3;
-}
-
-@media (max-width: 760px) {
-  header {
-    grid-template-columns: minmax(0, 1fr) auto auto !important;
-    grid-template-areas: "brand theme-toggle avatar" !important;
-    column-gap: 10px !important;
-  }
-
-  header > .theme-toggle {
-    display: grid !important;
-    grid-area: theme-toggle !important;
-    justify-self: end;
-    margin: 0;
-  }
-
-  header > .avatar {
-    grid-area: avatar !important;
-  }
-}
-
 /* =========================================================
-   AJUSTES DE CONTRASTE PARA MODO OSCURO
-   Login, registro y modales de reprogramación/cierre de sesión
+   AJUSTES DE CONTRASTE MODO OSCURO (v2)
+   Se fuerzan fondos oscuros y texto legible en componentes
+   que conservaban colores claros del modo normal.
    ========================================================= */
-.theme-dark .login-card,
-.theme-dark .onboarding-page,
-.theme-dark .onboarding-container {
-  color: #f3f6ff;
+body[data-theme="dark"] .today-page .card,
+body[data-theme="dark"] .today-page .today-stat-card,
+body[data-theme="dark"] .today-page .today-summary-card,
+body[data-theme="dark"] .today-page .today-capacity-card,
+body[data-theme="dark"] .today-page .today-urgent-card,
+body[data-theme="dark"] .today-page .today-completed-card,
+body[data-theme="dark"] .today-page .today-task-card,
+body[data-theme="dark"] .today-page .today-section,
+body[data-theme="dark"] .today-page .today-detail-panel,
+body[data-theme="dark"] .today-page .today-filter-bar,
+body[data-theme="dark"] .today-page .today-filters,
+body[data-theme="dark"] .today-page .stat-card,
+body[data-theme="dark"] .today-page .summary-card {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
 }
-
-.theme-dark .login-card {
-  background: #1e293b;
-  border-color: #39475d;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, .28);
-}
-
-.theme-dark .login-brand .login-subtitle,
-.theme-dark .login-field label,
-.theme-dark .onboarding-heading h1,
-.theme-dark .onboarding-option-title h2,
-.theme-dark .onboarding-option-title,
-.theme-dark .onboarding-step strong,
-.theme-dark .onboarding-page label,
-.theme-dark .onboarding-container label {
-  color: #f8fafc;
-}
-
-.theme-dark .login-brand p,
-.theme-dark .onboarding-heading small,
-.theme-dark .onboarding-option p,
-.theme-dark .onboarding-footer,
-.theme-dark .onboarding-footer small,
-.theme-dark .onboarding-step,
-.theme-dark .onboarding-option-footer {
-  color: #c2cee0;
-}
-
-.theme-dark .login-input-wrapper input,
-.theme-dark .login-input-wrapper input:hover,
-.theme-dark .login-input-wrapper input:focus,
-.theme-dark .login-input-wrapper input.input-error,
-.theme-dark .login-input-wrapper input.input-error:focus {
-  background: #0b1426;
-  color: #f8fafc;
-  caret-color: #93b4ff;
-  border-color: #465873;
-}
-
-.theme-dark .login-input-wrapper input:focus {
-  border-color: #6d95ff;
-  box-shadow: 0 0 0 2px rgba(109, 149, 255, .22);
-}
-
-.theme-dark .login-input-wrapper input::placeholder {
-  color: #94a3b8;
-}
-
-.theme-dark .login-input-icon,
-.theme-dark .login-password-toggle {
-  color: #b6c5dc;
-}
-
-.theme-dark .security-badge {
-  background: #243b67;
-  color: #c6d7ff;
-}
-
-.theme-dark .onboarding-page {
-  background: #0f172a;
-}
-
-.theme-dark .onboarding-step,
-.theme-dark .onboarding-option,
-.theme-dark .onboarding-option.selected {
-  background: #1e293b;
-  border-color: #42516a;
-}
-
-.theme-dark .onboarding-option:hover {
-  background: #26354b;
-}
-
-.theme-dark .onboarding-option-title span,
-.theme-dark .onboarding-option-footer span,
-.theme-dark .onboarding-option-footer small {
-  color: #bdcbe0;
-}
-
-/* Modal genérico y formularios dentro de él */
-.theme-dark .modal,
-.theme-dark .confirm-modal,
-.theme-dark .postpone-modal,
-.theme-dark .agenda-modal,
-.theme-dark .postpone-schedule-modal,
-.theme-dark .logout-confirmation {
-  background: #1e293b;
-  color: #f1f5f9;
-  border-color: #40506a;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .42);
-}
-
-.theme-dark .modal h2,
-.theme-dark .modal h3,
-.theme-dark .modal label,
-.theme-dark .confirm-modal h2,
-.theme-dark .postpone-modal h2,
-.theme-dark .postpone-field label,
-.theme-dark .agenda-modal-title h2,
-.theme-dark .agenda-modal > h2,
-.theme-dark .resolution-modal > h2 {
-  color: #f8fafc;
-}
-
-.theme-dark .modal-subtitle,
-.theme-dark .modal p,
-.theme-dark .confirm-modal p,
-.theme-dark .postpone-modal > p,
-.theme-dark .agenda-modal-title p,
-.theme-dark .agenda-modal > p,
-.theme-dark .resolution-modal > p {
-  color: #c4d0e2;
-}
-
-.theme-dark .modal input,
-.theme-dark .modal textarea,
-.theme-dark .modal select,
-.theme-dark .postpone-modal input,
-.theme-dark .postpone-modal textarea,
-.theme-dark .postpone-modal select,
-.theme-dark .agenda-modal input,
-.theme-dark .agenda-modal textarea,
-.theme-dark .agenda-modal select {
-  background: #0b1426;
-  color: #f8fafc;
-  border-color: #4a5b75;
-  caret-color: #93b4ff;
-}
-
-.theme-dark .modal input::placeholder,
-.theme-dark .modal textarea::placeholder,
-.theme-dark .postpone-modal input::placeholder,
-.theme-dark .postpone-modal textarea::placeholder {
-  color: #94a3b8;
-}
-
-.theme-dark .modal input:focus,
-.theme-dark .modal textarea:focus,
-.theme-dark .modal select:focus,
-.theme-dark .postpone-modal input:focus,
-.theme-dark .postpone-modal textarea:focus,
-.theme-dark .postpone-modal select:focus,
-.theme-dark .agenda-modal input:focus,
-.theme-dark .agenda-modal textarea:focus,
-.theme-dark .agenda-modal select:focus {
-  outline: 2px solid rgba(109, 149, 255, .28);
-  border-color: #7da0ff;
-}
-
-.theme-dark .close,
-.theme-dark .postpone-close {
-  background: #29384e;
+body[data-theme="dark"] .today-page h1,
+body[data-theme="dark"] .today-page h2,
+body[data-theme="dark"] .today-page h3,
+body[data-theme="dark"] .today-page h4,
+body[data-theme="dark"] .today-page p,
+body[data-theme="dark"] .today-page strong,
+body[data-theme="dark"] .today-page label,
+body[data-theme="dark"] .today-page .today-stat-card *,
+body[data-theme="dark"] .today-page .today-capacity-card *,
+body[data-theme="dark"] .today-page .today-urgent-card *,
+body[data-theme="dark"] .today-page .today-completed-card * {
   color: #e2e8f0;
 }
-
-.theme-dark .close:hover,
-.theme-dark .postpone-close:hover {
-  background: #3a4b64;
-  color: #fff;
+body[data-theme="dark"] .today-page .today-stat-card span,
+body[data-theme="dark"] .today-page .today-capacity-card span,
+body[data-theme="dark"] .today-page .today-urgent-card span,
+body[data-theme="dark"] .today-page .today-completed-card span,
+body[data-theme="dark"] .today-page .muted,
+body[data-theme="dark"] .today-page .helper {
+  color: #cbd5e1 !important;
 }
 
-.theme-dark .logout-confirmation-icon {
-  background: #263d68;
-  color: #c6d7ff;
-}
-
-.theme-dark .logout-confirmation p {
-  color: #d4deec;
-}
-
-/* Calendario y selector de fecha del modal de reprogramación */
-.theme-dark .postpone-schedule-modal,
-.theme-dark .agenda-modal {
-  background: #1e293b;
+/* Inicio de sesión: títulos, etiquetas y campos permanecen oscuros al enfocar */
+body[data-theme="dark"] .login-card,
+body[data-theme="dark"] .login-card *:not(svg):not(path) {
   color: #f1f5f9;
 }
-
-.theme-dark .postpone-schedule-modal button,
-.theme-dark .agenda-modal button {
-  color: #e8eef9;
+body[data-theme="dark"] .login-brand .login-subtitle,
+body[data-theme="dark"] .login-field label,
+body[data-theme="dark"] .login-card h1,
+body[data-theme="dark"] .login-card h2 {
+  color: #f8fafc !important;
+}
+body[data-theme="dark"] .login-brand p,
+body[data-theme="dark"] .login-card .helper,
+body[data-theme="dark"] .login-card small {
+  color: #cbd5e1 !important;
+}
+body[data-theme="dark"] .login-card input,
+body[data-theme="dark"] .login-card input:focus,
+body[data-theme="dark"] .login-card input:active,
+body[data-theme="dark"] .login-input-wrapper input,
+body[data-theme="dark"] .login-input-wrapper input:focus,
+body[data-theme="dark"] .login-input-wrapper input:active,
+body[data-theme="dark"] .login-card input:-webkit-autofill,
+body[data-theme="dark"] .login-card input:-webkit-autofill:hover,
+body[data-theme="dark"] .login-card input:-webkit-autofill:focus {
+  background: #0b1326 !important;
+  background-color: #0b1326 !important;
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+  border-color: #475569 !important;
+  box-shadow: 0 0 0 1000px #0b1326 inset !important;
+}
+body[data-theme="dark"] .login-card input::placeholder {
+  color: #94a3b8 !important;
 }
 
-.theme-dark .postpone-schedule-modal .calendar-day,
-.theme-dark .agenda-modal .calendar-day,
-.theme-dark .postpone-schedule-modal [class*="day-cell"],
-.theme-dark .agenda-modal [class*="day-cell"] {
-  background: #26354b;
-  border-color: #455771;
-  color: #eaf0fb;
+/* Registro: etiquetas, títulos, ayudas y campos con contraste uniforme */
+body[data-theme="dark"] .register-card,
+body[data-theme="dark"] .register-card h1,
+body[data-theme="dark"] .register-card h2,
+body[data-theme="dark"] .register-card h3,
+body[data-theme="dark"] .register-card label,
+body[data-theme="dark"] .register-card p,
+body[data-theme="dark"] .register-card span,
+body[data-theme="dark"] .register-card small,
+body[data-theme="dark"] .register-card .register-subtitle,
+body[data-theme="dark"] .register-card .register-brand p {
+  color: #e2e8f0 !important;
+}
+body[data-theme="dark"] .register-card input,
+body[data-theme="dark"] .register-card input:focus,
+body[data-theme="dark"] .register-card input:active,
+body[data-theme="dark"] .register-card select,
+body[data-theme="dark"] .register-card textarea,
+body[data-theme="dark"] .register-card input:-webkit-autofill,
+body[data-theme="dark"] .register-card input:-webkit-autofill:focus {
+  background: #0b1326 !important;
+  background-color: #0b1326 !important;
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+  border-color: #475569 !important;
+  box-shadow: 0 0 0 1000px #0b1326 inset !important;
+}
+body[data-theme="dark"] .register-card input::placeholder,
+body[data-theme="dark"] .register-card textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
-.theme-dark .postpone-schedule-modal .calendar-day:hover,
-.theme-dark .agenda-modal .calendar-day:hover,
-.theme-dark .postpone-schedule-modal [class*="day-cell"]:hover,
-.theme-dark .agenda-modal [class*="day-cell"]:hover {
-  background: #344967;
+/* Modal de cierre de sesión */
+body[data-theme="dark"] .logout-confirmation {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #475569 !important;
+  border-radius: 16px !important;
+}
+body[data-theme="dark"] .logout-confirmation h1,
+body[data-theme="dark"] .logout-confirmation h2,
+body[data-theme="dark"] .logout-confirmation h3,
+body[data-theme="dark"] .logout-confirmation p,
+body[data-theme="dark"] .logout-confirmation strong {
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .logout-confirmation .logout-confirmation-icon {
+  background: #263b63 !important;
+  color: #bfdbfe !important;
+}
+body[data-theme="dark"] .logout-confirmation .secondary,
+body[data-theme="dark"] .logout-confirmation .btn.secondary {
+  background: #334155 !important;
+  color: #f8fafc !important;
+  border-color: #64748b !important;
+}
+body[data-theme="dark"] .logout-confirmation .danger,
+body[data-theme="dark"] .logout-confirmation .btn.danger {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
 }
 
-.theme-dark .postpone-schedule-modal .calendar-day.selected,
-.theme-dark .agenda-modal .calendar-day.selected,
-.theme-dark .postpone-schedule-modal [aria-pressed="true"],
-.theme-dark .agenda-modal [aria-pressed="true"] {
-  background: #315bd5;
-  color: #fff;
-  border-color: #7da0ff;
+/* Reprogramación: fondo, calendario, campos y botones */
+body[data-theme="dark"] .postpone-modal,
+body[data-theme="dark"] .postpone-schedule-modal,
+body[data-theme="dark"] .agenda-modal,
+body[data-theme="dark"] .agenda-reschedule-limit-modal {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
 }
-
-.theme-dark .postpone-schedule-modal .postpone-actions .btn,
-.theme-dark .agenda-modal-actions .btn {
-  border-color: #52647f;
+body[data-theme="dark"] .postpone-modal h1,
+body[data-theme="dark"] .postpone-modal h2,
+body[data-theme="dark"] .postpone-modal h3,
+body[data-theme="dark"] .postpone-modal p,
+body[data-theme="dark"] .postpone-modal label,
+body[data-theme="dark"] .postpone-modal strong,
+body[data-theme="dark"] .postpone-schedule-modal h1,
+body[data-theme="dark"] .postpone-schedule-modal h2,
+body[data-theme="dark"] .postpone-schedule-modal p,
+body[data-theme="dark"] .postpone-schedule-modal label,
+body[data-theme="dark"] .agenda-modal h2,
+body[data-theme="dark"] .agenda-modal p,
+body[data-theme="dark"] .agenda-modal label {
+  color: #e2e8f0 !important;
+}
+body[data-theme="dark"] .postpone-modal input,
+body[data-theme="dark"] .postpone-modal textarea,
+body[data-theme="dark"] .postpone-modal select,
+body[data-theme="dark"] .postpone-schedule-modal input,
+body[data-theme="dark"] .postpone-schedule-modal textarea,
+body[data-theme="dark"] .postpone-schedule-modal select,
+body[data-theme="dark"] .agenda-modal input,
+body[data-theme="dark"] .agenda-modal textarea,
+body[data-theme="dark"] .agenda-modal select {
+  background: #0b1326 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+body[data-theme="dark"] .postpone-modal input:focus,
+body[data-theme="dark"] .postpone-modal textarea:focus,
+body[data-theme="dark"] .postpone-modal select:focus,
+body[data-theme="dark"] .postpone-schedule-modal input:focus,
+body[data-theme="dark"] .postpone-schedule-modal textarea:focus,
+body[data-theme="dark"] .postpone-schedule-modal select:focus {
+  background: #0b1326 !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
+  outline: 2px solid rgba(96,165,250,.25) !important;
+}
+body[data-theme="dark"] .postpone-modal button,
+body[data-theme="dark"] .postpone-schedule-modal button,
+body[data-theme="dark"] .agenda-modal button {
+  color: #f8fafc;
+}
+body[data-theme="dark"] .postpone-modal button.secondary,
+body[data-theme="dark"] .postpone-schedule-modal button.secondary,
+body[data-theme="dark"] .agenda-modal button.secondary {
+  background: #334155 !important;
+  color: #f8fafc !important;
+  border-color: #64748b !important;
+}
+body[data-theme="dark"] .postpone-modal .calendar-day,
+body[data-theme="dark"] .postpone-schedule-modal .calendar-day,
+body[data-theme="dark"] .agenda-modal .calendar-day {
+  background: #263449 !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+body[data-theme="dark"] .postpone-modal .calendar-day.selected,
+body[data-theme="dark"] .postpone-schedule-modal .calendar-day.selected,
+body[data-theme="dark"] .agenda-modal .calendar-day.selected {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
 }
