@@ -8251,3 +8251,57 @@ body[data-theme="dark"] .login-card .security-badge * {
   -webkit-text-fill-color: #dbeafe !important;
   color: #dbeafe !important;
 }
+
+/* Ajustes finales de modo oscuro: cierre de sesión y pestaña de subtareas */
+body[data-theme="dark"] .subtask-section .section-tabs {
+  background: #111827 !important;
+  border-bottom: 1px solid #475569 !important;
+}
+body[data-theme="dark"] .subtask-section .section-tabs .tab {
+  color: #cbd5e1 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+body[data-theme="dark"] .subtask-section .section-tabs .tab.active {
+  color: #f8fafc !important;
+  background: #334155 !important;
+  border-color: #64748b !important;
+  box-shadow: none !important;
+}
+body[data-theme="dark"] .logout-confirmation {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #f8fafc !important;
+}
+body[data-theme="dark"] .logout-confirmation p {
+  padding: 14px 16px !important;
+  margin: 14px 0 0 !important;
+  background: #1e293b !important;
+  border: 1px solid #475569 !important;
+  border-radius: 12px !important;
+  color: #e2e8f0 !important;
+  line-height: 1.6 !important;
+}
+body[data-theme="dark"] .logout-confirmation-actions {
+  gap: 12px !important;
+  margin-top: 18px !important;
+  padding: 0 2px 2px !important;
+  flex-wrap: wrap;
+}
+body[data-theme="dark"] .logout-confirmation-actions .btn {
+  min-height: 42px !important;
+  padding: 10px 18px !important;
+  border-radius: 9px !important;
+  font-weight: 700 !important;
+}
+@media (max-width: 480px) {
+  body[data-theme="dark"] .logout-confirmation-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+  body[data-theme="dark"] .logout-confirmation-actions .btn {
+    padding: 10px 8px !important;
+  }
+}
