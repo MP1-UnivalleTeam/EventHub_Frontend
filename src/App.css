@@ -8103,3 +8103,52 @@ body[data-theme="dark"] .agenda-modal .calendar-day.selected {
   color: #ffffff !important;
   border-color: #60a5fa !important;
 }
+
+/* Ajuste final: Próximas gestiones y Gestión seleccionada en modo oscuro */
+body[data-theme="dark"] .today-page .today-upcoming-section,
+body[data-theme="dark"] .today-page .today-detail-panel {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .22) !important;
+}
+body[data-theme="dark"] .today-page .today-upcoming-section h2,
+body[data-theme="dark"] .today-page .today-upcoming-section h3,
+body[data-theme="dark"] .today-page .today-upcoming-section strong,
+body[data-theme="dark"] .today-page .today-detail-panel h2,
+body[data-theme="dark"] .today-page .today-detail-panel h3,
+body[data-theme="dark"] .today-page .today-detail-panel strong,
+body[data-theme="dark"] .today-page .today-detail-panel label {
+  color: #f8fafc !important;
+}
+body[data-theme="dark"] .today-page .today-upcoming-section p,
+body[data-theme="dark"] .today-page .today-upcoming-meta,
+body[data-theme="dark"] .today-page .today-upcoming-note,
+body[data-theme="dark"] .today-page .today-upcoming-hours,
+body[data-theme="dark"] .today-page .today-detail-panel p,
+body[data-theme="dark"] .today-page .today-detail-panel span {
+  color: #cbd5e1 !important;
+}
+body[data-theme="dark"] .today-page .today-upcoming-card {
+  background: #263449 !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .today-page .today-upcoming-card:hover {
+  background: #30415a !important;
+  border-color: #7892b8 !important;
+}
+body[data-theme="dark"] .today-page .today-upcoming-days {
+  background: #334a70 !important;
+  color: #dbeafe !important;
+}
+body[data-theme="dark"] .today-page .today-upcoming-arrow {
+  color: #93c5fd !important;
+}
+body[data-theme="dark"] .today-page .today-upcoming-count {
+  background: #334155 !important;
+  color: #bfdbfe !important;
+}
+body[data-theme="dark"] .today-page .today-detail-panel button {
+  border-color: #64748b;
+}
