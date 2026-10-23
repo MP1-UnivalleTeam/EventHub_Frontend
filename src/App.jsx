@@ -634,6 +634,8 @@ function Header({
   abrirCrear,
   busquedaEventos,
   onBuscarEventos,
+  modoOscuro,
+  alternarTema,
 }) {
   const [mostrarCerrarSesion, setMostrarCerrarSesion] = useState(false);
   const [mostrarMenuMovil, setMostrarMenuMovil] = useState(false);
@@ -728,6 +730,16 @@ function Header({
           onClick={() => setMostrarMenuMovil(true)}
         >
           ☰ <span>Herramientas</span>
+        </button>
+
+        <button
+          className="theme-toggle"
+          type="button"
+          onClick={alternarTema}
+          aria-label={modoOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          title={modoOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+        >
+          <span aria-hidden="true">{modoOscuro ? "☀️" : "🌙"}</span>
         </button>
 
         <button
@@ -6574,6 +6586,25 @@ function RegistroUsuario() {
   );
 }
 export default function App() {
+  const [modoOscuro, setModoOscuro] = useState(() => {
+    try {
+      return window.localStorage.getItem("eventhub-theme") === "dark";
+    } catch {
+      return false;
+    }
+  });
+  const alternarTema = () => setModoOscuro((actual) => !actual);
+  useEffect(() => {
+    const tema = modoOscuro ? "dark" : "light";
+    document.documentElement.dataset.theme = tema;
+    document.body.dataset.theme = tema;
+    try {
+      window.localStorage.setItem("eventhub-theme", tema);
+    } catch {
+      // La aplicación sigue funcionando aunque el almacenamiento esté bloqueado.
+    }
+  }, [modoOscuro]);
+
   const [ruta, setRuta] = useState(obtenerRutaInicial);
   const [eventos, setEventos] = useState([]);
   const [busquedaEventos, setBusquedaEventos] = useState("");
@@ -6720,12 +6751,14 @@ export default function App() {
     return <OnboardingRegistro />;
   }
 
-  return <main className="app">
+  return <main className={`app${modoOscuro ? " theme-dark" : ""}`}>
     <Header
       ruta={ruta}
       abrirCrear={() => navegar("/crear-evento")}
       busquedaEventos={busquedaEventos}
       onBuscarEventos={setBusquedaEventos}
+      modoOscuro={modoOscuro}
+      alternarTema={alternarTema}
     />
     <nav className="mobile-bottom-nav" aria-label="Navegación móvil">
       <button type="button" className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/eventos")}>
