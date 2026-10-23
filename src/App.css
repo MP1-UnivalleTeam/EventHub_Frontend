@@ -8305,3 +8305,13 @@ body[data-theme="dark"] .logout-confirmation-actions .btn {
     padding: 10px 8px !important;
   }
 }
+
+/* Ajuste final: quitar el marco interno del mensaje de cierre de sesión */
+body[data-theme="dark"] .logout-confirmation p {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 14px 0 0 !important;
+}
