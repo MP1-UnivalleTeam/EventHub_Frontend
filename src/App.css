@@ -8152,3 +8152,79 @@ body[data-theme="dark"] .today-page .today-upcoming-count {
 body[data-theme="dark"] .today-page .today-detail-panel button {
   border-color: #64748b;
 }
+
+/* Corrección adicional de contraste: capacidad, panel lateral y filtros */
+body[data-theme="dark"] .today-page .today-capacity {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #475569 !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .25) !important;
+}
+body[data-theme="dark"] .today-page .today-capacity span,
+body[data-theme="dark"] .today-page .today-capacity strong,
+body[data-theme="dark"] .today-page .today-capacity .today-overload-message {
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .today-page .today-capacity-track {
+  background: #475569 !important;
+}
+body[data-theme="dark"] .today-page .today-capacity-track span {
+  background: #60a5fa !important;
+}
+body[data-theme="dark"] .today-page .today-side-panel {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #475569 !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .25) !important;
+}
+body[data-theme="dark"] .today-page .today-side-panel * {
+  color: #e2e8f0;
+}
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-header small,
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-header h2,
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-info strong {
+  color: #f8fafc !important;
+}
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-info {
+  border-bottom-color: #475569 !important;
+}
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-empty,
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-event,
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-info span {
+  color: #cbd5e1 !important;
+}
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-secondary,
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-cancel {
+  background: #263449 !important;
+  color: #f8fafc !important;
+  border: 1px solid #64748b !important;
+}
+body[data-theme="dark"] .today-page .today-side-panel .today-register-button {
+  background: #315fe8 !important;
+  color: #ffffff !important;
+  border: 1px solid #4f7cff !important;
+}
+body[data-theme="dark"] .today-page .today-filters,
+body[data-theme="dark"] .today-page .today-filter-search,
+body[data-theme="dark"] .today-page .today-filter-select,
+body[data-theme="dark"] .today-page .today-filter-reset {
+  background: #1e293b !important;
+  border-color: #64748b !important;
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .today-page .today-filter-search input,
+body[data-theme="dark"] .today-page .today-filter-select select {
+  background: #0b1326 !important;
+  background-color: #0b1326 !important;
+  color: #f8fafc !important;
+  border-color: #64748b !important;
+  -webkit-text-fill-color: #f8fafc !important;
+}
+body[data-theme="dark"] .today-page .today-filter-search input::placeholder {
+  color: #94a3b8 !important;
+}
+body[data-theme="dark"] .today-page .today-filter-search span,
+body[data-theme="dark"] .today-page .today-filter-select span,
+body[data-theme="dark"] .today-page .today-filter-reset .reset-icon {
+  color: #bfdbfe !important;
+}
