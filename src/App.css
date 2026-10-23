@@ -8228,3 +8228,26 @@ body[data-theme="dark"] .today-page .today-filter-select span,
 body[data-theme="dark"] .today-page .today-filter-reset .reset-icon {
   color: #bfdbfe !important;
 }
+
+/* Ajustes finales de contraste para etiquetas y estados en modo oscuro */
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-success,
+body[data-theme="dark"] .today-page .today-panel-success {
+  background: #123b32 !important;
+  color: #a7f3d0 !important;
+  border: 1px solid #28745f !important;
+  opacity: 1 !important;
+}
+body[data-theme="dark"] .today-page .today-side-panel .today-panel-success * {
+  color: #a7f3d0 !important;
+}
+body[data-theme="dark"] .login-card .security-badge {
+  background: #1e3a5f !important;
+  color: #dbeafe !important;
+  border: 1px solid #3b82f6 !important;
+  opacity: 1 !important;
+}
+body[data-theme="dark"] .login-card .security-badge,
+body[data-theme="dark"] .login-card .security-badge * {
+  -webkit-text-fill-color: #dbeafe !important;
+  color: #dbeafe !important;
+}
