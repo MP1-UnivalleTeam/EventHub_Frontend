@@ -30,7 +30,7 @@ import {
 const rutas = ["/login", "/registro", "/registro/onboarding", "/eventos", "/hoy", "/progreso", "/crear-evento", "/configuracion"];
 
 // Deshabilita temporalmente el paso de "Personalización de tu espacio de
-// trabajo" durante este sprint. El componente OnboardingRegistro y sus
+// trabajo." durante este sprint. El componente OnboardingRegistro y sus
 // categorías se conservan intactos; basta con volver a poner esta bandera en
 // true para rehabilitar la pantalla.
 const PERSONALIZACION_HABILITADA = false;
