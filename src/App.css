@@ -8505,3 +8505,50 @@ body[data-theme="dark"] .today-overdue-card .today-overdue-description,
 body[data-theme="dark"] .today-overdue-card .today-overdue-meta {
   color: #cbd5e1;
 }
+
+
+/* Ajustes solicitados: filtros avanzados y enlace de regreso en modo oscuro */
+body[data-theme="dark"] .progress-filters-button {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #475569;
+}
+
+body[data-theme="dark"] .progress-filters-button:hover,
+body[data-theme="dark"] .progress-filters-button[aria-expanded="true"] {
+  background: #29384f;
+  color: #ffffff;
+  border-color: #64748b;
+}
+
+body[data-theme="dark"] .progress-filters-panel {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="dark"] .progress-filter-option {
+  background: transparent;
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .progress-filter-option:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+body[data-theme="dark"] .progress-filter-option.active {
+  background: #1d3558;
+  color: #bfdbfe;
+  border-color: #355783;
+}
+
+body[data-theme="dark"] .back-link {
+  color: #ffffff;
+}
+
+body[data-theme="dark"] .back-link:hover,
+body[data-theme="dark"] .back-link:focus-visible {
+  color: #bfdbfe;
+}
