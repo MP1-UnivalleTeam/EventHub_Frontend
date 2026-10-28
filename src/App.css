@@ -9025,3 +9025,57 @@ body[data-theme="dark"] .badge-completado {
 .progress-calendar-detail{background:#f1f5f9;border-left:1px solid #e2e8f0;padding:22px;min-width:0}.progress-calendar-detail h3{font-size:15px;font-weight:800;text-transform:capitalize;margin:6px 0 18px}.progress-calendar-empty-detail{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:40px 10px;color:#64748b}.progress-calendar-empty-detail span{font-size:30px;color:#94a3b8}.progress-calendar-empty-detail strong{color:#334155;font-size:13px}.progress-calendar-empty-detail p{font-size:12px;margin:0}.progress-calendar-items{display:flex;flex-direction:column;gap:10px}.progress-calendar-item{background:#fff;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:12px}.progress-calendar-item.task-hecho{border-left-color:#10b981}.progress-calendar-item.task-vencido{border-left-color:#f43f5e}.progress-calendar-item.task-pospuesto{border-left-color:#f59e0b}.progress-calendar-item-label{font-size:9px;font-weight:900;letter-spacing:.05em;color:#2563eb}.task-hecho .progress-calendar-item-label{color:#059669}.task-vencido .progress-calendar-item-label{color:#e11d48}.task-pospuesto .progress-calendar-item-label{color:#b45309}.progress-calendar-item h4{font-size:13px;font-weight:800;margin:5px 0}.progress-calendar-item p{font-size:11px;color:#64748b;margin:0 0 8px}.progress-calendar-item button{background:transparent;border:0;padding:0;color:#2563eb;font-size:11px;font-weight:800;cursor:pointer}.progress-calendar-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 22px;border-top:1px solid #e2e8f0;background:#fff;color:#64748b;font-size:11px}
 body[data-theme="dark"] .progress-calendar-modal{background:#0b1326;color:#f8fafc;border-color:#334155}body[data-theme="dark"] .progress-calendar-modal-header,body[data-theme="dark"] .progress-calendar-footer{background:#111c30;border-color:#334155}body[data-theme="dark"] .progress-calendar-modal-header h2,body[data-theme="dark"] .progress-calendar-monthbar h3,body[data-theme="dark"] .progress-calendar-detail h3{color:#f8fafc}body[data-theme="dark"] .progress-calendar-modal-header p,body[data-theme="dark"] .progress-calendar-footer{color:#94a3b8}body[data-theme="dark"] .progress-calendar-month-actions button{background:#1e293b;color:#dae2fd;border-color:#334155}body[data-theme="dark"] .progress-calendar-day{background:#1e293b;color:#dae2fd;border-color:#334155}body[data-theme="dark"] .progress-calendar-day:hover,body[data-theme="dark"] .progress-calendar-day.selected{background:#172554;border-color:#3b82f6}body[data-theme="dark"] .progress-calendar-detail{background:#111c30;border-color:#334155}body[data-theme="dark"] .progress-calendar-item{background:#1e293b;border-color:#334155;border-left-color:#3b82f6}body[data-theme="dark"] .progress-calendar-item.task-hecho{border-left-color:#10b981}body[data-theme="dark"] .progress-calendar-item.task-vencido{border-left-color:#f43f5e}body[data-theme="dark"] .progress-calendar-item.task-pospuesto{border-left-color:#f59e0b}body[data-theme="dark"] .progress-calendar-item h4,body[data-theme="dark"] .progress-calendar-empty-detail strong{color:#f8fafc}body[data-theme="dark"] .progress-calendar-item p,body[data-theme="dark"] .progress-calendar-legend,body[data-theme="dark"] .progress-calendar-weekday{color:#94a3b8}body[data-theme="dark"] .event-chip{background:#1d4ed8;color:#dbeafe}body[data-theme="dark"] .task-chip{background:#854d0e;color:#fef3c7}body[data-theme="dark"] .task-chip.hecho{background:#065f46;color:#d1fae5}body[data-theme="dark"] .task-chip.vencido{background:#9f1239;color:#ffe4e6}body[data-theme="dark"] .task-chip.pospuesto{background:#9a3412;color:#ffedd5}
 @media(max-width:800px){.progress-calendar-body{grid-template-columns:1fr}.progress-calendar-detail{border-left:0;border-top:1px solid #e2e8f0}.progress-calendar-day{min-height:65px;padding:5px}.progress-calendar-chip{font-size:8px}.progress-calendar-main,.progress-calendar-detail{padding:14px}.progress-calendar-modal-header{padding:17px}.progress-calendar-footer{align-items:flex-start;flex-direction:column}.progress-calendar-overlay{padding:8px}.progress-calendar-modal{max-height:96vh}}
+
+/* Ajuste del encabezado del calendario de Progreso: evita que el borde se cruce con el subtítulo. */
+.progress-calendar-modal {
+  box-sizing: border-box;
+}
+.progress-calendar-modal-header {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 104px;
+  padding: 18px 24px;
+  position: relative;
+  z-index: 1;
+}
+.progress-calendar-modal-header > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.progress-calendar-modal-header .progress-calendar-eyebrow {
+  display: block;
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+.progress-calendar-modal-header h2 {
+  line-height: 1.25;
+  margin: 0 0 5px;
+  overflow-wrap: anywhere;
+}
+.progress-calendar-modal-header p {
+  display: block;
+  line-height: 1.45;
+  margin: 0;
+}
+.progress-calendar-close {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: -4px -6px 0 0;
+  padding: 2px 6px;
+}
+.progress-calendar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+@media (max-width: 800px) {
+  .progress-calendar-modal-header {
+    min-height: 0;
+    padding: 16px;
+    align-items: flex-start;
+  }
+  .progress-calendar-modal-header h2 {
+    font-size: 18px;
+  }
+}
