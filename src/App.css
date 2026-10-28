@@ -8832,3 +8832,108 @@ body[data-theme="dark"] .breadcrumb {
 body[data-theme="dark"] .back-link:hover {
   color: #60a5fa;
 }
+
+
+/* =========================================================
+   AJUSTES FINALES STITCH — estados y campos en modo oscuro
+   Paleta Nocturne Operations: fondo #0B1326, superficies #1E293B,
+   texto #DAE2FD y azul de acento #3B82F6.
+   ========================================================= */
+body[data-theme="dark"] {
+  --bg: #0b1326;
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --line: #334155;
+  --eh-blue: #3b82f6;
+  --eh-blue-dark: #2563eb;
+  --eh-soft: #172b4d;
+  --st-pending-bg: rgba(59, 130, 246, .16);
+  --st-pending-fg: #93c5fd;
+  --st-done-bg: rgba(52, 211, 153, .14);
+  --st-done-fg: #6ee7b7;
+  --st-pospuesto-bg: rgba(251, 191, 36, .14);
+  --st-pospuesto-fg: #fcd34d;
+  --st-risk-bg: rgba(248, 113, 113, .14);
+  --st-risk-fg: #fca5a5;
+}
+
+/* Estados tipo etiqueta: conservan el significado por color, con contraste alto. */
+body[data-theme="dark"] .status-pill,
+body[data-theme="dark"] .event-card .status-pill,
+body[data-theme="dark"] .today-event-pill {
+  background: rgba(59, 130, 246, .16);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, .36);
+}
+body[data-theme="dark"] .badge-pending,
+body[data-theme="dark"] .status-pendiente,
+body[data-theme="dark"] .progress-tag:not(.tag-done),
+body[data-theme="dark"] .progress-event-badge:not(.tag-done) {
+  background-color: rgba(59, 130, 246, .16);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, .36);
+}
+body[data-theme="dark"] .badge-success,
+body[data-theme="dark"] .status-hecho,
+body[data-theme="dark"] .tag-done {
+  background-color: rgba(52, 211, 153, .14);
+  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, .32);
+}
+body[data-theme="dark"] .badge-pospuesto,
+body[data-theme="dark"] .status-pospuesto {
+  background-color: rgba(251, 191, 36, .14);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, .32);
+}
+body[data-theme="dark"] .badge-danger,
+body[data-theme="dark"] .status-vencido,
+body[data-theme="dark"] .tag-risk {
+  background-color: rgba(248, 113, 113, .14);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, .32);
+}
+
+/* Campos de estado y selección: evita controles blancos/azules fuera de la paleta. */
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select,
+body[data-theme="dark"] .create-form-card input,
+body[data-theme="dark"] .create-form-card textarea,
+body[data-theme="dark"] .create-form-card select,
+body[data-theme="dark"] .configuration-field input,
+body[data-theme="dark"] .configuration-field select,
+body[data-theme="dark"] .postpone-field input,
+body[data-theme="dark"] .postpone-field select,
+body[data-theme="dark"] .resolution-hours-field input {
+  background-color: #060e20;
+  color: #f8fafc;
+  border-color: #424754;
+}
+body[data-theme="dark"] input:focus,
+body[data-theme="dark"] textarea:focus,
+body[data-theme="dark"] select:focus,
+body[data-theme="dark"] .create-form-card input:focus,
+body[data-theme="dark"] .create-form-card textarea:focus,
+body[data-theme="dark"] .create-form-card select:focus,
+body[data-theme="dark"] .configuration-field input:focus,
+body[data-theme="dark"] .configuration-field select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .18);
+  outline: none;
+}
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+body[data-theme="dark"] option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+body[data-theme="dark"] progress,
+body[data-theme="dark"] .progress-track,
+body[data-theme="dark"] .progress-track-lg,
+body[data-theme="dark"] .progress-event-bar {
+  accent-color: #3b82f6;
+}
