@@ -205,6 +205,22 @@ function obtenerNotaSubtarea(subtarea) {
   return normalizarNota(subtarea?.nota);
 }
 
+function obtenerResponsableSubtarea(subtarea) {
+  const valor =
+    subtarea?.responsable ??
+    subtarea?.responsable_nombre ??
+    subtarea?.nombre_responsable ??
+    subtarea?.usuario_responsable ??
+    subtarea?.asignado_a ??
+    "";
+
+  if (valor && typeof valor === "object") {
+    return String(valor.nombre ?? valor.nombre_completo ?? valor.email ?? "");
+  }
+
+  return normalizarNota(valor);
+}
+
 function obtenerHoras(item) {
   const value = Number(item?.horas_estimadas ?? item?.horas ?? item?.hours ?? 0);
   return Number.isFinite(value) ? value : 0;
@@ -2313,7 +2329,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
     // La nota ya guardada se precarga; si la API falla permanece en el
     // estado local y no se pierde.
     notas: obtenerNotaSubtarea(subtarea),
-    responsable: subtarea?.responsable || "",
+    responsable: obtenerResponsableSubtarea(subtarea),
   });
 
   // La nota crece automáticamente a medida que el usuario escribe.
