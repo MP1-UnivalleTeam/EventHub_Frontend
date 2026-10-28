@@ -8552,3 +8552,283 @@ body[data-theme="dark"] .back-link:hover,
 body[data-theme="dark"] .back-link:focus-visible {
   color: #bfdbfe;
 }
+
+
+/* ==========================================================
+   EVENTHUB / STITCH NOCTURNE OPERATIONS
+   Paleta aplicada de forma consistente a Eventos, Hoy y Progreso.
+   Solo afecta al tema oscuro; el modo claro se conserva.
+   ========================================================== */
+body[data-theme="dark"] {
+  --eh-night-bg: #0b1326;
+  --eh-night-surface: #1e293b;
+  --eh-night-surface-low: #131b2e;
+  --eh-night-surface-high: #222a3d;
+  --eh-night-surface-raised: #31394d;
+  --eh-night-text: #dae2fd;
+  --eh-night-text-strong: #f8fafc;
+  --eh-night-text-muted: #94a3b8;
+  --eh-night-outline: #334155;
+  --eh-night-outline-strong: #424754;
+  --eh-night-blue: #3b82f6;
+  --eh-night-blue-light: #60a5fa;
+  background: #0b1326 !important;
+  color: #dae2fd;
+}
+
+body[data-theme="dark"] .app,
+body[data-theme="dark"] main.app,
+body[data-theme="dark"] .page,
+body[data-theme="dark"] .today-page,
+body[data-theme="dark"] .progress-page,
+body[data-theme="dark"] .create-page,
+body[data-theme="dark"] .configuration-page {
+  background-color: #0b1326;
+  color: #dae2fd;
+}
+
+/* Navegación y cabecera compartidas por todas las pestañas */
+body[data-theme="dark"] header {
+  background: #131b2e;
+  border-bottom: 1px solid #334155;
+  box-shadow: none;
+}
+body[data-theme="dark"] header nav,
+body[data-theme="dark"] .mobile-bottom-nav {
+  background: #131b2e;
+  border-color: #334155;
+}
+body[data-theme="dark"] .nav-link {
+  color: #c2c6d6;
+}
+body[data-theme="dark"] .nav-link:hover,
+body[data-theme="dark"] .nav-link.active,
+body[data-theme="dark"] .mobile-bottom-link.active {
+  background: #222a3d;
+  color: #adc6ff;
+  box-shadow: none;
+}
+body[data-theme="dark"] .search-placeholder,
+body[data-theme="dark"] .search-placeholder input,
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select {
+  background-color: #060e20;
+  color: #f8fafc;
+  border-color: #424754;
+}
+body[data-theme="dark"] input:focus,
+body[data-theme="dark"] textarea:focus,
+body[data-theme="dark"] select:focus,
+body[data-theme="dark"] .search-placeholder:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder,
+body[data-theme="dark"] .search-placeholder input::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+/* Superficies generales y tarjetas de la pestaña Eventos */
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .event-card,
+body[data-theme="dark"] .event-card-content,
+body[data-theme="dark"] .event-info,
+body[data-theme="dark"] .summary-card,
+body[data-theme="dark"] .venue-card,
+body[data-theme="dark"] .configuration-card,
+body[data-theme="dark"] .state-card,
+body[data-theme="dark"] .subtask-section,
+body[data-theme="dark"] .subtask-row,
+body[data-theme="dark"] .empty-subtasks,
+body[data-theme="dark"] .note-card,
+body[data-theme="dark"] .create-form-card,
+body[data-theme="dark"] .create-sidebar,
+body[data-theme="dark"] .validation-card {
+  background-color: #1e293b;
+  color: #dae2fd;
+  border-color: #334155;
+  box-shadow: none;
+}
+body[data-theme="dark"] .event-card:hover,
+body[data-theme="dark"] .progress-event-card:hover,
+body[data-theme="dark"] .today-task-card:hover,
+body[data-theme="dark"] .today-upcoming-card:hover {
+  background-color: #253347;
+  border-color: #60a5fa;
+  box-shadow: none;
+}
+body[data-theme="dark"] .page h1,
+body[data-theme="dark"] .page h2,
+body[data-theme="dark"] .page h3,
+body[data-theme="dark"] .today-page h1,
+body[data-theme="dark"] .today-page h2,
+body[data-theme="dark"] .today-page h3,
+body[data-theme="dark"] .progress-page h1,
+body[data-theme="dark"] .progress-page h2,
+body[data-theme="dark"] .progress-page h3 {
+  color: #f8fafc;
+}
+body[data-theme="dark"] .page p,
+body[data-theme="dark"] .page label,
+body[data-theme="dark"] .page .helper,
+body[data-theme="dark"] .page small,
+body[data-theme="dark"] .today-page p,
+body[data-theme="dark"] .today-page small,
+body[data-theme="dark"] .progress-page p,
+body[data-theme="dark"] .progress-page small {
+  color: #c2c6d6;
+}
+
+/* Pestaña Hoy: indicadores, filtros, gestiones y panel seleccionado */
+body[data-theme="dark"] .today-summary-card,
+body[data-theme="dark"] .today-stat-card,
+body[data-theme="dark"] .today-capacity-card,
+body[data-theme="dark"] .today-completed-card,
+body[data-theme="dark"] .today-urgent-card,
+body[data-theme="dark"] .today-overdue-card,
+body[data-theme="dark"] .today-task-card,
+body[data-theme="dark"] .today-upcoming-card,
+body[data-theme="dark"] .today-detail-panel,
+body[data-theme="dark"] .today-side-panel,
+body[data-theme="dark"] .today-section,
+body[data-theme="dark"] .today-filter-bar,
+body[data-theme="dark"] .today-filters,
+body[data-theme="dark"] .today-filter-select,
+body[data-theme="dark"] .today-filter-search {
+  background-color: #1e293b;
+  color: #dae2fd;
+  border-color: #334155;
+  box-shadow: none;
+}
+body[data-theme="dark"] .today-section-title,
+body[data-theme="dark"] .today-task-main,
+body[data-theme="dark"] .today-upcoming-main,
+body[data-theme="dark"] .today-panel-header,
+body[data-theme="dark"] .today-overdue-title {
+  color: #f8fafc;
+}
+body[data-theme="dark"] .today-task-meta,
+body[data-theme="dark"] .today-task-note,
+body[data-theme="dark"] .today-upcoming-meta,
+body[data-theme="dark"] .today-upcoming-note,
+body[data-theme="dark"] .today-panel-info,
+body[data-theme="dark"] .today-capacity,
+body[data-theme="dark"] .today-overdue-description {
+  color: #c2c6d6;
+}
+body[data-theme="dark"] .today-filter-bar input,
+body[data-theme="dark"] .today-filter-select,
+body[data-theme="dark"] .today-filter-search input,
+body[data-theme="dark"] .today-filters select {
+  background-color: #060e20;
+  color: #f8fafc;
+  border-color: #424754;
+}
+body[data-theme="dark"] .today-capacity-track,
+body[data-theme="dark"] .today-capacity-card .track,
+body[data-theme="dark"] .today-upcoming-days {
+  background-color: #31394d;
+}
+body[data-theme="dark"] .today-action-primary,
+body[data-theme="dark"] .today-register-button,
+body[data-theme="dark"] .today-overdue-resolve {
+  background-color: #3b82f6;
+  color: #f8fafc;
+  border-color: #3b82f6;
+}
+body[data-theme="dark"] .today-action-secondary,
+body[data-theme="dark"] .today-overdue-reprogram,
+body[data-theme="dark"] .today-refresh-button {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+body[data-theme="dark"] .today-urgent-badge,
+body[data-theme="dark"] .today-overdue-badge,
+body[data-theme="dark"] .today-overdue-risk {
+  background-color: rgba(239, 68, 68, .15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, .3);
+}
+
+/* Pestaña Progreso: estadísticas, tarjetas, filtros y desglose */
+body[data-theme="dark"] .progress-card,
+body[data-theme="dark"] .progress-event-card,
+body[data-theme="dark"] .progress-stat-card,
+body[data-theme="dark"] .progress-breakdown-grid,
+body[data-theme="dark"] .progress-no-results,
+body[data-theme="dark"] .progress-rendimiento,
+body[data-theme="dark"] .progress-rendimiento-stats,
+body[data-theme="dark"] .progress-filters-panel {
+  background-color: #1e293b;
+  color: #dae2fd;
+  border-color: #334155;
+  box-shadow: none;
+}
+body[data-theme="dark"] .progress-event-row,
+body[data-theme="dark"] .progress-breakdown-header,
+body[data-theme="dark"] .progress-event-top {
+  border-color: #424754;
+}
+body[data-theme="dark"] .progress-filters-button,
+body[data-theme="dark"] .progress-filter-option {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+body[data-theme="dark"] .progress-filters-button:hover,
+body[data-theme="dark"] .progress-filter-option:hover {
+  background-color: #253347;
+  color: #ffffff;
+  border-color: #60a5fa;
+}
+body[data-theme="dark"] .progress-filter-option.selected,
+body[data-theme="dark"] .progress-filter-option.active {
+  background-color: #1c2844;
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+body[data-theme="dark"] .progress-tag,
+body[data-theme="dark"] .progress-event-badge {
+  background-color: rgba(59, 130, 246, .15);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, .3);
+}
+body[data-theme="dark"] .progress-track,
+body[data-theme="dark"] .progress-track-lg,
+body[data-theme="dark"] .progress-event-bar,
+body[data-theme="dark"] .progress-ring-bg {
+  background-color: #31394d;
+}
+
+/* Paneles de validación, secciones opcionales y modales */
+body[data-theme="dark"] .create-event-subtask,
+body[data-theme="dark"] .create-event-subtask-item,
+body[data-theme="dark"] .stitch-optional-section,
+body[data-theme="dark"] .info-block,
+body[data-theme="dark"] .security-message {
+  background-color: #131b2e;
+  color: #dae2fd;
+  border-color: #334155;
+  box-shadow: none;
+}
+body[data-theme="dark"] .modal,
+body[data-theme="dark"] .confirm-modal,
+body[data-theme="dark"] .logout-confirmation,
+body[data-theme="dark"] .postpone-modal,
+body[data-theme="dark"] .resolution-modal {
+  background-color: #31394d;
+  color: #f8fafc;
+  border-color: #475569;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, .45);
+}
+body[data-theme="dark"] .back-link,
+body[data-theme="dark"] .breadcrumb {
+  color: #f8fafc;
+}
+body[data-theme="dark"] .back-link:hover {
+  color: #60a5fa;
+}
