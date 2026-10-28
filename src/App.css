@@ -8387,3 +8387,121 @@ body[data-theme="dark"] .logout-confirmation::after {
   outline: 2px solid var(--blue, #3b82f6);
   outline-offset: -3px;
 }
+
+/* Ajustes de contraste para los componentes claros cuando el tema oscuro está activo */
+body[data-theme="dark"] .create-event-subtask,
+body[data-theme="dark"] .create-event-subtask-item,
+body[data-theme="dark"] .stitch-optional-section,
+body[data-theme="dark"] .validation-card {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .create-event-subtask-fields,
+body[data-theme="dark"] .create-event-subtask-item {
+  border-color: #334155;
+}
+
+body[data-theme="dark"] .create-event-subtask-toggle strong,
+body[data-theme="dark"] .validation-card h2,
+body[data-theme="dark"] .validation-card b,
+body[data-theme="dark"] .stitch-optional-section summary,
+body[data-theme="dark"] .stitch-optional-section > label {
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .create-event-subtask-toggle small,
+body[data-theme="dark"] .validation-card p,
+body[data-theme="dark"] .validation-card ul,
+body[data-theme="dark"] .validation-card li,
+body[data-theme="dark"] .stitch-optional-section summary span {
+  color: #cbd5e1;
+}
+
+body[data-theme="dark"] .create-event-subtask-add {
+  background: #172554;
+  color: #bfdbfe;
+  border-color: #64748b;
+}
+
+body[data-theme="dark"] .create-event-subtask-add:hover {
+  background: #1e3a8a;
+  color: #eff6ff;
+}
+
+body[data-theme="dark"] .stitch-optional-section input,
+body[data-theme="dark"] .stitch-optional-section textarea,
+body[data-theme="dark"] #sub-responsable,
+body[data-theme="dark"] #edit-sub-responsable,
+body[data-theme="dark"] #edit-sub-notas {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #475569;
+  caret-color: #93c5fd;
+}
+
+body[data-theme="dark"] .stitch-optional-section input::placeholder,
+body[data-theme="dark"] .stitch-optional-section textarea::placeholder,
+body[data-theme="dark"] #sub-responsable::placeholder,
+body[data-theme="dark"] #edit-sub-responsable::placeholder,
+body[data-theme="dark"] #edit-sub-notas::placeholder {
+  color: #94a3b8;
+}
+
+body[data-theme="dark"] .stitch-optional-section input:focus,
+body[data-theme="dark"] .stitch-optional-section textarea:focus,
+body[data-theme="dark"] #sub-responsable:focus,
+body[data-theme="dark"] #edit-sub-responsable:focus,
+body[data-theme="dark"] #edit-sub-notas:focus {
+  border-color: #60a5fa;
+  outline: 2px solid rgba(96, 165, 250, .22);
+  outline-offset: 1px;
+}
+
+body[data-theme="dark"] .today-overdue-section {
+  background: #172033;
+  border-color: #475569;
+  color: #e2e8f0;
+  box-shadow: none;
+}
+
+body[data-theme="dark"] .today-overdue-header h2 {
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .today-overdue-header p,
+body[data-theme="dark"] .today-overdue-title p {
+  color: #cbd5e1;
+}
+
+body[data-theme="dark"] .today-overdue-header .today-overdue-risk,
+body[data-theme="dark"] .today-overdue-risk {
+  color: #fca5a5;
+}
+
+body[data-theme="dark"] .today-overdue-card {
+  background: #1e293b;
+  border-color: #475569;
+  border-left-color: #f87171;
+  color: #e2e8f0;
+  box-shadow: none;
+}
+
+body[data-theme="dark"] .today-overdue-card:hover {
+  background: #25334a;
+  border-color: #64748b;
+  border-left-color: #f87171;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .18);
+}
+
+body[data-theme="dark"] .today-overdue-card h3,
+body[data-theme="dark"] .today-overdue-card strong {
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .today-overdue-card p,
+body[data-theme="dark"] .today-overdue-card .today-overdue-description,
+body[data-theme="dark"] .today-overdue-card .today-overdue-meta {
+  color: #cbd5e1;
+}
