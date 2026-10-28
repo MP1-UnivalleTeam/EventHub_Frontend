@@ -1603,18 +1603,17 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
                   id={`evento-subtarea-fecha-${item.id}`}
                   type="date"
                   min={obtenerFechaLocalHoy()}
-                  max={formulario.fecha}
-                  value={limitarFechaSubtarea(
-                    item.dia_objetivo || formulario.fecha,
-                    formulario.fecha
-                  )}
+                  max={formulario.fecha || undefined}
+                  value={item.dia_objetivo || ""}
                   onChange={(event) => actualizarSubtarea(item.id, "dia_objetivo", event.target.value)}
-                  disabled={
-                    !formulario.fecha ||
-                    formulario.fecha < obtenerFechaLocalHoy()
-                  }
                   aria-invalid={Boolean(errorSubtarea)}
+                  aria-describedby={`evento-subtarea-fecha-ayuda-${item.id}`}
                 />
+                <p className="helper" id={`evento-subtarea-fecha-ayuda-${item.id}`}>
+                  {formulario.fecha
+                    ? "Selecciona una fecha desde hoy hasta la fecha del evento."
+                    : "Puedes elegir una fecha desde hoy; al guardar, debe ser igual o anterior a la fecha del evento."}
+                </p>
                 <details className="stitch-optional-section">
                   <summary>Asignar responsable <span>(opcional)</span></summary>
                   <label htmlFor={`evento-subtarea-responsable-${item.id}`}>Responsable de la subtarea</label>
