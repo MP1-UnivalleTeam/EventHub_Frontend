@@ -2436,6 +2436,11 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
   };
 
   const guardarEdicion = async ({ fecha, horas }) => {
+    // Estos valores deben calcularse en el mismo alcance donde se usan al
+    // actualizar la interfaz después de guardar.
+    const titulo = form.nombre.trim();
+    const estadoAGuardar = normalizarEstadoAGuardar(form.estado);
+
     setGuardando(true);
     setErrorServidor("");
 
