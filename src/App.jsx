@@ -5600,6 +5600,13 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   // "asc" | "desc" | "fecha"
   const [orden, setOrden] = useState("desc");
+  const [subtareasCalendario, setSubtareasCalendario] = useState([]);
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
+  const [fechaCalendario, setFechaCalendario] = useState(obtenerFechaLocalHoy());
+  const [mesCalendarioProgreso, setMesCalendarioProgreso] = useState(() => {
+    const hoy = new Date();
+    return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  });
 
   const cargar = async () => {
     setCargando(true);
@@ -5613,6 +5620,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
 
       const eventos = Array.isArray(eventosData) ? eventosData : [];
       const subtareas = Array.isArray(subtareasData) ? subtareasData : [];
+      setSubtareasCalendario(subtareas);
 
       setDatos(calcularProgreso(eventos, subtareas));
     } catch (errorActual) {
@@ -6031,6 +6039,72 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
             </>
           )}
         </>
+      )}
+
+      <button
+        className="progress-calendar-fab"
+        type="button"
+        onClick={() => setMostrarCalendario(true)}
+        aria-label="Abrir calendario de progreso"
+        title="Ver calendario"
+      >
+        <span aria-hidden="true">▦</span>
+      </button>
+
+      {mostrarCalendario && (
+        <div className="progress-calendar-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setMostrarCalendario(false); }}>
+          <section className="progress-calendar-modal" role="dialog" aria-modal="true" aria-labelledby="progress-calendar-title">
+            <header className="progress-calendar-modal-header">
+              <div><span className="progress-calendar-eyebrow">EVENTHUB · PLANIFICACIÓN</span><h2 id="progress-calendar-title">Calendario de progreso y entregas</h2><p>Consulta eventos y subtareas según su fecha programada.</p></div>
+              <button type="button" className="progress-calendar-close" onClick={() => setMostrarCalendario(false)} aria-label="Cerrar calendario">×</button>
+            </header>
+            <div className="progress-calendar-body">
+              <div className="progress-calendar-main">
+                <div className="progress-calendar-monthbar">
+                  <h3>{new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" }).format(mesCalendarioProgreso)}</h3>
+                  <div className="progress-calendar-month-actions">
+                    <button type="button" aria-label="Mes anterior" onClick={() => setMesCalendarioProgreso(new Date(mesCalendarioProgreso.getFullYear(), mesCalendarioProgreso.getMonth() - 1, 1))}>‹</button>
+                    <button type="button" onClick={() => { const hoy = new Date(); setMesCalendarioProgreso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)); setFechaCalendario(obtenerFechaLocalHoy()); }}>Hoy</button>
+                    <button type="button" aria-label="Mes siguiente" onClick={() => setMesCalendarioProgreso(new Date(mesCalendarioProgreso.getFullYear(), mesCalendarioProgreso.getMonth() + 1, 1))}>›</button>
+                  </div>
+                </div>
+                <div className="progress-calendar-grid">
+                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => <span className="progress-calendar-weekday" key={d}>{d}</span>)}
+                  {Array.from({ length: (mesCalendarioProgreso.getDay() + 6) % 7 }, (_, i) => <span className="progress-calendar-empty" key={`empty-${i}`} />)}
+                  {Array.from({ length: new Date(mesCalendarioProgreso.getFullYear(), mesCalendarioProgreso.getMonth() + 1, 0).getDate() }, (_, i) => {
+                    const dia = i + 1;
+                    const fecha = `${mesCalendarioProgreso.getFullYear()}-${String(mesCalendarioProgreso.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+                    const eventosDia = datos.eventos.filter((ev) => String(ev.fecha || "").slice(0, 10) === fecha);
+                    const tareasDia = subtareasCalendario.filter((t) => obtenerFechaObjetivo(t) === fecha);
+                    const esHoy = fecha === obtenerFechaLocalHoy();
+                    return <button type="button" key={fecha} className={`progress-calendar-day ${fechaCalendario === fecha ? "selected" : ""} ${esHoy ? "today" : ""} ${eventosDia.length || tareasDia.length ? "has-items" : ""}`} onClick={() => setFechaCalendario(fecha)} aria-pressed={fechaCalendario === fecha} aria-label={`${dia}, ${eventosDia.length} eventos y ${tareasDia.length} subtareas`}>
+                      <span className="progress-calendar-day-number">{dia}</span>
+                      {(eventosDia.length > 0 || tareasDia.length > 0) && <span className="progress-calendar-dots"><i className="event-dot" />{tareasDia.length > 0 && <i className="task-dot" />}</span>}
+                      {eventosDia.slice(0, 1).map((ev) => <span key={ev.id} className="progress-calendar-chip event-chip">{ev.titulo}</span>)}
+                      {tareasDia.slice(0, 1).map((t) => <span key={t.id} className={`progress-calendar-chip task-chip ${estadoEfectivoSubtarea(t)}`}>{t.titulo || t.nombre || "Subtarea"}</span>)}
+                      {eventosDia.length + tareasDia.length > 2 && <small className="progress-calendar-more">+{eventosDia.length + tareasDia.length - 2} más</small>}
+                    </button>;
+                  })}
+                </div>
+                <div className="progress-calendar-legend"><span><i className="event-dot" /> Eventos</span><span><i className="task-dot" /> Subtareas</span><span><i className="done-dot" /> Completadas</span></div>
+              </div>
+              <aside className="progress-calendar-detail">
+                <span className="progress-calendar-eyebrow">DÍA SELECCIONADO</span>
+                <h3>{new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(`${fechaCalendario}T12:00:00`))}</h3>
+                {(() => {
+                  const eventosDia = datos.eventos.filter((ev) => String(ev.fecha || "").slice(0, 10) === fechaCalendario);
+                  const tareasDia = subtareasCalendario.filter((t) => obtenerFechaObjetivo(t) === fechaCalendario);
+                  if (!eventosDia.length && !tareasDia.length) return <div className="progress-calendar-empty-detail"><span>▦</span><strong>Sin actividades programadas</strong><p>Selecciona otro día para consultar sus entregas.</p></div>;
+                  return <div className="progress-calendar-items">
+                    {eventosDia.map((ev) => <article className="progress-calendar-item event-item" key={`evento-${ev.id}`}><span className="progress-calendar-item-label">EVENTO · {ev.estado?.etiqueta || "Programado"}</span><h4>{ev.titulo}</h4><p>Progreso acumulado: {ev.porcentaje}%</p><button type="button" onClick={() => navegar(`/eventos/${ev.id}`)}>Ver evento →</button></article>)}
+                    {tareasDia.map((t) => { const estado = estadoEfectivoSubtarea(t); const evento = datos.eventos.find((ev) => String(ev.id) === String(t.evento_id)); return <article className={`progress-calendar-item task-item task-${estado}`} key={`tarea-${t.id}`}><span className="progress-calendar-item-label">SUBTAREA · {estado === "hecho" ? "Completada" : estado === "vencido" ? "Vencida" : estado === "pospuesto" ? "Pospuesta" : "Pendiente"}</span><h4>{t.titulo || t.nombre || "Subtarea"}</h4><p>Evento: {evento?.titulo || "Evento asociado"}</p>{evento && <button type="button" onClick={() => navegar(`/eventos/${evento.id}`)}>Ver evento →</button>}</article>; })}
+                  </div>;
+                })()}
+              </aside>
+            </div>
+            <footer className="progress-calendar-footer"><span>Haz clic en un día para ver sus eventos y subtareas.</span><button type="button" className="btn secondary" onClick={() => setMostrarCalendario(false)}>Cerrar calendario</button></footer>
+          </section>
+        </div>
       )}
     </section>
   );
