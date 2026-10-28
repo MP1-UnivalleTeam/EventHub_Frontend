@@ -1141,7 +1141,7 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
   const [enviando, setEnviando] = useState(false);
   const [crearSubtareaInicial, setCrearSubtareaInicial] = useState(false);
   const [subtareas, setSubtareas] = useState([
-    { id: "subtarea-1", titulo: "", horas_estimadas: "", estado: "", dia_objetivo: "" },
+    { id: "subtarea-1", titulo: "", horas_estimadas: "", estado: "", dia_objetivo: "", responsable: "", notas: "" },
   ]);
   const [errorSubtarea, setErrorSubtarea] = useState("");
   const [conflicto, setConflicto] = useState(null);
@@ -1161,6 +1161,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
         horas_estimadas: "",
         estado: "",
         dia_objetivo: "",
+        responsable: "",
+        notas: "",
       },
     ]);
     setErrorSubtarea("");
@@ -1381,6 +1383,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
         horas_estimadas: Number(item.horas_estimadas),
         estado: item.estado,
         dia_objetivo: item.fechaObjetivo,
+        responsable: item.responsable.trim() || null,
+        notas: item.notas.trim() || null,
       }))
     );
   };
@@ -1447,6 +1451,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
         horas_estimadas: Number(item.horas_estimadas),
         estado: item.estado,
         dia_objetivo: item.fechaObjetivo,
+        responsable: item.responsable.trim() || null,
+        notas: item.notas.trim() || null,
       }))
     );
   };
@@ -1609,6 +1615,28 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
                   }
                   aria-invalid={Boolean(errorSubtarea)}
                 />
+                <details className="stitch-optional-section">
+                  <summary>Asignar responsable <span>(opcional)</span></summary>
+                  <label htmlFor={`evento-subtarea-responsable-${item.id}`}>Responsable de la subtarea</label>
+                  <input
+                    id={`evento-subtarea-responsable-${item.id}`}
+                    value={item.responsable || ""}
+                    onChange={(event) => actualizarSubtarea(item.id, "responsable", event.target.value)}
+                    placeholder="Nombre de la persona responsable"
+                  />
+                </details>
+                <details className="stitch-optional-section">
+                  <summary>Agregar nota <span>(opcional)</span></summary>
+                  <label htmlFor={`evento-subtarea-notas-${item.id}`}>Notas e instrucciones</label>
+                  <textarea
+                    id={`evento-subtarea-notas-${item.id}`}
+                    value={item.notas || ""}
+                    onChange={(event) => actualizarSubtarea(item.id, "notas", event.target.value)}
+                    placeholder="Agrega detalles o instrucciones para esta subtarea"
+                    rows={2}
+                    maxLength={300}
+                  />
+                </details>
               </div>
             ))}
             <button
@@ -1672,6 +1700,8 @@ function CrearSubtareaForm({
     horas: "",
     estado: "pendiente",
     dia_objetivo: limitarFechaSubtarea(eventoFecha, eventoFecha),
+    responsable: "",
+    notas: "",
   });
 
   const [errores, setErrores] = useState({});
@@ -1768,6 +1798,8 @@ function CrearSubtareaForm({
         dia_objetivo: fecha,
         horas_estimadas: Number(horas),
         estado: form.estado,
+        responsable: form.responsable.trim() || null,
+        notas: form.notas.trim() || null,
       });
       setConflicto(null);
       onCreada();
@@ -1867,6 +1899,8 @@ function CrearSubtareaForm({
       dia_objetivo: form.dia_objetivo,
       horas_estimadas: Number(form.horas),
       estado: form.estado,
+      responsable: form.responsable.trim() || null,
+      notas: form.notas.trim() || null,
     });
   };
 
@@ -1972,6 +2006,17 @@ function CrearSubtareaForm({
           {errores.dia_objetivo}
         </p>
       )}
+
+      <details className="stitch-optional-section">
+        <summary>Asignar responsable <span>(opcional)</span></summary>
+        <label htmlFor="sub-responsable">Responsable de la subtarea</label>
+        <input id="sub-responsable" name="responsable" value={form.responsable} onChange={actualizar} placeholder="Nombre de la persona responsable" />
+      </details>
+      <details className="stitch-optional-section">
+        <summary>Agregar nota <span>(opcional)</span></summary>
+        <label htmlFor="sub-notas">Notas e instrucciones</label>
+        <textarea id="sub-notas" name="notas" value={form.notas} onChange={actualizar} placeholder="Agrega detalles o instrucciones para esta subtarea" rows={2} maxLength={300} />
+      </details>
 
       {errorServidor && (
         <div className="alert alert-error" role="alert">
@@ -2269,6 +2314,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
     // La nota ya guardada se precarga; si la API falla permanece en el
     // estado local y no se pierde.
     notas: obtenerNotaSubtarea(subtarea),
+    responsable: subtarea?.responsable || "",
   });
 
   // La nota crece automáticamente a medida que el usuario escribe.
@@ -2368,6 +2414,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
       horas_estimadas: Number(horas),
       estado: estadoAGuardar,
       notas: form.notas.trim() || null,
+      responsable: form.responsable.trim() || null,
     });
 
     return { guardada: true };
@@ -2548,7 +2595,12 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
         </p>
       )}
 
-      {/* Nota opcional: card del mismo ancho que la fecha, auto-expandible */}
+      <details className="stitch-optional-section" open={Boolean(form.responsable)}>
+        <summary>Asignar responsable <span>(opcional)</span></summary>
+        <label htmlFor="edit-sub-responsable">Responsable de la subtarea</label>
+        <input id="edit-sub-responsable" name="responsable" value={form.responsable} onChange={actualizar} placeholder="Nombre de la persona responsable" />
+      </details>
+
       <div className="note-card">
         <div className="note-card-header">
           <FaStickyNote aria-hidden="true" />

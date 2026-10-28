@@ -8329,3 +8329,61 @@ body[data-theme="dark"] .logout-confirmation::after {
   box-shadow: none !important;
   filter: none !important;
 }
+
+/* Campos opcionales de responsable y notas en los formularios de Stitch */
+.stitch-optional-section {
+  margin-top: 12px;
+  border: 1px solid var(--border, #d7deea);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-soft, #f8fafc);
+}
+
+.stitch-optional-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  color: var(--ink, #1e293b);
+  font-size: 13px;
+  font-weight: 650;
+  list-style-position: inside;
+}
+
+.stitch-optional-section summary span {
+  margin-left: auto;
+  color: var(--muted, #64748b);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.stitch-optional-section[open] {
+  padding-bottom: 12px;
+}
+
+.stitch-optional-section[open] > label {
+  display: block;
+  margin: 8px 12px 6px;
+  color: var(--muted, #475569);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stitch-optional-section input,
+.stitch-optional-section textarea {
+  display: block;
+  width: calc(100% - 24px) !important;
+  margin: 0 12px;
+  box-sizing: border-box;
+}
+
+.stitch-optional-section textarea {
+  resize: vertical;
+}
+
+.stitch-optional-section summary:focus-visible {
+  outline: 2px solid var(--blue, #3b82f6);
+  outline-offset: -3px;
+}
