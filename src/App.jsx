@@ -6812,8 +6812,11 @@ export default function App() {
     if (lista.length && creado?.id) {
       for (const subtarea of lista) {
         try {
+          // Normaliza el responsable opcional antes de enviar la subtarea creada junto al evento.
+          const responsableSubtarea = obtenerResponsableSubtarea(subtarea);
           await crearSubtarea({
             ...subtarea,
+            responsable: responsableSubtarea || null,
             evento_id: creado.id,
           });
         } catch (error) {
