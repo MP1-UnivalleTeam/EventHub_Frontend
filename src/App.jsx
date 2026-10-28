@@ -2449,7 +2449,16 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
       }
 
       setConflicto(null);
-      onGuardado();
+      onGuardado({
+        id: subtarea.id,
+        titulo,
+        nombre: titulo,
+        dia_objetivo: fecha,
+        horas_estimadas: Number(horas),
+        estado: estadoAGuardar,
+        responsable: form.responsable.trim() || null,
+        notas: form.notas.trim() || null,
+      });
     } catch (error) {
       console.error("Error al actualizar subtarea:", error);
 
@@ -2861,8 +2870,27 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const eventoActualizado = async () => {
     setModal(null); await cargar(); onEventosChanged?.(); onNotify("Evento actualizado correctamente");
   };
-  const subtareaActualizada = async () => {
-    setModal(null); await cargarSubtareas(); onNotify("Subtarea actualizada correctamente");
+  const subtareaActualizada = async (datosActualizados) => {
+    setModal(null);
+    try {
+      const data = await obtenerSubtareas(id);
+      const lista = Array.isArray(data) ? data : [];
+      const listaConDatosActualizados = lista.map((item) => {
+        if (String(item.id) !== String(datosActualizados?.id)) return item;
+        return {
+          ...item,
+          ...datosActualizados,
+          responsable: datosActualizados.responsable ?? obtenerResponsableSubtarea(item),
+          notas: datosActualizados.notas ?? obtenerNotaSubtarea(item),
+        };
+      });
+      setSubtareas(listaConDatosActualizados);
+      setEstadoSubtareas(listaConDatosActualizados.length ? "success" : "empty");
+      setErrorSubtareas("");
+    } catch (error) {
+      await cargarSubtareas();
+    }
+    onNotify("Subtarea actualizada correctamente");
   };
   const ejecutarEliminacion = async () => {
     if (!confirmacion) return;
@@ -2918,6 +2946,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
             const estado = normalizarEstado(task.estado);
             const titulo = obtenerTituloSubtarea(task);
             const nota = obtenerNotaSubtarea(task);
+            const responsableSubtarea = obtenerResponsableSubtarea(task);
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
               <button
                 type="button"
@@ -2931,7 +2960,11 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
               >
                 {actualizandoEstadoSubtarea === task.id ? <span className="mini-spinner" aria-label="Guardando" /> : estado === "hecho" ? "✓" : ""}
               </button>
-              <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p></div>
+              <div className="task-main">
+                <h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3>
+                <p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p>
+                {responsableSubtarea && <p className="subtask-responsible">Responsable: {responsableSubtarea}</p>}
+              </div>
               <div className="subtask-status">
                 <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>
               </div>
