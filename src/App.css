@@ -8937,3 +8937,78 @@ body[data-theme="dark"] .progress-track-lg,
 body[data-theme="dark"] .progress-event-bar {
   accent-color: #3b82f6;
 }
+
+/* =========================================================
+   AJUSTES FINALES STITCH — MODO OSCURO
+   Tarjetas en azul grisáceo; el azul vivo se reserva para estados
+   pendientes/en preparación y para los indicadores de progreso.
+   ========================================================= */
+body[data-theme="dark"] .event-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  box-shadow: none;
+}
+body[data-theme="dark"] .event-card::before {
+  background: rgba(148, 163, 184, .10);
+}
+body[data-theme="dark"] .event-card:hover {
+  border-color: rgba(96, 165, 250, .42);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
+}
+body[data-theme="dark"] .event-card-icon {
+  background: #334155;
+  border-color: #64748b;
+  color: #f8fafc;
+}
+body[data-theme="dark"] .event-card h2 {
+  color: #f8fafc;
+}
+body[data-theme="dark"] .event-card p,
+body[data-theme="dark"] .event-card small,
+body[data-theme="dark"] .event-card .muted-line {
+  color: #cbd5e1;
+}
+body[data-theme="dark"] .event-card .status-pill,
+body[data-theme="dark"] .progress-event-badge.badge-preparacion,
+body[data-theme="dark"] .progress-event-badge.badge-planificacion {
+  background: rgba(59, 130, 246, .16);
+  border: 1px solid rgba(96, 165, 250, .42);
+  color: #93c5fd;
+}
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .progress-event-card,
+body[data-theme="dark"] .progress-rendimiento,
+body[data-theme="dark"] .progress-stat-card {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+  box-shadow: none;
+}
+body[data-theme="dark"] .progress-event-card h3,
+body[data-theme="dark"] .progress-event-row strong {
+  color: #f8fafc;
+}
+body[data-theme="dark"] .progress-event-date,
+body[data-theme="dark"] .progress-event-row span,
+body[data-theme="dark"] .progress-event-count {
+  color: #94a3b8;
+}
+body[data-theme="dark"] .progress-event-bar {
+  background: #334155;
+}
+body[data-theme="dark"] .progress-event-bar span,
+body[data-theme="dark"] .progress-track-lg span,
+body[data-theme="dark"] .progress-ring-fill {
+  background: #3b82f6;
+  stroke: #3b82f6;
+}
+body[data-theme="dark"] .progress-events-badge {
+  background: rgba(59, 130, 246, .16);
+  color: #93c5fd;
+}
+body[data-theme="dark"] .badge-completado {
+  background: rgba(52, 211, 153, .14);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, .32);
+}
