@@ -243,30 +243,6 @@ function formatearDuracion(valor) {
   return `${minutos}min`;
 }
 
-// Convierte lo que el usuario escribe en el modal de resolución a horas decimales
-// para conservar compatibilidad con los cálculos y el contrato actual de la API.
-// Admite: "2h 30min", "2h", "45min", "2:30" y números decimales en horas.
-function parsearDuracionEditable(valor) {
-  const texto = String(valor ?? "").trim().toLowerCase().replace(/,/g, ".");
-  if (!texto) return null;
-
-  const reloj = texto.match(/^(\d+)\s*:\s*([0-5]?\d)$/);
-  if (reloj) return Number(reloj[1]) + Number(reloj[2]) / 60;
-
-  const conHoras = texto.match(/^(\d+(?:\.\d+)?)\s*h(?:oras?)?\s*(?:(\d+)\s*(?:m|min|mins|minutos?))?$/);
-  if (conHoras) {
-    const minutos = Number(conHoras[2] || 0);
-    if (minutos >= 60) return null;
-    return Number(conHoras[1]) + minutos / 60;
-  }
-
-  const soloMinutos = texto.match(/^(\d+)\s*(?:m|min|mins|minutos?)$/);
-  if (soloMinutos) return Number(soloMinutos[1]) / 60;
-
-  if (/^\d+(?:\.\d+)?$/.test(texto)) return Number(texto);
-  return null;
-}
-
 function DurationInput({
   id,
   name,
@@ -3765,10 +3741,6 @@ function ModalResolucionSobrecarga({
   const [horasManuales, setHorasManuales] = useState(() =>
     calcularHorasManualesIniciales(conflicto, horasCausa)
   );
-  const [textoHorasManuales, setTextoHorasManuales] = useState(() =>
-    formatearDuracion(calcularHorasManualesIniciales(conflicto, horasCausa))
-  );
-  const duracionManualParseada = parsearDuracionEditable(textoHorasManuales);
 
   const lista = elementos ?? conflicto?.agenda ?? [];
   // El conflicto es la fuente de la duración de la causa; la prop solo sirve
@@ -3794,18 +3766,13 @@ function ModalResolucionSobrecarga({
 
   const comenzarResolucion = () => {
     setEstrategia(fechaRecomendadaValida ? "mover" : "manual");
-    const duracionInicial = calcularHorasManualesIniciales(conflicto, horasCausaConflicto);
-    setHorasManuales(duracionInicial);
-    setTextoHorasManuales(formatearDuracion(duracionInicial));
+    setHorasManuales(
+      calcularHorasManualesIniciales(conflicto, horasCausaConflicto)
+    );
     setResolucion(true);
   };
 
   const aplicarSolucion = () => {
-    if (estrategia === "manual") {
-      const duracionEscrita = parsearDuracionEditable(textoHorasManuales);
-      if (duracionEscrita === null || !Number.isFinite(duracionEscrita) || duracionEscrita <= 0) return;
-      setHorasManuales(redondearHoras(duracionEscrita));
-    }
     if (!resolucionActual.valido) return;
     if (estrategia === "mover" && !fechaRecomendadaValida) return;
 
@@ -4037,68 +4004,43 @@ function ModalResolucionSobrecarga({
                   <button
                     type="button"
                     aria-label="Disminuir media hora"
-                    onClick={() => {
-                      const nuevaDuracion = redondearHoras(
-                        Math.max(1 / 60, Number(horasManuales) - PASO_HORAS_MANUALES)
-                      );
-                      setHorasManuales(nuevaDuracion);
-                      setTextoHorasManuales(formatearDuracion(nuevaDuracion));
-                    }}
+                    onClick={() =>
+                      setHorasManuales((horas) =>
+                        redondearHoras(
+                          Math.max(
+                            1 / 60,
+                            Number(horas) - PASO_HORAS_MANUALES
+                          )
+                        )
+                      )
+                    }
                     disabled={
                       guardando || horasManuales <= (1 / 60)
                     }
                   >
                     −
                   </button>
-                  <input
-                    className="resolution-duration-input"
-                    type="text"
-                    inputMode="text"
-                    aria-label="Duración manual en horas y minutos"
-                    aria-describedby="resolution-duration-help"
-                    placeholder="Ej. 2h 30min"
-                    value={textoHorasManuales}
-                    disabled={guardando}
-                    aria-invalid={duracionManualParseada === null || duracionManualParseada <= 0}
-                    onChange={(event) => {
-                      const texto = event.target.value;
-                      setTextoHorasManuales(texto);
-                      const duracion = parsearDuracionEditable(texto);
-                      if (duracion !== null && Number.isFinite(duracion) && duracion > 0) {
-                        setHorasManuales(redondearHoras(duracion));
-                      }
-                    }}
-                    onBlur={() => {
-                      if (duracionManualParseada !== null && duracionManualParseada > 0) {
-                        setTextoHorasManuales(formatearDuracion(duracionManualParseada));
-                      }
-                    }}
-                  />
+                  <span className="postpone-hours-value" aria-live="polite">
+                    <strong>{formatearDuracion(horasManuales)}</strong>
+                  </span>
                   <button
                     type="button"
                     aria-label="Aumentar media hora"
-                    onClick={() => {
-                      const nuevaDuracion = redondearHoras(Number(horasManuales) + PASO_HORAS_MANUALES);
-                      setHorasManuales(nuevaDuracion);
-                      setTextoHorasManuales(formatearDuracion(nuevaDuracion));
-                    }}
+                    onClick={() =>
+                      setHorasManuales((horas) =>
+                        redondearHoras(Number(horas) + PASO_HORAS_MANUALES)
+                      )
+                    }
                     disabled={guardando}
                   >
                     +
                   </button>
                 </div>
-                <small id="resolution-duration-help" className="resolution-duration-help">
-                  Escribe una duración como 2h 30min, 45min o 2:30.
-                </small>
-                {duracionManualParseada === null || duracionManualParseada <= 0 ? (
-                  <small className="resolution-hours-alert" role="alert">
-                    Introduce una duración válida mayor que 0, por ejemplo 1h 30min.
-                  </small>
-                ) : resolucionActual.alerta ? (
+                {resolucionActual.alerta && (
                   <small className="resolution-hours-alert" role="alert">
                     {resolverMensajeAlerta(resolucionActual)}
                   </small>
-                ) : null}
+                )}
               </div>
             )}
             {estrategia === "mover" && resolucionActual.alerta && (
@@ -4119,7 +4061,7 @@ function ModalResolucionSobrecarga({
                 type="button"
                 className="btn primary"
                 onClick={aplicarSolucion}
-                disabled={guardando || !resolucionActual.valido || (estrategia === "manual" && (duracionManualParseada === null || duracionManualParseada <= 0))}
+                disabled={guardando || !resolucionActual.valido}
               >
                 {guardando ? "Reprogramando…" : "Aplicar solución"}
               </button>
