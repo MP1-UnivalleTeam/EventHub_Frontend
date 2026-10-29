@@ -9079,3 +9079,140 @@ body[data-theme="dark"] .progress-calendar-modal{background:#0b1326;color:#f8faf
     font-size: 18px;
   }
 }
+
+
+/* =========================================================
+   REPROGRAMAR SUBTAREA — CONTRASTE REAL EN MODO OSCURO
+   Ajusta las clases específicas del calendario de reprogramación.
+   ========================================================= */
+body[data-theme="dark"] .postpone-schedule-modal .postpone-task-summary {
+  background: #263449 !important;
+  border: 1px solid #3b4b63 !important;
+  color: #e2e8f0 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-task-icon {
+  background: #1d4ed8 !important;
+  color: #eff6ff !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-task-summary small,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-task-summary > span:last-child,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-task-summary > div > span,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-original-date,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-original-date strong,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-field > small,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-hours-field > small {
+  color: #cbd5e1 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-task-summary strong,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-heading h3,
+body[data-theme="dark"] .postpone-schedule-modal .postpone-field label {
+  color: #f8fafc !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-weekday {
+  color: #a9bad2 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day {
+  background: #263449 !important;
+  color: #e2e8f0 !important;
+  border-color: #40516b !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day small {
+  color: #b7c8e2 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day:hover:not(:disabled) {
+  background: #304766 !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day.selected {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+  border-color: #93c5fd !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day.selected small {
+  color: #dbeafe !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day.full:not(.selected) {
+  background: #4a2934 !important;
+  border-color: #854354 !important;
+  color: #ffe4e6 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day.full:not(.selected) small {
+  color: #fecdd3 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day.past {
+  background: #172033 !important;
+  color: #718096 !important;
+  border-color: #2b384c !important;
+  opacity: 1 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-day.past small {
+  color: #718096 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-heading button {
+  background: #263449 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #40516b !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-heading button:hover:not(:disabled) {
+  background: #304766 !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-calendar-heading .postpone-today-link {
+  color: #93c5fd !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-hours-control {
+  background: #0b1326 !important;
+  border: 1px solid #40516b !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-hours-control button {
+  background: #334155 !important;
+  color: #f8fafc !important;
+  border: 1px solid #475569 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-hours-control button:hover:not(:disabled) {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-hours-control input {
+  background: #0b1326 !important;
+  color: #f8fafc !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-hours-value > span {
+  color: #cbd5e1 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-actions {
+  border-top-color: #40516b !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-close {
+  color: #cbd5e1 !important;
+}
+
+body[data-theme="dark"] .postpone-schedule-modal .postpone-close:hover {
+  background: #334155 !important;
+  color: #ffffff !important;
+}
