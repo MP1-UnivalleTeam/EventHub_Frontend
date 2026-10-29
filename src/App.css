@@ -8634,7 +8634,6 @@ body[data-theme="dark"] .search-placeholder input::placeholder {
 /* Superficies generales y tarjetas de la pestaña Eventos */
 body[data-theme="dark"] .card,
 body[data-theme="dark"] .event-card,
-body[data-theme="dark"] .event-card-content,
 body[data-theme="dark"] .event-info,
 body[data-theme="dark"] .summary-card,
 body[data-theme="dark"] .venue-card,
@@ -8651,6 +8650,17 @@ body[data-theme="dark"] .validation-card {
   color: #dae2fd;
   border-color: #334155;
   box-shadow: none;
+}
+/* El contenido de cada tarjeta de Eventos debe ser transparente para dejar
+   visible el degradado azul de la tarjeta, igual que en el mockup de Stitch. */
+body[data-theme="dark"] .event-card-content {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+  border-radius: 0;
+  color: #f8fafc;
 }
 body[data-theme="dark"] .event-card:hover,
 body[data-theme="dark"] .progress-event-card:hover,
