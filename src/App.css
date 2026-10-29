@@ -9216,3 +9216,106 @@ body[data-theme="dark"] .postpone-schedule-modal .postpone-close:hover {
   background: #334155 !important;
   color: #ffffff !important;
 }
+
+
+/* Duraciones expresadas en horas y minutos, conservando horas decimales en la API. */
+.duration-input {
+  display: grid;
+  grid-template-columns: minmax(54px, 1fr) auto minmax(64px, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  margin: 4px 0;
+}
+.duration-input-part {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.duration-input-part label {
+  color: var(--muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.duration-input-part input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 9px;
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 8px;
+  background: var(--surface, #ffffff);
+  color: var(--ink, #172033);
+  font: inherit;
+}
+.duration-input-separator {
+  padding-bottom: 9px;
+  color: var(--muted, #64748b);
+  font-weight: 700;
+}
+.duration-input-preview {
+  align-self: center;
+  padding-top: 17px;
+  color: var(--blue, #315bd5);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.duration-input-part input:focus-visible {
+  outline: 2px solid var(--blue-2, #60a5fa);
+  outline-offset: 2px;
+}
+.duration-input-part input[aria-invalid="true"] {
+  border-color: var(--red, #c7353d);
+}
+.postpone-duration-editor {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+}
+.postpone-duration-editor .duration-input {
+  grid-template-columns: minmax(48px, 1fr) auto minmax(54px, 1fr) auto;
+  gap: 5px;
+  margin: 0;
+}
+.postpone-duration-editor .duration-input-part label {
+  display: none;
+}
+.postpone-duration-editor .duration-input-part input {
+  min-height: 36px;
+  padding: 6px;
+}
+.postpone-duration-editor .duration-input-separator {
+  padding-bottom: 9px;
+}
+.postpone-duration-editor .duration-input-preview {
+  padding-top: 0;
+  font-size: 0.72rem;
+}
+body[data-theme="dark"] .duration-input-part label {
+  color: #cbd5e1;
+}
+body[data-theme="dark"] .duration-input-part input {
+  background: #0b1326 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+body[data-theme="dark"] .duration-input-separator {
+  color: #cbd5e1;
+}
+body[data-theme="dark"] .duration-input-preview {
+  color: #93c5fd;
+}
+@media (max-width: 520px) {
+  .duration-input {
+    grid-template-columns: minmax(44px, 1fr) auto minmax(54px, 1fr);
+    gap: 5px;
+  }
+  .duration-input-preview {
+    grid-column: 1 / -1;
+    padding-top: 0;
+  }
+}

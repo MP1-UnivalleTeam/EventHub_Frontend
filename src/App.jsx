@@ -226,6 +226,103 @@ function obtenerHoras(item) {
   return Number.isFinite(value) ? value : 0;
 }
 
+// Las duraciones se conservan como horas decimales en el estado/API por
+// compatibilidad, pero se muestran y editan en horas + minutos.
+function horasAMinutos(valor) {
+  const horas = Number(valor);
+  return Number.isFinite(horas) ? Math.max(0, Math.round(horas * 60)) : 0;
+}
+
+function formatearDuracion(valor) {
+  const minutosTotales = horasAMinutos(valor);
+  if (minutosTotales === 0) return "0min";
+  const horas = Math.floor(minutosTotales / 60);
+  const minutos = minutosTotales % 60;
+  if (horas && minutos) return `${horas}h ${minutos}min`;
+  if (horas) return `${horas}h`;
+  return `${minutos}min`;
+}
+
+function DurationInput({
+  id,
+  name,
+  value,
+  onChange,
+  disabled = false,
+  ariaInvalid = false,
+  maxHours = 24,
+}) {
+  const tieneValor = value !== "" && value !== null && value !== undefined &&
+    Number.isFinite(Number(value));
+  const minutosTotales = tieneValor ? horasAMinutos(value) : 0;
+  const horasParte = tieneValor && minutosTotales >= 60
+    ? String(Math.floor(minutosTotales / 60))
+    : "";
+  const minutosRestantes = minutosTotales % 60;
+  const minutosParte = tieneValor && minutosRestantes > 0
+    ? String(minutosRestantes)
+    : "";
+
+  const actualizarParte = (parte, valorCrudo) => {
+    let horas = parte === "horas"
+      ? (valorCrudo === "" ? 0 : Number(valorCrudo))
+      : (horasParte === "" ? 0 : Number(horasParte));
+    let minutos = parte === "minutos"
+      ? (valorCrudo === "" ? 0 : Number(valorCrudo))
+      : (minutosParte === "" ? 0 : Number(minutosParte));
+
+    horas = Math.max(0, Math.min(maxHours, Number.isFinite(horas) ? horas : 0));
+    minutos = Math.max(0, Math.min(59, Number.isFinite(minutos) ? minutos : 0));
+    if (horas >= maxHours) minutos = 0;
+
+    const totalMinutos = horas * 60 + minutos;
+    const nuevoValor = totalMinutos === 0
+      ? ""
+      : String(Number((totalMinutos / 60).toFixed(4)));
+
+    onChange({ target: { name, value: nuevoValor } });
+  };
+
+  return (
+    <div className="duration-input" aria-invalid={ariaInvalid || undefined}>
+      <div className="duration-input-part">
+        <label htmlFor={`${id}-hours`}>Horas</label>
+        <input
+          id={`${id}-hours`}
+          name={`${name}_horas`}
+          type="number"
+          min="0"
+          max={maxHours}
+          step="1"
+          inputMode="numeric"
+          value={horasParte}
+          onChange={(event) => actualizarParte("horas", event.target.value)}
+          disabled={disabled}
+          aria-invalid={ariaInvalid}
+        />
+      </div>
+      <span className="duration-input-separator" aria-hidden="true">:</span>
+      <div className="duration-input-part">
+        <label htmlFor={`${id}-minutes`}>Minutos</label>
+        <input
+          id={`${id}-minutes`}
+          name={`${name}_minutos`}
+          type="number"
+          min="0"
+          max="59"
+          step="1"
+          inputMode="numeric"
+          value={minutosParte}
+          onChange={(event) => actualizarParte("minutos", event.target.value)}
+          disabled={disabled}
+          aria-invalid={ariaInvalid}
+        />
+      </div>
+      <span className="duration-input-preview">{tieneValor && Number(value) > 0 ? formatearDuracion(value) : "—"}</span>
+    </div>
+  );
+}
+
 function obtenerHorasPendientes(tareas) {
   return tareas
     .filter((tarea) => {
@@ -441,7 +538,7 @@ function cabeEnJornada(horas, limite) {
 }
 
 function redondearHoras(horas) {
-  return Math.round((Number(horas) || 0) * 100) / 100;
+  return Math.round((Number(horas) || 0) * 60) / 60;
 }
 
 // Duración con la que arranca el control manual: la mayor que quepa en la
@@ -532,8 +629,8 @@ function resolverMensajeAlerta(resolucionActual) {
     return (
       <>
         ⚠ El {formatearFecha(resolucionActual.fecha_destino)} también
-        superaría su jornada ({alerta.horas.toFixed(1)}h de{" "}
-        {alerta.limite.toFixed(1)}h). Ajusta la duración manualmente para
+        superaría su jornada ({formatearDuracion(alerta.horas)} de{" "}
+        {formatearDuracion(alerta.limite)}). Ajusta la duración manualmente para
         continuar.
       </>
     );
@@ -543,8 +640,8 @@ function resolverMensajeAlerta(resolucionActual) {
     return (
       <>
         ⚠ El {formatearFecha(resolucionActual.fecha_destino)} ya tiene{" "}
-        {resolucionActual.carga_previa.toFixed(1)}h programadas y solo admite{" "}
-        {alerta.horas.toFixed(1)}h. Mueve la gestión a otro día para
+        {formatearDuracion(resolucionActual.carga_previa)} programadas y solo admite{" "}
+        {formatearDuracion(alerta.horas)}. Mueve la gestión a otro día para
         continuar.
       </>
     );
@@ -552,7 +649,7 @@ function resolverMensajeAlerta(resolucionActual) {
 
   return (
     <>
-      ⚠ Las horas superan las {alerta.horas.toFixed(1)}h disponibles.
+      ⚠ La duración supera los {formatearDuracion(alerta.horas)} disponibles.
       Disminuye la duración para continuar.
     </>
   );
@@ -1248,9 +1345,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
       Boolean(siguiente.fecha),
       Boolean(
         siguiente.horas &&
-        Number(siguiente.horas) >= 1 &&
-        Number(siguiente.horas) <= 24 &&
-        Number.isInteger(Number(siguiente.horas))
+        Number(siguiente.horas) > 0 &&
+        Number(siguiente.horas) <= 24
       ),
       Boolean(siguiente.usuario_responsable.trim()),
     ];
@@ -1296,10 +1392,9 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
 
     if (
       !formulario.horas ||
-      horas <= 0 ||
-      !Number.isInteger(horas)
+      horas <= 0
     ) {
-      next.horas = "Las horas deben ser mayor a 0.";
+      next.horas = "La duración debe ser mayor a 0 minutos.";
     } else if (horas > 24) {
       next.horas = "Las horas no pueden ser mayores a 24.";
     }
@@ -1322,10 +1417,9 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
       if (
         !item.horas_estimadas ||
         Number(item.horas_estimadas) <= 0 ||
-        Number(item.horas_estimadas) > 24 ||
-        !Number.isInteger(Number(item.horas_estimadas))
+        Number(item.horas_estimadas) > 24
       ) {
-        erroresItem.push("indica las horas (de 1 a 24)");
+        erroresItem.push("indica una duración mayor a 0 minutos y hasta 24 horas");
       }
       if (!item.estado) erroresItem.push("selecciona el estado");
       if (
@@ -1498,21 +1592,16 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
           )}
         </div>
         <div>
-          <div className="field-header"><label htmlFor="horas">Horas <span>*</span></label><small>Duración estimada</small></div>
-          <input
+          <div className="field-header"><label htmlFor="horas-hours">Duración estimada <span>*</span></label><small>Horas y minutos</small></div>
+          <DurationInput
             id="horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={formulario.horas}
             onChange={actualizar}
-            placeholder="4"
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
           {errores.horas && <p className="inline-error" role="alert">{errores.horas}</p>}
-          {!errores.horas && <p className="helper">ⓘ Las horas deben ser entre 1 y 24</p>}
+          {!errores.horas && <p className="helper">ⓘ Indica la duración en horas y minutos (máximo 24h)</p>}
         </div>
       </div>
 
@@ -1583,17 +1672,13 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
                 <div className="form-two-columns">
                   <div>
                     <div className="field-header">
-                      <label htmlFor={`evento-subtarea-horas-${item.id}`}>Horas <span>*</span></label>
+                      <label htmlFor={`evento-subtarea-horas-${item.id}-hours`}>Duración <span>*</span></label>
                     </div>
-                    <input
+                    <DurationInput
                       id={`evento-subtarea-horas-${item.id}`}
-                      type="number"
-                      min="1"
-                      max="24"
-                      step="1"
+                      name="horas_estimadas"
                       value={item.horas_estimadas}
                       onChange={(event) => actualizarSubtarea(item.id, "horas_estimadas", event.target.value)}
-                      placeholder="2"
                     />
                   </div>
                   <div>
@@ -1855,10 +1940,9 @@ function CrearSubtareaForm({
     if (
       !form.horas ||
       Number(form.horas) <= 0 ||
-      Number(form.horas) > 24 ||
-      !Number.isInteger(Number(form.horas))
+      Number(form.horas) > 24
     ) {
-      next.horas = "Las horas deben ser un número entero entre 1 y 24.";
+      next.horas = "La duración debe ser mayor a 0 minutos y hasta 24 horas.";
     }
 
     if (
@@ -1946,22 +2030,17 @@ function CrearSubtareaForm({
       <div className="form-two-columns">
         <div>
           <div className="field-header">
-            <label htmlFor="sub-horas">
-              Horas <span>*</span>
+            <label htmlFor="sub-horas-hours">
+              Duración estimada <span>*</span>
             </label>
           </div>
 
-          <input
+          <DurationInput
             id="sub-horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={form.horas}
             onChange={actualizar}
-            placeholder="2"
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
 
           {errores.horas ? (
@@ -1970,7 +2049,7 @@ function CrearSubtareaForm({
             </p>
           ) : (
             <p className="helper">
-              ⓘ Las horas deben ser entre 1 y 24
+              ⓘ Ingresa horas y minutos (máximo 24h)
             </p>
           )}
         </div>
@@ -2194,10 +2273,9 @@ function EditarEventoForm({ evento, subtareas = [], onCancelar, onGuardado }) {
 
     if (
       !formulario.horas ||
-      horas <= 0 ||
-      !Number.isInteger(horas)
+      horas <= 0
     ) {
-      next.horas = "Las horas deben ser mayor a 0.";
+      next.horas = "La duración debe ser mayor a 0 minutos.";
     } else if (horas > 24) {
       next.horas = "Las horas no pueden ser mayores a 24.";
     }
@@ -2249,22 +2327,18 @@ function EditarEventoForm({ evento, subtareas = [], onCancelar, onGuardado }) {
           )}
         </div>
         <div>
-          <div className="field-header"><label htmlFor="edit-horas">Horas <span>*</span></label></div>
-          <input
+          <div className="field-header"><label htmlFor="edit-horas-hours">Duración estimada <span>*</span></label></div>
+          <DurationInput
             id="edit-horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={formulario.horas}
             onChange={actualizar}
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
           {errores.horas ? (
             <p className="inline-error" role="alert">{errores.horas}</p>
           ) : (
-            <p className="helper">ⓘ Las horas deben ser entre 1 y 24</p>
+            <p className="helper">ⓘ Ingresa horas y minutos (máximo 24h)</p>
           )}
         </div>
       </div>
@@ -2487,10 +2561,9 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
     if (
       !form.horas ||
       Number(form.horas) <= 0 ||
-      Number(form.horas) > 24 ||
-      !Number.isInteger(Number(form.horas))
+      Number(form.horas) > 24
     ) {
-      next.horas = "Las horas deben ser un número entero entre 1 y 24.";
+      next.horas = "La duración debe ser mayor a 0 minutos y hasta 24 horas.";
     }
     if (
       !esFechaSubtareaValida(form.dia_objetivo, eventoFecha)
@@ -2553,21 +2626,17 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
       <div className="form-two-columns">
         <div>
           <div className="field-header">
-            <label htmlFor="edit-sub-horas">
-              Horas <span>*</span>
+            <label htmlFor="edit-sub-horas-hours">
+              Duración estimada <span>*</span>
             </label>
           </div>
 
-          <input
+          <DurationInput
             id="edit-sub-horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={form.horas}
             onChange={actualizar}
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
 
           {errores.horas && (
@@ -2712,7 +2781,7 @@ function Eventos({ eventos, cargando, error, recargar, crear, busqueda }) {
       {!cargando && !error && eventosVisibles.length > 0 && <section className="event-grid" aria-label="Eventos guardados">
         {eventosVisibles.map((evento) => <article className="event-card card" key={evento.id ?? `${evento.titulo}-${evento.fecha}`}>
           <div className="event-card-icon">✦</div>
-          <div className="event-card-content"><span className="status-pill">● En preparación</span><h2>{evento.titulo}</h2><p>{formatearFecha(evento.fecha)} {evento.horas ? `• ${evento.horas} horas` : ""}</p>{evento.descripcion && <p className="muted-line">{evento.descripcion}</p>}</div>
+          <div className="event-card-content"><span className="status-pill">● En preparación</span><h2>{evento.titulo}</h2><p>{formatearFecha(evento.fecha)} {evento.horas ? `• ${formatearDuracion(evento.horas)}` : ""}</p>{evento.descripcion && <p className="muted-line">{evento.descripcion}</p>}</div>
           <button className="btn secondary" onClick={() => navegar(`/eventos/${evento.id}`)}>Ver detalle</button>
         </article>)}
       </section>}
@@ -2935,7 +3004,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
 
       <section className="event-info card">
         <InfoBlock icon="fecha" title="FECHA DEL EVENTO"><strong>{formatearFecha(evento.fecha)}</strong><span>Fecha registrada</span></InfoBlock>
-        <InfoBlock icon="duracion" title="DURACIÓN ESTIMADA"><strong>{evento.horas ?? "—"} horas</strong><span>Jornada estimada</span></InfoBlock>
+        <InfoBlock icon="duracion" title="DURACIÓN ESTIMADA"><strong>{evento.horas == null ? "—" : formatearDuracion(evento.horas)}</strong><span>Jornada estimada</span></InfoBlock>
         <InfoBlock icon="responsable" title="USUARIO RESPONSABLE"><strong>{responsableTexto || "Sin asignar"}</strong><span>Responsable</span></InfoBlock>
         <InfoBlock icon="descripcion" title="DESCRIPCIÓN COMPLETA"><strong className="description-value">{evento.descripcion || "Sin descripción"}</strong></InfoBlock>
       </section>
@@ -2967,7 +3036,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
               </button>
               <div className="task-main">
                 <h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3>
-                <p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p>
+                <p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {formatearDuracion(obtenerHoras(task))}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p>
                 {responsableSubtarea && <p className="subtask-responsible">Responsable: {responsableSubtarea}</p>}
               </div>
               <div className="subtask-status">
@@ -2979,7 +3048,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
         </div>}
       </section>
 
-      <section className="progress-card card"><div className="progress-icon">✓</div><div><h2>Progreso global de subtareas</h2><p>{subtareas.length === 0 ? "Sin gestiones registradas (0%)." : `${completadas} de ${subtareas.length} completadas (${porcentaje}%) • ${horasRegistradas} horas totales registradas`}</p></div><strong>{porcentaje}%</strong><div className="progress-track" role="progressbar" aria-valuenow={porcentaje} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso global de subtareas"><span style={{ width: `${porcentaje}%` }} /></div></section>
+      <section className="progress-card card"><div className="progress-icon">✓</div><div><h2>Progreso global de subtareas</h2><p>{subtareas.length === 0 ? "Sin gestiones registradas (0%)." : `${completadas} de ${subtareas.length} completadas (${porcentaje}%) • ${formatearDuracion(horasRegistradas)} totales registradas`}</p></div><strong>{porcentaje}%</strong><div className="progress-track" role="progressbar" aria-valuenow={porcentaje} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso global de subtareas"><span style={{ width: `${porcentaje}%` }} /></div></section>
 
       {modal === "create-subtask" && <Modal title="Crear subtarea" subtitle="Agrega una nueva tarea para este evento." close={() => setModal(null)}><CrearSubtareaForm eventoId={id} eventoFecha={evento.fecha} eventoTitulo={evento.titulo} onCancelar={() => setModal(null)} onCreada={async () => { setModal(null); onNotify("Subtarea creada correctamente"); await cargarSubtareas(); }} /></Modal>}
       {modal === "edit-event" && <Modal title="Editar evento" subtitle="Actualiza la información del evento." close={() => setModal(null)} wide><EditarEventoForm evento={evento} subtareas={subtareas} onCancelar={() => setModal(null)} onGuardado={eventoActualizado} /></Modal>}
@@ -3127,7 +3196,7 @@ function CrearEventoPage({ onCancelar, onCrear }) {
           <ul>
             <li><b>Título:</b> Debe tener al menos 3 caracteres.</li>
             <li><b>Fecha:</b> Debe ser hoy o una fecha futura.</li>
-            <li><b>Horas:</b> Debe ser un número entero entre 1 y 24.</li>
+            <li><b>Duración:</b> Debe ser mayor a 0 minutos y no superar las 24 horas; se ingresa en horas y minutos.</li>
             <li><b>Usuario responsable:</b> Debe indicar la persona responsable del evento.</li>
           </ul>
         </section>
@@ -3567,13 +3636,13 @@ function ModalReprogramarLimite({ conflicto, guardando, onCancelar, onGuardar })
               <span className="agenda-warning-icon">⚠</span>
               <div>
                 <h2 id="limit-reschedule-title">Sobrecarga al reducir el límite</h2>
-                <p>Al reducir el límite a {limite}h, las subtareas del {formatearFecha(conflicto.fecha_objetivo)} superan la nueva capacidad. Pulsa «Reprogramar» en cada tarea que quieras mover de día o ajustar de duración.</p>
+                <p>Al reducir el límite a {formatearDuracion(limite)}, las subtareas del {formatearFecha(conflicto.fecha_objetivo)} superan la nueva capacidad. Pulsa «Reprogramar» en cada tarea que quieras mover de día o ajustar de duración.</p>
               </div>
             </div>
             <div className="agenda-capacity-card">
               <div>
-                <strong>{maximoDiario.toFixed(1)}h <small>máximo por día tras los cambios</small></strong>
-                <span>{limite.toFixed(1)}h de tope · {hayExceso ? `+${fechasConExceso.reduce((sum, item) => sum + item.exceso, 0).toFixed(1)}h de exceso` : "sin sobrecarga"}</span>
+                <strong>{formatearDuracion(maximoDiario)} <small>máximo por día tras los cambios</small></strong>
+                <span>{formatearDuracion(limite)} de tope · {hayExceso ? `+${formatearDuracion(fechasConExceso.reduce((sum, item) => sum + item.exceso, 0))} de exceso` : "sin sobrecarga"}</span>
               </div>
               <div className="agenda-capacity-track"><span style={{ width: `${Math.min((maximoDiario / Math.max(limite, 1)) * 100, 100)}%`, background: hayExceso ? "#c7353d" : "#07835b" }} /></div>
             </div>
@@ -3586,9 +3655,9 @@ function ModalReprogramarLimite({ conflicto, guardando, onCancelar, onGuardar })
                   <div className="agenda-reschedule-limit-item agenda-reschedule-limit-item-action" key={tarea.id}>
                     <div className="agenda-reschedule-limit-info">
                       <strong>{tarea.titulo}</strong>
-                      <small>{tarea.evento || "Evento sin título"} · {tarea.horas_estimadas.toFixed(1)}h</small>
+                      <small>{tarea.evento || "Evento sin título"} · {formatearDuracion(tarea.horas_estimadas)}</small>
                       <small>{cambioAplicado ? `Nueva fecha: ${formatearFecha(tarea.fecha)} · Original: ${formatearFecha(tarea.fechaOriginal)}` : `Fecha actual: ${formatearFecha(tarea.fechaOriginal)}`}</small>
-                      {excesoEnFecha && <small className="agenda-reschedule-date-error">Este día todavía supera las {limite}h disponibles.</small>}
+                      {excesoEnFecha && <small className="agenda-reschedule-date-error">Este día todavía supera las {formatearDuracion(limite)} disponibles.</small>}
                     </div>
                     <button type="button" className="btn secondary agenda-reschedule-one-button" disabled={guardando} onClick={() => setTareaSeleccionada(tarea)}>Reprogramar</button>
                   </div>
@@ -3609,7 +3678,7 @@ function ModalReprogramarLimite({ conflicto, guardando, onCancelar, onGuardar })
           horasCausa={tareaSeleccionada.horas_estimadas}
           tituloCausa={tareaSeleccionada.titulo}
           titulo={`Reprogramar: ${tareaSeleccionada.titulo}`}
-          descripcion={`Elige si deseas mover esta subtarea a otro día o reducir sus horas para ajustarte al límite diario de ${limite}h.`}
+          descripcion={`Elige si deseas mover esta subtarea a otro día o reducir su duración para ajustarte al límite diario de ${formatearDuracion(limite)}.`}
           etiquetaAccion="Resolver conflicto →"
           guardando={guardando}
           permitirResolucion={true}
@@ -3745,7 +3814,7 @@ function ModalResolucionSobrecarga({
                 </h2>
                 <p>
                   {descripcion ??
-                    `El ${formatearFecha(conflicto.fecha_objetivo)} superarías tu jornada máxima configurada (${conflicto.limite_horas}h).`}
+                    `El ${formatearFecha(conflicto.fecha_objetivo)} superarías tu jornada máxima configurada (${formatearDuracion(conflicto.limite_horas)}).`}
                 </p>
               </div>
             </div>
@@ -3753,12 +3822,12 @@ function ModalResolucionSobrecarga({
               <div className="agenda-capacity-card">
                 <div>
                   <strong>
-                    {estadoActual.asignadas.toFixed(1)}h{" "}
+                    {formatearDuracion(estadoActual.asignadas)}{" "}
                     <small>asignadas</small>
                   </strong>
                   <span>
-                    {estadoActual.limite.toFixed(1)}h de tope
-                    {" "}· +{estadoActual.exceso.toFixed(1)}h
+                    {formatearDuracion(estadoActual.limite)} de tope
+                    {" "}· +{formatearDuracion(estadoActual.exceso)}
                     {" "}de exceso
                   </span>
                 </div>
@@ -3796,7 +3865,7 @@ function ModalResolucionSobrecarga({
                         </strong>
                         <small>{gestion.evento}</small>
                       </span>
-                      <b>{Number(gestion.horas_estimadas).toFixed(1)}h</b>
+                      <b>{formatearDuracion(gestion.horas_estimadas)}</b>
                     </div>
                   ))}
                 </div>
@@ -3847,18 +3916,18 @@ function ModalResolucionSobrecarga({
             <h2 id="resolution-title">Resolver sobrecarga de horas</h2>
             <p>
               {formatearFecha(conflicto.fecha_objetivo)} · Exceso de{" "}
-              {estadoActual.exceso.toFixed(1)}h. Selecciona
+              {formatearDuracion(estadoActual.exceso)}. Selecciona
               cómo deseas equilibrar tu agenda.
             </p>
             <div className="agenda-capacity-card compact">
               <div>
                 <strong>
-                  {resolucionActual.asignadas.toFixed(1)}h
+                  {formatearDuracion(resolucionActual.asignadas)}
                   {" "}asignadas
                 </strong>
                 <span>
-                  {resolucionActual.limite.toFixed(1)}h de tope
-                  {" "}· +{resolucionActual.exceso.toFixed(1)}h
+                  {formatearDuracion(resolucionActual.limite)} de tope
+                  {" "}· +{formatearDuracion(resolucionActual.exceso)}
                   {" "}de exceso
                 </span>
               </div>
@@ -3881,7 +3950,7 @@ function ModalResolucionSobrecarga({
             </div>
             <div className="resolution-cause">
               ⚠ {tituloCausa} · Causa del exceso
-              {" "}({horasCausaConflicto.toFixed(1)}h)
+              {" "}({formatearDuracion(horasCausaConflicto)})
             </div>
             <div className="resolution-options">
               <button
@@ -3919,7 +3988,7 @@ function ModalResolucionSobrecarga({
                 <span>
                   <strong>Ajustar manualmente</strong>
                   <small>
-                    Aumenta o disminuye las horas y verifica que no superen la
+                    Aumenta o disminuye la duración y verifica que no supere la
                     disponibilidad de la jornada.
                   </small>
                 </span>
@@ -3927,7 +3996,7 @@ function ModalResolucionSobrecarga({
             </div>
             {estrategia === "manual" && (
               <div className="postpone-field resolution-hours-field">
-                <label>Duración manual (horas)</label>
+                <label>Duración manual</label>
                 <div
                   className="postpone-hours-control"
                   aria-label="Ajustar duración manual"
@@ -3939,21 +4008,20 @@ function ModalResolucionSobrecarga({
                       setHorasManuales((horas) =>
                         redondearHoras(
                           Math.max(
-                            PASO_HORAS_MANUALES,
+                            1 / 60,
                             Number(horas) - PASO_HORAS_MANUALES
                           )
                         )
                       )
                     }
                     disabled={
-                      guardando || horasManuales <= PASO_HORAS_MANUALES
+                      guardando || horasManuales <= (1 / 60)
                     }
                   >
                     −
                   </button>
                   <span className="postpone-hours-value" aria-live="polite">
-                    <strong>{Number(horasManuales).toFixed(1)}</strong>
-                    <span>horas</span>
+                    <strong>{formatearDuracion(horasManuales)}</strong>
                   </span>
                   <button
                     type="button"
@@ -4586,7 +4654,7 @@ function Today({ onNotify }) {
               </span>
             )}
 
-            <span className="today-hours">{horasTarea}h</span>
+            <span className="today-hours">{formatearDuracion(horasTarea)}</span>
           </div>
 
           <h3>{titulo}</h3>
@@ -4686,7 +4754,7 @@ function Today({ onNotify }) {
         <div className="today-capacity">
           <span>Capacidad del día </span>
           <strong>
-            {horasPendientes}h / {capacidadDiaria}h
+            {formatearDuracion(horasPendientes)} / {formatearDuracion(capacidadDiaria)}
           </strong>
 
           <div className="today-capacity-track">
@@ -4733,8 +4801,8 @@ function Today({ onNotify }) {
           <span className="today-summary-icon">◴</span>
           <div>
             <small>TIEMPO ESTIMADO</small>
-            <strong>{horas}h</strong>
-            <span>Horas de trabajo</span>
+            <strong>{formatearDuracion(horas)}</strong>
+            <span>Duración total estimada</span>
           </div>
         </article>
       </div>
@@ -4920,7 +4988,7 @@ function Today({ onNotify }) {
                           </span>
 
                           <span className="today-hours">
-                            {obtenerHoras(tarea)}h
+                            {formatearDuracion(obtenerHoras(tarea))}
                           </span>
 
                         </div>
@@ -5048,7 +5116,7 @@ function Today({ onNotify }) {
 
               <div className="today-panel-info">
                 <span>Horas estimadas: </span>
-                <strong>{obtenerHoras(seleccionada)}h</strong>
+                <strong>{formatearDuracion(obtenerHoras(seleccionada))}</strong>
               </div>
 
               <div className="today-panel-info">
@@ -5185,7 +5253,7 @@ function Today({ onNotify }) {
                   </div>
 
                   <div className="today-upcoming-hours">
-                    {obtenerHoras(tarea)}h
+                    {formatearDuracion(obtenerHoras(tarea))}
                   </div>
 
                   <span className="today-upcoming-arrow">
@@ -5338,7 +5406,7 @@ function Today({ onNotify }) {
                     onClick={() => setNuevaFecha(fecha)}
                   >
                     <span>{dia}</span>
-                    <small>{horasDelDia}h/{capacidadDiaria}h</small>
+                    <small>{formatearDuracion(horasDelDia)}/{formatearDuracion(capacidadDiaria)}</small>
                   </button>
                 );
               })}
@@ -5349,65 +5417,56 @@ function Today({ onNotify }) {
                 <strong>⚠</strong>
                 <span>
                   {formatearFecha(nuevaFecha)} supera tu jornada diaria:{" "}
-                  {horasAsignadasEnFecha.toFixed(1)}h acumuladas frente a{" "}
-                  {capacidadDiaria.toFixed(1)}h de tope.
+                  {formatearDuracion(horasAsignadasEnFecha)} acumuladas frente a{" "}
+                  {formatearDuracion(capacidadDiaria)} de tope.
                 </span>
               </div>
             )}
 
             <div className="postpone-fields-row">
               <div className="postpone-field postpone-hours-field">
-                <label htmlFor="horas-reprogramacion">
-                  Horas estimadas de ejecución
+                <label htmlFor="horas-reprogramacion-hours">
+                  Duración estimada de ejecución
                 </label>
                 <div className="postpone-hours-control">
                   <button
                     type="button"
                     aria-label="Reducir duración"
-                    disabled={guardandoPosposicion || horasPosposicion <= 0.5}
+                    disabled={guardandoPosposicion || horasPosposicion <= (1 / 60)}
                     onClick={() =>
                       setHorasPosposicion((horas) =>
-                        Math.max(0.5, Number((Number(horas) - 0.5).toFixed(1)))
+                        Math.max(1 / 60, redondearHoras(Number(horas) - 0.5))
                       )
                     }
                   >
                     −
                   </button>
-                  <span className="postpone-hours-value">
-                    <input
+                  <div className="postpone-duration-editor">
+                    <DurationInput
                       id="horas-reprogramacion"
-                      type="number"
-                      min="0.5"
-                      max="24"
-                      step="0.5"
+                      name="horas_reprogramacion"
                       value={horasPosposicion}
-                      onFocus={() => {
-                        if (Number(horasPosposicion) === 0) {
-                          setHorasPosposicion("");
-                        }
-                      }}
                       onChange={(event) => {
                         const valor = event.target.value;
                         setHorasPosposicion(valor === "" ? "" : Number(valor));
                       }}
                       disabled={guardandoPosposicion}
                     />
-                    <span>horas</span>
-                  </span>
+                  </div>
                   <button
                     type="button"
                     aria-label="Aumentar duración"
                     disabled={guardandoPosposicion || horasPosposicion >= 24}
                     onClick={() =>
                       setHorasPosposicion((horas) =>
-                        Math.min(24, Number((Number(horas) + 0.5).toFixed(1)))
+                        Math.min(24, redondearHoras(Number(horas) + 0.5))
                       )
                     }
                   >
                     +
                   </button>
                 </div>
-                <small>Base: {obtenerHoras(tareaPosponer)}h</small>
+                <small>Base: {formatearDuracion(obtenerHoras(tareaPosponer))}</small>
               </div>
 
               <div className="postpone-field">
