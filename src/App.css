@@ -9574,3 +9574,57 @@ body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-
 body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-date-error {
   color: #fca5a5 !important;
 }
+
+/* Duración manual editable en el modal de resolución de sobrecarga. */
+.resolution-hours-field .postpone-hours-control .resolution-duration-input {
+  flex: 1 1 150px;
+  width: 150px;
+  min-width: 90px;
+  max-width: 180px;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  outline-offset: 2px;
+}
+
+.resolution-hours-field .postpone-hours-control .resolution-duration-input:focus {
+  border-color: #3b82f6;
+  outline: 2px solid rgba(59, 130, 246, 0.25);
+}
+
+.resolution-hours-field .postpone-hours-control .resolution-duration-input[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.resolution-duration-help {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+:root[data-theme="dark"] .resolution-hours-field .postpone-hours-control .resolution-duration-input,
+body[data-theme="dark"] .resolution-hours-field .postpone-hours-control .resolution-duration-input {
+  background: #0b1326 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+:root[data-theme="dark"] .resolution-hours-field .postpone-hours-control .resolution-duration-input:focus,
+body[data-theme="dark"] .resolution-hours-field .postpone-hours-control .resolution-duration-input:focus {
+  border-color: #60a5fa !important;
+  outline: 2px solid rgba(96, 165, 250, 0.25);
+}
+
+:root[data-theme="dark"] .resolution-duration-help,
+body[data-theme="dark"] .resolution-duration-help {
+  color: #cbd5e1;
+}
