@@ -3997,44 +3997,46 @@ function ModalResolucionSobrecarga({
             {estrategia === "manual" && (
               <div className="postpone-field resolution-hours-field">
                 <label>Duración manual</label>
-                <div
-                  className="postpone-hours-control"
-                  aria-label="Ajustar duración manual"
-                >
-                  <button
-                    type="button"
-                    aria-label="Disminuir media hora"
-                    onClick={() =>
-                      setHorasManuales((horas) =>
-                        redondearHoras(
-                          Math.max(
-                            1 / 60,
-                            Number(horas) - PASO_HORAS_MANUALES
+                <div className="resolution-duration-editor">
+                  <DurationInput
+                    id="resolution-duration"
+                    name="resolution-duration"
+                    value={String(horasManuales)}
+                    onChange={(event) => {
+                      const valor = event.target.value;
+                      setHorasManuales(valor === "" ? 0 : Number(valor));
+                    }}
+                    disabled={guardando}
+                    maxHours={24}
+                  />
+                  <div className="resolution-duration-stepper" aria-label="Ajuste rápido de duración">
+                    <button
+                      type="button"
+                      aria-label="Disminuir media hora"
+                      onClick={() =>
+                        setHorasManuales((horas) =>
+                          redondearHoras(
+                            Math.max(1 / 60, Number(horas) - PASO_HORAS_MANUALES)
                           )
                         )
-                      )
-                    }
-                    disabled={
-                      guardando || horasManuales <= (1 / 60)
-                    }
-                  >
-                    −
-                  </button>
-                  <span className="postpone-hours-value" aria-live="polite">
-                    <strong>{formatearDuracion(horasManuales)}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Aumentar media hora"
-                    onClick={() =>
-                      setHorasManuales((horas) =>
-                        redondearHoras(Number(horas) + PASO_HORAS_MANUALES)
-                      )
-                    }
-                    disabled={guardando}
-                  >
-                    +
-                  </button>
+                      }
+                      disabled={guardando || horasManuales <= (1 / 60)}
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Aumentar media hora"
+                      onClick={() =>
+                        setHorasManuales((horas) =>
+                          redondearHoras(Number(horas) + PASO_HORAS_MANUALES)
+                        )
+                      }
+                      disabled={guardando || horasManuales >= 24}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 {resolucionActual.alerta && (
                   <small className="resolution-hours-alert" role="alert">
