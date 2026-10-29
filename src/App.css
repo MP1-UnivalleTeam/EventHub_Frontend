@@ -9703,14 +9703,21 @@ body[data-theme="dark"] .progress-calendar-fab:hover {
 }
 
 .profile-dropdown-action:hover,
+.profile-dropdown-action:focus-visible,
 .profile-dropdown-theme:hover,
 .profile-dropdown-logout:hover {
   background: #f0f4ff;
 }
 
 .profile-dropdown-action {
-  background: #f0f4ff;
-  color: #2448b8;
+  background: transparent;
+  color: #172033;
+  transition: background .18s ease, color .18s ease;
+}
+
+.profile-dropdown-action:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
 }
 
 .profile-action-icon {
@@ -10156,11 +10163,16 @@ body[data-theme="dark"] .profile-dropdown-shift strong {
 }
 
 body[data-theme="dark"] .profile-dropdown-action {
-  background: #20365a;
-  color: #dbeafe;
+  background: transparent;
+  color: #eaf0ff;
+}
+
+body[data-theme="dark"] .profile-dropdown-action:focus-visible {
+  outline-color: #60a5fa;
 }
 
 body[data-theme="dark"] .profile-dropdown-action:hover,
+body[data-theme="dark"] .profile-dropdown-action:focus-visible,
 body[data-theme="dark"] .profile-dropdown-theme:hover,
 body[data-theme="dark"] .profile-dropdown-logout:hover {
   background: #29384f;

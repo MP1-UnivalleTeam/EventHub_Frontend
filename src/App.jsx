@@ -1012,15 +1012,6 @@ function Header({
           )}
         </div>
 
-        <button
-          className="icon-button logout-button"
-          type="button"
-          aria-label="Cerrar sesión"
-          title="Cerrar sesión"
-          onClick={() => setMostrarCerrarSesion(true)}
-        >
-          <FaDoorOpen aria-hidden="true" />
-        </button>
       </header>
 
       {mostrarMenuMovil && (
@@ -1083,18 +1074,6 @@ function Header({
               <span aria-hidden="true">›</span>
             </button>
 
-            <button
-              className="mobile-tools-link"
-              type="button"
-              onClick={() => {
-                setMostrarMenuMovil(false);
-                setMostrarCerrarSesion(true);
-              }}
-            >
-              <span aria-hidden="true">↪</span>
-              <span><strong>Cerrar sesión</strong><small>Salir de tu cuenta de EventHub</small></span>
-              <span aria-hidden="true">›</span>
-            </button>
           </aside>
         </div>
       )}
