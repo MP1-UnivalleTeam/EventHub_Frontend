@@ -25,7 +25,38 @@ import {
   cerrarSesion,
   estaAutenticado,
   guardarSesion,
+  obtenerSesion,
 } from "./services/auth.js";
+
+
+
+function obtenerDatosPerfil() {
+  const usuario = obtenerSesion()?.usuario || {};
+  const nombre =
+    [usuario.nombre, usuario.apellido].filter(Boolean).join(" ").trim() ||
+    usuario.nombre_completo ||
+    usuario.full_name ||
+    usuario.name ||
+    "Organizador";
+  const correo =
+    usuario.email ||
+    usuario.correo ||
+    usuario.correo_electronico ||
+    usuario.username ||
+    "";
+  const iniciales = String(nombre)
+    .split(/\\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+    .join("") || "EH";
+  return { nombre: String(nombre), correo: String(correo), iniciales };
+}
+
+function claveFotoPerfil() {
+  const { correo } = obtenerDatosPerfil();
+  return `eventhub-profile-photo:${correo.toLowerCase() || "organizador"}`;
+}
 
 const rutas = ["/login", "/registro", "/registro/onboarding", "/eventos", "/hoy", "/progreso", "/crear-evento", "/configuracion"];
 
@@ -752,6 +783,47 @@ function Header({
 }) {
   const [mostrarCerrarSesion, setMostrarCerrarSesion] = useState(false);
   const [mostrarMenuMovil, setMostrarMenuMovil] = useState(false);
+  const [mostrarMenuPerfil, setMostrarMenuPerfil] = useState(false);
+  const perfilMenuRef = useRef(null);
+  const perfil = obtenerDatosPerfil();
+  const [fotoPerfilHeader, setFotoPerfilHeader] = useState(() => {
+    try { return window.localStorage.getItem(claveFotoPerfil()) || ""; }
+    catch { return ""; }
+  });
+  const [horasPerfil, setHorasPerfil] = useState(null);
+
+  useEffect(() => {
+    const actualizarFoto = () => {
+      try { setFotoPerfilHeader(window.localStorage.getItem(claveFotoPerfil()) || ""); }
+      catch { setFotoPerfilHeader(""); }
+    };
+    window.addEventListener("eventhub-profile-updated", actualizarFoto);
+    return () => window.removeEventListener("eventhub-profile-updated", actualizarFoto);
+  }, []);
+
+  useEffect(() => {
+    obtenerConfiguracionUsuario()
+      .then((config) => setHorasPerfil(Number(config?.horas_dia) || 6))
+      .catch(() => setHorasPerfil(null));
+  }, []);
+
+  useEffect(() => {
+    if (!mostrarMenuPerfil) return undefined;
+    const cerrarFuera = (event) => {
+      if (perfilMenuRef.current && !perfilMenuRef.current.contains(event.target)) {
+        setMostrarMenuPerfil(false);
+      }
+    };
+    const cerrarEscape = (event) => {
+      if (event.key === "Escape") setMostrarMenuPerfil(false);
+    };
+    document.addEventListener("mousedown", cerrarFuera);
+    document.addEventListener("keydown", cerrarEscape);
+    return () => {
+      document.removeEventListener("mousedown", cerrarFuera);
+      document.removeEventListener("keydown", cerrarEscape);
+    };
+  }, [mostrarMenuPerfil, ruta]);
 
   const confirmarCerrarSesion = () => {
     cerrarSesion();
@@ -855,14 +927,90 @@ function Header({
           <span aria-hidden="true">{modoOscuro ? "☀️" : "🌙"}</span>
         </button>
 
-        <button
-          className="avatar"
-          type="button"
-          aria-label="Abrir configuración"
-          onClick={() => navegar("/configuracion")}
-        >
-          LV
-        </button>
+        <div className="profile-menu-anchor" ref={perfilMenuRef}>
+          <button
+            className={`avatar profile-menu-trigger ${mostrarMenuPerfil ? "is-open" : ""}`}
+            type="button"
+            aria-label="Abrir menú del perfil"
+            aria-expanded={mostrarMenuPerfil}
+            aria-haspopup="menu"
+            onClick={() => setMostrarMenuPerfil((visible) => !visible)}
+          >
+            {fotoPerfilHeader ? (
+              <img src={fotoPerfilHeader} alt="" className="avatar-photo" />
+            ) : (
+              perfil.iniciales
+            )}
+          </button>
+
+          {mostrarMenuPerfil && (
+            <div className="profile-dropdown" role="menu" aria-label="Menú del perfil">
+              <div className="profile-dropdown-user">
+                <div className="profile-dropdown-avatar">
+                  {fotoPerfilHeader ? (
+                    <img src={fotoPerfilHeader} alt="" />
+                  ) : perfil.iniciales}
+                  <span className="profile-online-dot" aria-label="Sesión activa" />
+                </div>
+                <div className="profile-dropdown-identity">
+                  <strong>{perfil.nombre}</strong>
+                  <span>{perfil.correo || "Cuenta de EventHub"}</span>
+                </div>
+                <span className="profile-active-badge">ACTIVO</span>
+              </div>
+
+              <div className="profile-dropdown-shift">
+                <span><span aria-hidden="true">◷</span> Jornada diaria</span>
+                <strong>{horasPerfil === null ? "Configuración" : `${horasPerfil}h disponibles`}</strong>
+              </div>
+
+              <button
+                className="profile-dropdown-action"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMostrarMenuPerfil(false);
+                  navegar("/configuracion");
+                }}
+              >
+                <span className="profile-action-icon" aria-hidden="true">⚙</span>
+                <span className="profile-action-copy">
+                  <strong>Configuración</strong>
+                  <small>Foto de perfil y jornada laboral</small>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+
+              <button
+                className="profile-dropdown-theme"
+                type="button"
+                role="menuitem"
+                onClick={alternarTema}
+              >
+                <span className="profile-action-icon" aria-hidden="true">{modoOscuro ? "☀" : "☾"}</span>
+                <span className="profile-action-copy">
+                  <strong>{modoOscuro ? "Tema claro" : "Tema oscuro"}</strong>
+                  <small>{modoOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}</small>
+                </span>
+                <span className={`profile-theme-switch ${modoOscuro ? "enabled" : ""}`} aria-hidden="true">
+                  <span />
+                </span>
+              </button>
+
+              <button
+                className="profile-dropdown-logout"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMostrarMenuPerfil(false);
+                  setMostrarCerrarSesion(true);
+                }}
+              >
+                <FaDoorOpen aria-hidden="true" /> Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
 
         <button
           className="icon-button logout-button"
@@ -3215,6 +3363,13 @@ function ConfiguracionUsuario({ onNotify }) {
   const [error, setError] = useState("");
   const [errorCampo, setErrorCampo] = useState("");
   const [conflictoConfiguracion, setConflictoConfiguracion] = useState(null);
+  const [fotoPerfil, setFotoPerfil] = useState(() => {
+    try { return window.localStorage.getItem(claveFotoPerfil()) || ""; }
+    catch { return ""; }
+  });
+  const [errorFoto, setErrorFoto] = useState("");
+  const inputFotoRef = useRef(null);
+  const perfilActual = obtenerDatosPerfil();
 
   useEffect(() => {
     const cargarConfiguracion = async () => {
@@ -3376,16 +3531,73 @@ function ConfiguracionUsuario({ onNotify }) {
     }
   };
 
+  const procesarFotoPerfil = (archivo) => {
+    setErrorFoto("");
+    if (!archivo) return;
+    if (!["image/jpeg", "image/png"].includes(archivo.type)) {
+      setErrorFoto("Selecciona una imagen JPG o PNG.");
+      return;
+    }
+    if (archivo.size > 5 * 1024 * 1024) {
+      setErrorFoto("La imagen debe pesar 5 MB o menos.");
+      return;
+    }
+
+    const lector = new FileReader();
+    lector.onerror = () => setErrorFoto("No se pudo leer la imagen. Inténtalo de nuevo.");
+    lector.onload = () => {
+      const imagen = new Image();
+      imagen.onerror = () => setErrorFoto("El archivo seleccionado no es una imagen válida.");
+      imagen.onload = () => {
+        const maxDimension = 512;
+        const escala = Math.min(1, maxDimension / Math.max(imagen.width, imagen.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(imagen.width * escala));
+        canvas.height = Math.max(1, Math.round(imagen.height * escala));
+        const contexto = canvas.getContext("2d");
+        if (!contexto) {
+          setErrorFoto("No se pudo procesar la imagen en este navegador.");
+          return;
+        }
+        contexto.drawImage(imagen, 0, 0, canvas.width, canvas.height);
+        const imagenComprimida = canvas.toDataURL("image/jpeg", 0.82);
+        try {
+          window.localStorage.setItem(claveFotoPerfil(), imagenComprimida);
+          setFotoPerfil(imagenComprimida);
+          window.dispatchEvent(new Event("eventhub-profile-updated"));
+        } catch {
+          setErrorFoto("No se pudo guardar la foto en este navegador. Prueba con otra imagen.");
+        }
+      };
+      imagen.src = String(lector.result || "");
+    };
+    lector.readAsDataURL(archivo);
+  };
+
+  const ajustarHoras = (cambio) => {
+    const actual = Number(horasDia);
+    const base = Number.isFinite(actual) ? actual : 1;
+    const siguiente = Math.min(16, Math.max(1, base + cambio));
+    setHorasDia(String(siguiente));
+    setErrorCampo("");
+  };
+
+  const cancelarCambios = () => {
+    setHorasDia(horasGuardadas);
+    setErrorCampo("");
+    navegar("/eventos");
+  };
+
   return (
     <section className="page configuration-page">
+      <div className="configuration-breadcrumb" aria-label="Ruta de navegación">
+        <span>EventHub</span><span aria-hidden="true">/</span><strong>Configuración</strong>
+      </div>
+
       <div className="configuration-header">
         <div>
-          <small>CONFIGURACIÓN DEL ORGANIZADOR</small>
-          <h1>Disponibilidad</h1>
-          <p>
-            Define cuántas horas al día tienes disponibles para gestionar tus
-            eventos.
-          </p>
+          <h1>Configuración</h1>
+          <p>Administra tu perfil y tu jornada de trabajo.</p>
         </div>
       </div>
 
@@ -3402,71 +3614,143 @@ function ConfiguracionUsuario({ onNotify }) {
           </div>
         </section>
       ) : (
-        <section className="card configuration-card">
-          <div className="configuration-card-header">
-            <div>
-              <h2>Límite diario de gestión</h2>
-              <p>
-                El sistema utilizará este límite para detectar sobrecarga en
-                tu planificación diaria.
-              </p>
+        <form className="profile-settings-form" onSubmit={guardar} noValidate>
+          <section className="card configuration-card profile-photo-card">
+            <div className="settings-section-heading">
+              <span className="settings-section-icon" aria-hidden="true">♙</span>
+              <div>
+                <h2>Foto de perfil</h2>
+                <p>Esta imagen aparece en la navegación y en tus actividades.</p>
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={guardar} noValidate>
-            <div className="configuration-field">
-              <label htmlFor="horas-dia">
-                Horas disponibles por día <span>*</span>
-              </label>
-
-              <input
-                id="horas-dia"
-                name="horas-dia"
-                type="number"
-                min="1"
-                max="16"
-                step="1"
-                value={horasDia}
-                onChange={cambiarHoras}
-                aria-invalid={Boolean(errorCampo)}
-                aria-describedby="horas-dia-ayuda horas-dia-error"
-              />
-
-              <small id="horas-dia-ayuda">
-                Introduce un número entero entre 1 y 16 horas.
-              </small>
-
-              {errorCampo && (
-                <p
-                  id="horas-dia-error"
-                  className="inline-error"
-                  role="alert"
+            <div className="profile-photo-content">
+              <div className="profile-photo-preview" aria-label={`Foto de perfil de ${perfilActual.nombre}`}>
+                {fotoPerfil ? (
+                  <img src={fotoPerfil} alt={`Foto de perfil de ${perfilActual.nombre}`} />
+                ) : (
+                  <span>{perfilActual.iniciales}</span>
+                )}
+                <button
+                  className="profile-photo-camera"
+                  type="button"
+                  aria-label="Cambiar foto de perfil"
+                  title="Cambiar foto de perfil"
+                  onClick={() => inputFotoRef.current?.click()}
                 >
-                  {errorCampo}
-                </p>
+                  ▣
+                </button>
+              </div>
+
+              <div className="profile-photo-controls">
+                <input
+                  ref={inputFotoRef}
+                  className="profile-photo-input"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  aria-label="Seleccionar foto de perfil"
+                  onChange={(event) => {
+                    procesarFotoPerfil(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+                <button
+                  className="btn secondary profile-change-photo"
+                  type="button"
+                  onClick={() => inputFotoRef.current?.click()}
+                >
+                  <span aria-hidden="true">↥</span> Cambiar foto
+                </button>
+                <small className="profile-photo-hint">JPG o PNG · Máximo 5 MB</small>
+                <div
+                  className="profile-photo-dropzone"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => inputFotoRef.current?.click()}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      inputFotoRef.current?.click();
+                    }
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    procesarFotoPerfil(event.dataTransfer.files?.[0]);
+                  }}
+                >
+                  <span className="profile-drop-icon" aria-hidden="true">⇧</span>
+                  <span>
+                    <strong>También puedes arrastrar y soltar una imagen aquí</strong>
+                    <small>o hacer clic en “Cambiar foto” para seleccionarla desde tu dispositivo.</small>
+                  </span>
+                </div>
+                {errorFoto && <p className="inline-error profile-photo-error" role="alert">{errorFoto}</p>}
+              </div>
+            </div>
+          </section>
+
+          <section className="card configuration-card work-limit-card">
+            <div className="settings-section-heading">
+              <span className="settings-section-icon" aria-hidden="true">◷</span>
+              <div>
+                <h2>Límite diario de trabajo</h2>
+                <p>Define cuántas horas puedes planificar al día.</p>
+              </div>
+            </div>
+
+            <div className="work-limit-panel">
+              <div className="work-limit-copy">
+                <strong>Máximo de horas por día</strong>
+                <span>Jornada óptima estimada para asignación de eventos.</span>
+              </div>
+              <div className="hours-stepper" aria-label="Máximo de horas por día">
+                <button
+                  type="button"
+                  aria-label="Disminuir horas por día"
+                  disabled={Number(horasDia) <= 1 || guardando}
+                  onClick={() => ajustarHoras(-1)}
+                >−</button>
+                <input
+                  id="horas-dia"
+                  name="horas-dia"
+                  type="number"
+                  min="1"
+                  max="16"
+                  step="1"
+                  value={horasDia}
+                  onChange={cambiarHoras}
+                  aria-label="Máximo de horas por día"
+                  aria-invalid={Boolean(errorCampo)}
+                  aria-describedby="horas-dia-ayuda horas-dia-error"
+                />
+                <span>horas</span>
+                <button
+                  type="button"
+                  aria-label="Aumentar horas por día"
+                  disabled={Number(horasDia) >= 16 || guardando}
+                  onClick={() => ajustarHoras(1)}
+                >+</button>
+              </div>
+
+              <small id="horas-dia-ayuda" className="work-limit-help">
+                <span aria-hidden="true">ⓘ</span> Este límite se usa para detectar sobrecargas en tu planificación.
+              </small>
+              {errorCampo && (
+                <p id="horas-dia-error" className="inline-error" role="alert">{errorCampo}</p>
               )}
             </div>
+          </section>
 
-            <div className="configuration-actions">
-              <button
-                className="btn primary"
-                type="submit"
-                disabled={guardando}
-              >
-                {guardando ? "Guardando..." : "Guardar configuración"}
-              </button>
-
-              <button
-                className="btn secondary"
-                type="button"
-                disabled={guardando}
-                onClick={() => navegar("/eventos")}
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </section>
+          <div className="configuration-actions profile-settings-actions">
+            <button className="btn secondary" type="button" disabled={guardando} onClick={cancelarCambios}>
+              Cancelar
+            </button>
+            <button className="btn primary" type="submit" disabled={guardando}>
+              {guardando ? "Guardando..." : "▣  Guardar cambios"}
+            </button>
+          </div>
+        </form>
       )}
 
       {conflictoConfiguracion && (
