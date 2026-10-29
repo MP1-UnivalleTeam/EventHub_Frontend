@@ -5315,7 +5315,7 @@ function Today({ onNotify }) {
 
             <div className="postpone-calendar-heading">
               <h3>
-                <span aria-hidden="true">▦</span>{" "}
+                <span aria-hidden="true">📅</span>{" "}
                 {new Intl.DateTimeFormat("es-CO", {
                   month: "long",
                   year: "numeric",
@@ -6140,14 +6140,12 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
                     const esHoy = fecha === obtenerFechaLocalHoy();
                     return <button type="button" key={fecha} className={`progress-calendar-day ${fechaCalendario === fecha ? "selected" : ""} ${esHoy ? "today" : ""} ${eventosDia.length || tareasDia.length ? "has-items" : ""}`} onClick={() => setFechaCalendario(fecha)} aria-pressed={fechaCalendario === fecha} aria-label={`${dia}, ${eventosDia.length} eventos y ${tareasDia.length} subtareas`}>
                       <span className="progress-calendar-day-number">{dia}</span>
-                      {(eventosDia.length > 0 || tareasDia.length > 0) && <span className="progress-calendar-dots"><i className="event-dot" />{tareasDia.length > 0 && <i className="task-dot" />}</span>}
                       {eventosDia.slice(0, 1).map((ev) => <span key={ev.id} className="progress-calendar-chip event-chip">{ev.titulo}</span>)}
                       {tareasDia.slice(0, 1).map((t) => <span key={t.id} className={`progress-calendar-chip task-chip ${estadoEfectivoSubtarea(t)}`}>{t.titulo || t.nombre || "Subtarea"}</span>)}
                       {eventosDia.length + tareasDia.length > 2 && <small className="progress-calendar-more">+{eventosDia.length + tareasDia.length - 2} más</small>}
                     </button>;
                   })}
                 </div>
-                <div className="progress-calendar-legend"><span><i className="event-dot" /> Eventos</span><span><i className="task-dot" /> Subtareas</span><span><i className="done-dot" /> Completadas</span></div>
               </div>
               <aside className="progress-calendar-detail">
                 <span className="progress-calendar-eyebrow">DÍA SELECCIONADO</span>
