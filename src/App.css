@@ -9319,3 +9319,258 @@ body[data-theme="dark"] .duration-input-preview {
     padding-top: 0;
   }
 }
+
+/* =========================================================
+   CORRECCIÓN DE CONTRASTE — modal Resolver sobrecarga
+   modo oscuro. Mantiene la paleta Nocturne Operations.
+   ========================================================= */
+body[data-theme="dark"] .agenda-modal.resolution-modal {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .resolution-modal > h2,
+body[data-theme="dark"] .resolution-modal > p {
+  color: #f8fafc;
+}
+
+body[data-theme="dark"] .resolution-modal > p {
+  color: #cbd5e1;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option strong {
+  color: #f8fafc;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option small {
+  color: #cbd5e1;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option.selected {
+  background: #172b4d;
+  border-color: #3b82f6;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option.selected .resolution-radio {
+  border-color: #60a5fa;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option.disabled,
+body[data-theme="dark"] .resolution-modal .resolution-option:disabled {
+  background: #263449;
+  color: #cbd5e1;
+  border-color: #475569;
+  opacity: 1;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option.disabled strong,
+body[data-theme="dark"] .resolution-modal .resolution-option:disabled strong {
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-option.disabled small,
+body[data-theme="dark"] .resolution-modal .resolution-option:disabled small {
+  color: #aebed3;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-cause {
+  background: #451a1a;
+  color: #fecaca;
+  border: 1px solid #7f1d1d;
+}
+
+body[data-theme="dark"] .resolution-modal .postpone-field label,
+body[data-theme="dark"] .resolution-modal .resolution-hours-field label {
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .resolution-modal .postpone-hours-control {
+  background: #0f172a;
+  border: 1px solid #475569;
+}
+
+body[data-theme="dark"] .resolution-modal .postpone-hours-control button {
+  background: #334155;
+  color: #f8fafc;
+}
+
+body[data-theme="dark"] .resolution-modal .postpone-hours-control button:disabled {
+  background: #263449;
+  color: #94a3b8;
+  opacity: 1;
+}
+
+body[data-theme="dark"] .resolution-modal .postpone-hours-value strong,
+body[data-theme="dark"] .resolution-modal .postpone-hours-control input {
+  color: #f8fafc;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-hours-alert {
+  color: #fca5a5;
+}
+
+body[data-theme="dark"] .resolution-modal .resolution-actions {
+  border-top-color: #475569;
+}
+
+/* Refuerzo final de contraste para el modal de resolución en modo oscuro.
+   Se apunta tanto a html como a body porque el tema se aplica a ambos. */
+:root[data-theme="dark"] .resolution-modal,
+body[data-theme="dark"] .resolution-modal {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+:root[data-theme="dark"] .resolution-modal h2,
+:root[data-theme="dark"] .resolution-modal p,
+:root[data-theme="dark"] .resolution-modal label,
+body[data-theme="dark"] .resolution-modal h2,
+body[data-theme="dark"] .resolution-modal p,
+body[data-theme="dark"] .resolution-modal label {
+  color: #e2e8f0 !important;
+}
+:root[data-theme="dark"] .resolution-modal .agenda-capacity-card,
+body[data-theme="dark"] .resolution-modal .agenda-capacity-card {
+  background: #172033 !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+:root[data-theme="dark"] .resolution-modal .agenda-capacity-card strong,
+:root[data-theme="dark"] .resolution-modal .agenda-capacity-card span,
+body[data-theme="dark"] .resolution-modal .agenda-capacity-card strong,
+body[data-theme="dark"] .resolution-modal .agenda-capacity-card span {
+  color: #e2e8f0 !important;
+}
+:root[data-theme="dark"] .resolution-modal button.resolution-option,
+body[data-theme="dark"] .resolution-modal button.resolution-option {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #475569 !important;
+  opacity: 1 !important;
+}
+:root[data-theme="dark"] .resolution-modal button.resolution-option.selected,
+body[data-theme="dark"] .resolution-modal button.resolution-option.selected {
+  background: #172b4d !important;
+  color: #f8fafc !important;
+  border: 2px solid #3b82f6 !important;
+}
+:root[data-theme="dark"] .resolution-modal button.resolution-option:disabled,
+:root[data-theme="dark"] .resolution-modal button.resolution-option.disabled,
+body[data-theme="dark"] .resolution-modal button.resolution-option:disabled,
+body[data-theme="dark"] .resolution-modal button.resolution-option.disabled {
+  background: #263449 !important;
+  color: #cbd5e1 !important;
+  border-color: #475569 !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-option strong,
+body[data-theme="dark"] .resolution-modal .resolution-option strong {
+  color: #f8fafc !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-option small,
+body[data-theme="dark"] .resolution-modal .resolution-option small {
+  color: #b8c5d8 !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-option.disabled strong,
+:root[data-theme="dark"] .resolution-modal .resolution-option:disabled strong,
+body[data-theme="dark"] .resolution-modal .resolution-option.disabled strong,
+body[data-theme="dark"] .resolution-modal .resolution-option:disabled strong {
+  color: #e2e8f0 !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-option.disabled small,
+:root[data-theme="dark"] .resolution-modal .resolution-option:disabled small,
+body[data-theme="dark"] .resolution-modal .resolution-option.disabled small,
+body[data-theme="dark"] .resolution-modal .resolution-option:disabled small {
+  color: #b8c5d8 !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-radio,
+body[data-theme="dark"] .resolution-modal .resolution-radio {
+  border-color: #94a3b8 !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-option.selected .resolution-radio,
+body[data-theme="dark"] .resolution-modal .resolution-option.selected .resolution-radio {
+  border-color: #60a5fa !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-cause,
+body[data-theme="dark"] .resolution-modal .resolution-cause {
+  background: #451a1a !important;
+  color: #fecaca !important;
+  border-color: #7f1d1d !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-hours-field input,
+body[data-theme="dark"] .resolution-modal .resolution-hours-field input {
+  background: #0b1326 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-hours-field .postpone-hours-control,
+body[data-theme="dark"] .resolution-modal .resolution-hours-field .postpone-hours-control {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+}
+:root[data-theme="dark"] .resolution-modal .resolution-actions,
+body[data-theme="dark"] .resolution-modal .resolution-actions {
+  border-top-color: #475569 !important;
+}
+
+/* Contraste de los dos pasos del flujo de sobrecarga en tema oscuro. */
+:root[data-theme="dark"] .agenda-reschedule-limit-modal,
+body[data-theme="dark"] .agenda-reschedule-limit-modal {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-modal-title h2,
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-modal-title p,
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-breakdown-label,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-modal-title h2,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-modal-title p,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-breakdown-label {
+  color: #e2e8f0 !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card {
+  background: #172033 !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card strong,
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card span,
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card small,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card strong,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card span,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-capacity-card small {
+  color: #e2e8f0 !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-item,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-item {
+  border-bottom-color: #475569 !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-info strong,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-info strong {
+  color: #f8fafc !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-info small,
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-item label,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-info small,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-item label {
+  color: #b8c5d8 !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-item input[type="date"],
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-limit-item input[type="date"] {
+  background: #0b1326 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+:root[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-date-error,
+body[data-theme="dark"] .agenda-reschedule-limit-modal .agenda-reschedule-date-error {
+  color: #fca5a5 !important;
+}
