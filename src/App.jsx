@@ -2755,7 +2755,7 @@ function CrearSubtareaForm({
         </p>
       )}
 
-      <div className="form-two-columns">
+      <div className="form-two-columns create-subtask-duration-status-row">
         <div>
           <div className="field-header">
             <label htmlFor="sub-horas-hours">

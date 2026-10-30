@@ -12443,3 +12443,15 @@ body[data-theme="dark"] .profile-data-fields input[readonly] {
     transform: none;
   }
 }
+
+
+/* Modal Crear subtarea: alinear Estado con los campos de Duración estimada. */
+.create-subtask-duration-status-row > div:nth-child(2) {
+  transform: translateY(12px);
+}
+
+@media (max-width: 680px) {
+  .create-subtask-duration-status-row > div:nth-child(2) {
+    transform: none;
+  }
+}
