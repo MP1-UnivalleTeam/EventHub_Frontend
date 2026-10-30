@@ -2082,7 +2082,7 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
       <input id="titulo" name="titulo" value={formulario.titulo} onChange={actualizar} placeholder="Ej. Conferencia de Tecnología 2026" aria-invalid={Boolean(errores.titulo)} autoFocus />
       {errores.titulo && <p className="inline-error" role="alert">{errores.titulo}</p>}
 
-      <div className="form-two-columns">
+      <div className="form-two-columns create-event-main-fields">
         <div>
           <div className="field-header"><label htmlFor="fecha">Fecha del evento <span>*</span></label><small>Obligatorio</small></div>
           <input
@@ -2181,7 +2181,7 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
                   onChange={(event) => actualizarSubtarea(item.id, "titulo", event.target.value)}
                   placeholder="Ej. Preparar presentación"
                 />
-                <div className="form-two-columns">
+                <div className="form-two-columns create-event-subtask-row">
                   <div>
                     <div className="field-header">
                       <label htmlFor={`evento-subtarea-horas-${item.id}-hours`}>Duración <span>*</span></label>
@@ -2755,7 +2755,7 @@ function CrearSubtareaForm({
         </p>
       )}
 
-      <div className="form-two-columns">
+      <div className="form-two-columns create-subtask-duration-status-row">
         <div>
           <div className="field-header">
             <label htmlFor="sub-horas-hours">
@@ -3419,7 +3419,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
         </p>
       )}
 
-      <div className="form-two-columns">
+      <div className="form-two-columns edit-subtask-duration-status-row">
         <div>
           <div className="field-header">
             <label htmlFor="edit-sub-horas-hours">

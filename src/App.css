@@ -12314,3 +12314,156 @@ body[data-theme="dark"] .profile-data-fields input[readonly] {
     row-gap: 12px;
   }
 }
+
+
+/* =========================================================
+   Crear evento: alineación precisa de campos y subtareas
+   ========================================================= */
+.create-form-card form > .create-event-main-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 18px;
+  margin: 18px 0 0;
+}
+
+.create-form-card form > .create-event-main-fields > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.create-form-card form > .create-event-main-fields > div > .field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+  margin: 0 0 8px !important;
+  gap: 8px;
+}
+
+.create-form-card form > .create-event-main-fields input[type="date"],
+.create-form-card form > .create-event-main-fields .duration-input {
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.create-form-card form > .create-event-main-fields .duration-input {
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.create-form-card form > .create-event-main-fields .helper,
+.create-form-card form > .create-event-main-fields .inline-error {
+  min-height: 34px;
+  margin: 7px 0 0 !important;
+  line-height: 1.4;
+}
+
+.create-form-card .create-event-subtask-item > .field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+  margin: 0 0 8px !important;
+  gap: 8px;
+}
+
+.create-form-card .create-event-subtask-item > input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.create-form-card .create-event-subtask-item > .create-event-subtask-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+  margin: 14px 0 0;
+}
+
+.create-form-card .create-event-subtask-row > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.create-form-card .create-event-subtask-row .field-header {
+  min-height: 22px;
+  margin: 0 0 8px !important;
+}
+
+.create-form-card .create-event-subtask-row .duration-input,
+.create-form-card .create-event-subtask-row select {
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.create-form-card .create-event-subtask-row .duration-input {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 7px;
+}
+
+.create-form-card .create-event-subtask-item > .field-header:not(:first-child) {
+  margin-top: 14px !important;
+}
+
+@media (max-width: 680px) {
+  .create-form-card form > .create-event-main-fields,
+  .create-form-card .create-event-subtask-item > .create-event-subtask-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .create-form-card form > .create-event-main-fields .helper,
+  .create-form-card form > .create-event-main-fields .inline-error {
+    min-height: 0;
+  }
+}
+
+
+/* Ajuste fino solicitado: alinear Estado con los campos de Duración
+   y Fecha del evento con los campos de Duración estimada. */
+.create-form-card .create-event-subtask-row > div:nth-child(2) {
+  transform: translateY(12px);
+}
+
+.create-form-card form > .create-event-main-fields > div:first-child {
+  transform: translateY(15px);
+}
+
+@media (max-width: 680px) {
+  .create-form-card .create-event-subtask-row > div:nth-child(2),
+  .create-form-card form > .create-event-main-fields > div:first-child {
+    transform: none;
+  }
+}
+
+
+/* Modal Crear subtarea: alinear Estado con los campos de Duración estimada. */
+.create-subtask-duration-status-row > div:nth-child(2) {
+  transform: translateY(12px);
+}
+
+@media (max-width: 680px) {
+  .create-subtask-duration-status-row > div:nth-child(2) {
+    transform: none;
+  }
+}
+
+
+/* Modal Editar subtarea: alinear Estado con Duración estimada. */
+.edit-subtask-duration-status-row > div:nth-child(2) {
+  transform: translateY(12px);
+}
+
+@media (max-width: 680px) {
+  .edit-subtask-duration-status-row > div:nth-child(2) {
+    transform: none;
+  }
+}
