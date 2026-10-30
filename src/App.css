@@ -12425,3 +12425,21 @@ body[data-theme="dark"] .profile-data-fields input[readonly] {
     min-height: 0;
   }
 }
+
+
+/* Ajuste fino solicitado: alinear Estado con los campos de Duración
+   y Fecha del evento con los campos de Duración estimada. */
+.create-form-card .create-event-subtask-row > div:nth-child(2) {
+  transform: translateY(12px);
+}
+
+.create-form-card form > .create-event-main-fields > div:first-child {
+  transform: translateY(15px);
+}
+
+@media (max-width: 680px) {
+  .create-form-card .create-event-subtask-row > div:nth-child(2),
+  .create-form-card form > .create-event-main-fields > div:first-child {
+    transform: none;
+  }
+}
