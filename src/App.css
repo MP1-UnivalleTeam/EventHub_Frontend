@@ -1587,61 +1587,6 @@ small {
   cursor: help;
 }
 
-/* Card de nota opcional (mismo ancho que el input de fecha) */
-.note-card {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-top: 16px;
-  padding: 13px 14px;
-  border: 1px solid #d5dbe5;
-  border-radius: 10px;
-  background: #fbfcfe;
-}
-
-.note-card-header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.note-card-header > svg {
-  color: var(--eh-blue);
-  font-size: 15px;
-}
-
-.note-card-header label {
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.note-card-hint {
-  margin-left: auto;
-  color: #6c7487;
-  font-size: 11px;
-}
-
-.note-card textarea {
-  width: 100%;
-  min-height: 42px;
-  padding: 10px 12px;
-  border: 1px solid #cbd3e0;
-  border-radius: 7px;
-  background: #ffffff;
-  color: #172033;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.45;
-  resize: none;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.note-card textarea:focus {
-  outline: 3px solid rgba(33, 70, 199, 0.15);
-  border-color: #2146c7;
-}
-
 .helper {
   color: #70798a !important;
 
@@ -5804,6 +5749,11 @@ small {
   margin: 0;
 }
 
+.postpone-fields-row > .postpone-note-section {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
 .postpone-fields-row .postpone-field label {
   min-height: 18px;
 }
@@ -7950,7 +7900,6 @@ body[data-theme="dark"] .progress-card,
 body[data-theme="dark"] .progress-event-card,
 body[data-theme="dark"] .progress-stat-card,
 body[data-theme="dark"] .progress-breakdown-grid,
-body[data-theme="dark"] .note-card,
 body[data-theme="dark"] .subtask-row,
 body[data-theme="dark"] .state-card,
 body[data-theme="dark"] .empty-state,
@@ -8527,58 +8476,7 @@ body[data-theme="dark"] .logout-confirmation::after {
   background: var(--surface-soft, #f8fafc);
 }
 
-.stitch-optional-section summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 14px;
-  cursor: pointer;
-  color: var(--ink, #1e293b);
-  font-size: 13px;
-  font-weight: 650;
-  list-style-position: inside;
-}
-
-.stitch-optional-section summary span {
-  margin-left: auto;
-  color: var(--muted, #64748b);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.stitch-optional-section[open] {
-  padding-bottom: 12px;
-}
-
-.stitch-optional-section[open] > label {
-  display: block;
-  margin: 8px 12px 6px;
-  color: var(--muted, #475569);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.stitch-optional-section input,
-.stitch-optional-section textarea {
-  display: block;
-  width: calc(100% - 24px) !important;
-  margin: 0 12px;
-  box-sizing: border-box;
-}
-
-.stitch-optional-section textarea {
-  resize: vertical;
-}
-
-.stitch-optional-section summary:focus-visible {
-  outline: 2px solid var(--blue, #3b82f6);
-  outline-offset: -3px;
-}
-
-/* Variante animada usada por el modal global de creación de subtareas.
-   Mantiene el mismo lenguaje visual de .stitch-optional-section pero permite
-   animar apertura y cierre sin desmontar los campos. */
+/* Las secciones conservan montado su contenido para animarlo sin perder valores. */
 .stitch-optional-collapsible {
   overflow: hidden;
 }
@@ -8696,6 +8594,83 @@ body[data-theme="dark"] .logout-confirmation::after {
   margin: 6px 14px 5px;
 }
 
+.responsible-combobox {
+  position: relative;
+  width: calc(100% - 28px);
+  margin: 0 14px;
+}
+
+.responsible-combobox-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.stitch-optional-panel-inner .responsible-combobox input {
+  width: 100% !important;
+  margin: 0;
+  padding-right: 36px;
+}
+
+.responsible-combobox-clear {
+  position: absolute;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted, #64748b);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.responsible-combobox-clear:hover {
+  background: rgba(49, 91, 213, .1);
+  color: var(--ink, #1e293b);
+}
+
+.responsible-combobox-options {
+  max-height: 190px;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding: 4px;
+  border: 1px solid var(--border, #d7deea);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .14);
+}
+
+.responsible-combobox-options button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink, #1e293b);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.responsible-combobox-options button:hover,
+.responsible-combobox-options button:focus-visible {
+  outline: none;
+  background: rgba(49, 91, 213, .1);
+}
+
+body[data-theme="dark"] .responsible-combobox-options {
+  background: #0f172a;
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .responsible-combobox-options button {
+  color: #f8fafc;
+}
+
 /* Evento asociado en el modal global de subtareas */
 .subtask-event-locked {
   display: flex;
@@ -8810,8 +8785,7 @@ body[data-theme="dark"] .create-event-subtask-item {
 body[data-theme="dark"] .create-event-subtask-toggle strong,
 body[data-theme="dark"] .validation-card h2,
 body[data-theme="dark"] .validation-card b,
-body[data-theme="dark"] .stitch-optional-section summary,
-body[data-theme="dark"] .stitch-optional-section > label {
+body[data-theme="dark"] .stitch-optional-toggle {
   color: #f1f5f9;
 }
 
@@ -8819,7 +8793,7 @@ body[data-theme="dark"] .create-event-subtask-toggle small,
 body[data-theme="dark"] .validation-card p,
 body[data-theme="dark"] .validation-card ul,
 body[data-theme="dark"] .validation-card li,
-body[data-theme="dark"] .stitch-optional-section summary span {
+body[data-theme="dark"] .stitch-optional-hint {
   color: #cbd5e1;
 }
 
@@ -8836,9 +8810,7 @@ body[data-theme="dark"] .create-event-subtask-add:hover {
 
 body[data-theme="dark"] .stitch-optional-section input,
 body[data-theme="dark"] .stitch-optional-section textarea,
-body[data-theme="dark"] #sub-responsable,
-body[data-theme="dark"] #edit-sub-responsable,
-body[data-theme="dark"] #edit-sub-notas {
+body[data-theme="dark"] .responsible-combobox input {
   background: #0f172a;
   color: #f8fafc;
   border-color: #475569;
@@ -8847,17 +8819,13 @@ body[data-theme="dark"] #edit-sub-notas {
 
 body[data-theme="dark"] .stitch-optional-section input::placeholder,
 body[data-theme="dark"] .stitch-optional-section textarea::placeholder,
-body[data-theme="dark"] #sub-responsable::placeholder,
-body[data-theme="dark"] #edit-sub-responsable::placeholder,
-body[data-theme="dark"] #edit-sub-notas::placeholder {
+body[data-theme="dark"] .responsible-combobox input::placeholder {
   color: #94a3b8;
 }
 
 body[data-theme="dark"] .stitch-optional-section input:focus,
 body[data-theme="dark"] .stitch-optional-section textarea:focus,
-body[data-theme="dark"] #sub-responsable:focus,
-body[data-theme="dark"] #edit-sub-responsable:focus,
-body[data-theme="dark"] #edit-sub-notas:focus {
+body[data-theme="dark"] .responsible-combobox input:focus {
   border-color: #60a5fa;
   outline: 2px solid rgba(96, 165, 250, .22);
   outline-offset: 1px;
@@ -9046,7 +9014,6 @@ body[data-theme="dark"] .state-card,
 body[data-theme="dark"] .subtask-section,
 body[data-theme="dark"] .subtask-row,
 body[data-theme="dark"] .empty-subtasks,
-body[data-theme="dark"] .note-card,
 body[data-theme="dark"] .create-form-card,
 body[data-theme="dark"] .create-sidebar,
 body[data-theme="dark"] .validation-card {
@@ -9635,7 +9602,7 @@ body[data-theme="dark"] .postpone-schedule-modal .postpone-close:hover {
 /* Duraciones expresadas en horas y minutos, conservando horas decimales en la API. */
 .duration-input {
   display: grid;
-  grid-template-columns: minmax(54px, 1fr) auto minmax(64px, 1fr) auto;
+  grid-template-columns: minmax(54px, 1fr) auto minmax(64px, 1fr);
   align-items: end;
   gap: 8px;
   width: 100%;
@@ -9670,14 +9637,6 @@ body[data-theme="dark"] .postpone-schedule-modal .postpone-close:hover {
   color: var(--muted, #64748b);
   font-weight: 700;
 }
-.duration-input-preview {
-  align-self: center;
-  padding-top: 17px;
-  color: var(--blue, #315bd5);
-  font-size: 0.78rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
 .duration-input-part input:focus-visible {
   outline: 2px solid var(--blue-2, #60a5fa);
   outline-offset: 2px;
@@ -9691,7 +9650,7 @@ body[data-theme="dark"] .postpone-schedule-modal .postpone-close:hover {
   padding: 0 6px;
 }
 .postpone-duration-editor .duration-input {
-  grid-template-columns: minmax(48px, 1fr) auto minmax(54px, 1fr) auto;
+  grid-template-columns: minmax(48px, 1fr) auto minmax(54px, 1fr);
   gap: 5px;
   margin: 0;
 }
@@ -9705,10 +9664,6 @@ body[data-theme="dark"] .postpone-schedule-modal .postpone-close:hover {
 .postpone-duration-editor .duration-input-separator {
   padding-bottom: 9px;
 }
-.postpone-duration-editor .duration-input-preview {
-  padding-top: 0;
-  font-size: 0.72rem;
-}
 body[data-theme="dark"] .duration-input-part label {
   color: #cbd5e1;
 }
@@ -9720,17 +9675,10 @@ body[data-theme="dark"] .duration-input-part input {
 body[data-theme="dark"] .duration-input-separator {
   color: #cbd5e1;
 }
-body[data-theme="dark"] .duration-input-preview {
-  color: #93c5fd;
-}
 @media (max-width: 520px) {
   .duration-input {
     grid-template-columns: minmax(44px, 1fr) auto minmax(54px, 1fr);
     gap: 5px;
-  }
-  .duration-input-preview {
-    grid-column: 1 / -1;
-    padding-top: 0;
   }
 }
 
@@ -9746,16 +9694,13 @@ body[data-theme="dark"] .duration-input-preview {
   flex: 1;
   min-width: 0;
   margin: 0;
-  grid-template-columns: minmax(58px, 1fr) auto minmax(66px, 1fr) auto;
+  grid-template-columns: minmax(58px, 1fr) auto minmax(66px, 1fr);
 }
 .resolution-duration-editor .duration-input-part label {
   display: block;
 }
 .resolution-duration-editor .duration-input-part input {
   min-height: 38px;
-}
-.resolution-duration-editor .duration-input-preview {
-  padding-top: 17px;
 }
 .resolution-duration-stepper {
   display: flex;
@@ -9827,10 +9772,6 @@ body[data-theme="dark"] .resolution-duration-stepper button:hover:not(:disabled)
   .resolution-duration-editor .duration-input {
     grid-template-columns: minmax(42px, 1fr) auto minmax(48px, 1fr);
     gap: 5px;
-  }
-  .resolution-duration-editor .duration-input-preview {
-    grid-column: 1 / -1;
-    padding-top: 0;
   }
   .resolution-duration-stepper {
     padding-bottom: 0;
@@ -10807,6 +10748,75 @@ body[data-theme="dark"] .work-limit-help span {
 
 .create-form-card .create-event-subtask-fields .duration-input-preview {
   font-size: 11px;
+}
+
+@media (max-width: 680px) {
+  .create-form-card .form-two-columns,
+  .create-form-card .create-event-subtask-fields .form-two-columns {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+}
+
+
+/* Ajuste definitivo de alineación: formulario Crear evento */
+.create-form-card .form-two-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  column-gap: 16px;
+  row-gap: 14px;
+}
+
+.create-form-card .form-two-columns > div {
+  min-width: 0;
+}
+
+/* Anula el margen superior general que desalineaba Fecha y Duración. */
+.create-form-card .form-two-columns > div > .field-header,
+.create-form-card .create-event-subtask-fields .form-two-columns > div > .field-header {
+  margin-top: 0 !important;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.create-form-card .form-two-columns .duration-input {
+  margin-top: 4px;
+  align-items: end;
+  grid-template-columns: minmax(48px, 1fr) auto minmax(56px, 1fr);
+  gap: 7px;
+}
+
+.create-form-card .form-two-columns input[type="date"] {
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.create-form-card .form-two-columns .helper {
+  min-height: 16px;
+  margin-top: 6px !important;
+}
+
+/* Duración y estado de cada subtarea quedan alineados en la misma fila. */
+.create-form-card .create-event-subtask-fields .form-two-columns {
+  grid-template-columns: minmax(0, 1.15fr) minmax(170px, 0.9fr);
+  align-items: start;
+  margin-top: 12px;
+}
+
+.create-form-card .create-event-subtask-fields .form-two-columns .duration-input {
+  grid-template-columns: minmax(42px, 1fr) auto minmax(52px, 1fr);
+  gap: 6px;
+}
+
+.create-form-card .create-event-subtask-fields .form-two-columns select {
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 680px) {
