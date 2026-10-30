@@ -11833,6 +11833,143 @@ body[data-theme="dark"] .profile-photo-status {
   }
 }
 
+.profile-photo-icon-trigger {
+  width: 68px;
+  height: 68px;
+  flex-basis: 68px;
+}
+
+.profile-photo-add-badge {
+  right: -2px;
+  bottom: -2px;
+  width: 23px;
+  height: 23px;
+  font-size: 17px;
+}
+
+.progress-empty-state {
+  width: min(100%, 760px);
+  max-width: 760px;
+  min-height: 330px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 40px auto;
+  padding: clamp(32px, 6vw, 58px) 24px;
+  border: 1px solid #e0e6f0;
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(20, 38, 75, .06);
+}
+
+.progress-empty-icon {
+  width: 68px;
+  height: 68px;
+  margin-bottom: 20px;
+  border-radius: 20px;
+  background: #eaf1ff;
+  color: #315bd5;
+  font-size: 30px;
+}
+
+.progress-empty-state h2 {
+  margin: 0 0 9px;
+  color: var(--ink);
+  font-size: clamp(21px, 3vw, 26px);
+  line-height: 1.25;
+}
+
+.progress-empty-state p {
+  max-width: 460px;
+  margin: 0 auto 22px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.progress-empty-state .btn {
+  min-height: 44px;
+  padding: 0 20px;
+}
+
+.progress-empty-state .btn:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+.brand-logo {
+  object-fit: contain;
+}
+
+body[data-theme="dark"] .progress-empty-state {
+  border-color: var(--eh-border);
+  background: var(--eh-surface);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, .18);
+}
+
+body[data-theme="dark"] .progress-empty-state h2 {
+  color: var(--eh-text-primary);
+}
+
+body[data-theme="dark"] .progress-empty-state p {
+  color: var(--eh-text-secondary);
+}
+
+body[data-theme="dark"] .progress-empty-icon {
+  background: #1d3558;
+  color: #93c5fd;
+}
+
+body[data-theme="dark"] .profile-photo-add-badge {
+  border-color: var(--eh-surface);
+}
+
+@media (max-width: 720px) {
+  .profile-photo-icon-trigger {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+  }
+
+  .progress-empty-state {
+    min-height: 290px;
+    margin: 28px auto;
+    padding: 34px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-photo-icon-trigger {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+  }
+
+  .profile-photo-add-badge {
+    width: 21px;
+    height: 21px;
+    font-size: 15px;
+  }
+
+  .progress-empty-state {
+    min-height: 260px;
+    margin: 20px auto;
+    padding: 30px 18px;
+  }
+
+  .progress-empty-icon {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 16px;
+    font-size: 26px;
+  }
+
+  .progress-empty-state p {
+    font-size: 13px;
+  }
+}
+
 .evidence-preview-overlay {
   position: fixed;
   inset: 0;

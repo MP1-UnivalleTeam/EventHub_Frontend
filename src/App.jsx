@@ -1,6 +1,7 @@
 import "./App.css";
 import logo_EventHub from "./assets/Logo.png";
 import logo_Jaguar from "./assets/Logo_Jaguar.png";
+import logo_Blanco from "./assets/LogoBlanco.png";
 import {
   FaLock,
   FaEye,
@@ -22,6 +23,7 @@ import {
   FaTimes,
   FaImage,
   FaPaperclip,
+  FaChartLine,
 } from "react-icons/fa";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -1163,7 +1165,7 @@ function Header({
           onClick={() => navegar("/eventos")}
         >
           <img
-            src={logo_Jaguar}
+            src={modoOscuro ? logo_Blanco : logo_Jaguar}
             alt="Jaguar EventHub"
             className="brand-logo"
           />
@@ -7473,12 +7475,29 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
       {!cargando && !error && resumen && (
         <>
           {resumen.total === 0 ? (
-            <section className="card state-card empty-state">
-              <div className="empty-icon">✓</div>
-              <h2>Sin gestiones registradas</h2>
+            <section className="card state-card empty-state progress-empty-state">
+              <div className="empty-icon progress-empty-icon" aria-hidden="true">
+                <FaChartLine />
+              </div>
+              <h2>
+                {datos.eventos.length === 0
+                  ? "Aún no hay eventos"
+                  : "Aún no hay subtareas"}
+              </h2>
               <p>
-                Aún no hay subtareas en tus eventos para medir el avance.
+                {datos.eventos.length === 0
+                  ? "Crea tu primer evento y organiza tus actividades para empezar a seguir el progreso."
+                  : "Agrega subtareas a tus eventos para empezar a medir el avance."}
               </p>
+              {datos.eventos.length === 0 && (
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() => navegar("/crear-evento")}
+                >
+                  Crear el primer evento
+                </button>
+              )}
             </section>
           ) : (
             <>
