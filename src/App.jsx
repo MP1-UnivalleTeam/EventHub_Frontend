@@ -1,12 +1,36 @@
 import "./App.css";
 import logo_EventHub from "./assets/Logo.png";
 import logo_Jaguar from "./assets/Logo_Jaguar.png";
-import { FaLock, FaEye, FaEyeSlash, FaDoorOpen, FaSyncAlt, FaTrashAlt, FaStickyNote, FaFilter } from "react-icons/fa";
-import { useEffect, useRef, useState } from "react";
+import logo_Blanco from "./assets/LogoBlanco.png";
+import {
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaDoorOpen,
+  FaSyncAlt,
+  FaTrashAlt,
+  FaFilter,
+  FaCalendarAlt,
+  FaTasks,
+  FaUser,
+  FaRegFileAlt,
+  FaChevronDown,
+  FaCheckCircle,
+  FaClock,
+  FaExclamationTriangle,
+  FaChevronLeft,
+  FaChevronRight,
+  FaTimes,
+  FaImage,
+  FaPaperclip,
+  FaChartLine,
+} from "react-icons/fa";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   actualizarEvento,
   actualizarSubtarea,
+  actualizarPerfilUsuario,
   actualizarConfiguracionUsuario,
   crearEvento,
   crearSubtarea,
@@ -15,22 +39,52 @@ import {
   iniciarSesion,
   registrarUsuario,
   obtenerConfiguracionUsuario,
+  obtenerFotoPerfil,
+  obtenerPerfilUsuario,
   obtenerHoy,
   obtenerEvento,
   obtenerEventos,
   obtenerSubtareas,
   actualizarParcialSubtarea,
+  subirFotoPerfil,
+  subirComprobanteSubtarea,
 } from "./services/api.js";
 import {
   cerrarSesion,
   estaAutenticado,
   guardarSesion,
+  obtenerSesion,
 } from "./services/auth.js";
+
+
+
+function obtenerDatosPerfil() {
+  const usuario = obtenerSesion()?.usuario || {};
+  const nombre =
+    [usuario.nombre, usuario.apellido].filter(Boolean).join(" ").trim() ||
+    usuario.nombre_completo ||
+    usuario.full_name ||
+    usuario.name ||
+    "Organizador";
+  const correo =
+    usuario.email ||
+    usuario.correo ||
+    usuario.correo_electronico ||
+    usuario.username ||
+    "";
+  const iniciales = String(nombre)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+    .join("") || "EH";
+  return { nombre: String(nombre), correo: String(correo), iniciales };
+}
 
 const rutas = ["/login", "/registro", "/registro/onboarding", "/eventos", "/hoy", "/progreso", "/crear-evento", "/configuracion"];
 
 // Deshabilita temporalmente el paso de "Personalización de tu espacio de
-// trabajo" durante este sprint. El componente OnboardingRegistro y sus
+// trabajo." durante este sprint. El componente OnboardingRegistro y sus
 // categorías se conservan intactos; basta con volver a poner esta bandera en
 // true para rehabilitar la pantalla.
 const PERSONALIZACION_HABILITADA = false;
@@ -205,18 +259,140 @@ function obtenerNotaSubtarea(subtarea) {
   return normalizarNota(subtarea?.nota);
 }
 
+function obtenerResponsableSubtarea(subtarea) {
+  const valor =
+    subtarea?.responsable ??
+    subtarea?.responsable_nombre ??
+    subtarea?.nombre_responsable ??
+    subtarea?.usuario_responsable ??
+    subtarea?.asignado_a ??
+    "";
+
+  if (valor && typeof valor === "object") {
+    return String(valor.nombre ?? valor.nombre_completo ?? valor.email ?? "");
+  }
+
+  return normalizarNota(valor);
+}
+
 function obtenerHoras(item) {
   const value = Number(item?.horas_estimadas ?? item?.horas ?? item?.hours ?? 0);
-  return Number.isFinite(value) ? value : 0;
+  return Number.isFinite(value) ? minutosAHoras(horasAMinutos(value)) : 0;
+}
+
+function horasAMinutos(valor) {
+  const horas = Number(valor);
+  return Number.isFinite(horas)
+    ? Math.max(0, Math.round(horas * 60 + Number.EPSILON))
+    : 0;
+}
+
+function minutosAHoras(minutos) {
+  const total = Number(minutos);
+  return Number.isFinite(total)
+    ? Number((Math.max(0, Math.trunc(total)) / 60).toFixed(10))
+    : 0;
+}
+
+function sumarMinutosEstimados(items) {
+  return items.reduce((total, item) => total + horasAMinutos(obtenerHoras(item)), 0);
+}
+
+function formatearDuracion(valor) {
+  const minutosTotales = horasAMinutos(valor);
+  if (minutosTotales === 0) return "0min";
+  const horas = Math.floor(minutosTotales / 60);
+  const minutos = minutosTotales % 60;
+  if (horas && minutos) return `${horas}h ${minutos}min`;
+  if (horas) return `${horas}h`;
+  return `${minutos}min`;
+}
+
+function DurationInput({
+  id,
+  name,
+  value,
+  onChange,
+  disabled = false,
+  ariaInvalid = false,
+  maxHours = 24,
+}) {
+  const tieneValor = value !== "" && value !== null && value !== undefined &&
+    Number.isFinite(Number(value));
+  const minutosTotales = tieneValor ? horasAMinutos(value) : 0;
+  const horasParte = tieneValor && minutosTotales >= 60
+    ? String(Math.floor(minutosTotales / 60))
+    : "";
+  const minutosRestantes = minutosTotales % 60;
+  const minutosParte = tieneValor && minutosRestantes > 0
+    ? String(minutosRestantes)
+    : "";
+
+  const actualizarParte = (parte, valorCrudo) => {
+    let horas = parte === "horas"
+      ? (valorCrudo === "" ? 0 : Number(valorCrudo))
+      : (horasParte === "" ? 0 : Number(horasParte));
+    let minutos = parte === "minutos"
+      ? (valorCrudo === "" ? 0 : Number(valorCrudo))
+      : (minutosParte === "" ? 0 : Number(minutosParte));
+
+    horas = Math.max(0, Math.min(maxHours, Number.isFinite(horas) ? horas : 0));
+    minutos = Math.max(0, Math.min(59, Number.isFinite(minutos) ? minutos : 0));
+    if (horas >= maxHours) minutos = 0;
+
+    const totalMinutos = horas * 60 + minutos;
+    const nuevoValor = totalMinutos === 0 ? "" : String(minutosAHoras(totalMinutos));
+
+    onChange({ target: { name, value: nuevoValor } });
+  };
+
+  return (
+    <div className="duration-input" aria-invalid={ariaInvalid || undefined}>
+      <div className="duration-input-part">
+        <label htmlFor={`${id}-hours`}>Horas</label>
+        <input
+          id={`${id}-hours`}
+          name={`${name}_horas`}
+          type="number"
+          min="0"
+          max={maxHours}
+          step="1"
+          inputMode="numeric"
+          value={horasParte}
+          onChange={(event) => actualizarParte("horas", event.target.value)}
+          disabled={disabled}
+          aria-invalid={ariaInvalid}
+        />
+      </div>
+      <span className="duration-input-separator" aria-hidden="true">:</span>
+      <div className="duration-input-part">
+        <label htmlFor={`${id}-minutes`}>Minutos</label>
+        <input
+          id={`${id}-minutes`}
+          name={`${name}_minutos`}
+          type="number"
+          min="0"
+          max="59"
+          step="1"
+          inputMode="numeric"
+          value={minutosParte}
+          onChange={(event) => actualizarParte("minutos", event.target.value)}
+          disabled={disabled}
+          aria-invalid={ariaInvalid}
+        />
+      </div>
+    </div>
+  );
 }
 
 function obtenerHorasPendientes(tareas) {
-  return tareas
+  const minutos = tareas
     .filter((tarea) => {
       const estado = normalizarEstado(tarea.estado);
       return estado === "pendiente" || estado === "pospuesto";
     })
-    .reduce((total, tarea) => total + obtenerHoras(tarea), 0);
+    .reduce((total, tarea) => total + horasAMinutos(obtenerHoras(tarea)), 0);
+  return minutosAHoras(minutos);
 }
 
 function obtenerTituloSubtarea(item) {
@@ -425,7 +601,7 @@ function cabeEnJornada(horas, limite) {
 }
 
 function redondearHoras(horas) {
-  return Math.round((Number(horas) || 0) * 100) / 100;
+  return Math.round((Number(horas) || 0) * 60) / 60;
 }
 
 // Duración con la que arranca el control manual: la mayor que quepa en la
@@ -516,8 +692,8 @@ function resolverMensajeAlerta(resolucionActual) {
     return (
       <>
         ⚠ El {formatearFecha(resolucionActual.fecha_destino)} también
-        superaría su jornada ({alerta.horas.toFixed(1)}h de{" "}
-        {alerta.limite.toFixed(1)}h). Ajusta la duración manualmente para
+        superaría su jornada ({formatearDuracion(alerta.horas)} de{" "}
+        {formatearDuracion(alerta.limite)}). Ajusta la duración manualmente para
         continuar.
       </>
     );
@@ -527,8 +703,8 @@ function resolverMensajeAlerta(resolucionActual) {
     return (
       <>
         ⚠ El {formatearFecha(resolucionActual.fecha_destino)} ya tiene{" "}
-        {resolucionActual.carga_previa.toFixed(1)}h programadas y solo admite{" "}
-        {alerta.horas.toFixed(1)}h. Mueve la gestión a otro día para
+        {formatearDuracion(resolucionActual.carga_previa)} programadas y solo admite{" "}
+        {formatearDuracion(alerta.horas)}. Mueve la gestión a otro día para
         continuar.
       </>
     );
@@ -536,7 +712,7 @@ function resolverMensajeAlerta(resolucionActual) {
 
   return (
     <>
-      ⚠ Las horas superan las {alerta.horas.toFixed(1)}h disponibles.
+      ⚠ La duración supera los {formatearDuracion(alerta.horas)} disponibles.
       Disminuye la duración para continuar.
     </>
   );
@@ -629,14 +805,351 @@ function Modal({ title, subtitle, close, children, wide = false }) {
   );
 }
 
+// Menú compartido por el botón «+ Crear» de la cabecera y el botón flotante
+// móvil. Solo contiene las dos acciones de creación que ya existen en EventHub.
+function CreateMenu({
+  id,
+  abierto = true,
+  onCrearEvento,
+  onCrearSubtarea,
+  variant = "header",
+}) {
+  return (
+    <div
+      id={id}
+      className={`create-menu create-menu--${variant}${abierto ? " is-open" : ""}`}
+      role="menu"
+      aria-label="Opciones de creación"
+      aria-hidden={!abierto}
+      inert={!abierto}
+    >
+      <button
+        className="create-menu-item"
+        type="button"
+        role="menuitem"
+        onClick={onCrearEvento}
+      >
+        <span className="create-menu-item-icon" aria-hidden="true">
+          <FaCalendarAlt />
+        </span>
+        <span className="create-menu-item-copy">
+          <strong>Crear Evento</strong>
+          <small>Planifica un nuevo evento</small>
+        </span>
+      </button>
+
+      <button
+        className="create-menu-item"
+        type="button"
+        role="menuitem"
+        onClick={onCrearSubtarea}
+      >
+        <span className="create-menu-item-icon" aria-hidden="true">
+          <FaTasks />
+        </span>
+        <span className="create-menu-item-copy">
+          <strong>Crear Subtarea</strong>
+          <small>Añádela a uno de tus eventos</small>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// Sección opcional compartida; conserva los valores al animar su apertura.
+function StitchOptionalSection({
+  id,
+  icon,
+  title,
+  children,
+  defaultOpen = false,
+  className = "",
+}) {
+  const [abierta, setAbierta] = useState(defaultOpen);
+  const toggleRef = useRef(null);
+
+  const alternar = () => {
+    // Si el foco está dentro del panel, lo devolvemos al disparador para no
+    // dejar el foco en un elemento inerte al cerrar la sección.
+    const panel = document.getElementById(`${id}-panel`);
+    if (abierta && panel?.contains(document.activeElement)) {
+      toggleRef.current?.focus();
+    }
+    setAbierta((valor) => !valor);
+  };
+
+  return (
+    <section
+      className={`stitch-optional-section stitch-optional-collapsible${abierta ? " is-open" : ""}${className ? ` ${className}` : ""}`}
+    >
+      <button
+        ref={toggleRef}
+        className="stitch-optional-toggle"
+        type="button"
+        aria-expanded={abierta}
+        aria-controls={`${id}-panel`}
+        onClick={alternar}
+      >
+        <span className="stitch-optional-icon" aria-hidden="true">{icon}</span>
+        <span className="stitch-optional-heading">
+          <strong>{title}</strong>
+          <span className="stitch-optional-hint">(opcional)</span>
+        </span>
+        <span className="stitch-optional-chevron" aria-hidden="true">
+          <FaChevronDown />
+        </span>
+      </button>
+
+      <div
+        className="stitch-optional-panel"
+        id={`${id}-panel`}
+        role="region"
+        aria-label={title}
+        inert={!abierta}
+      >
+        <div className="stitch-optional-panel-inner">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+function ResponsibleCombobox({ id, value, options, onChange }) {
+  const [abierto, setAbierto] = useState(false);
+  const containerRef = useRef(null);
+  const listRef = useRef(null);
+  const opcionesFiltradas = options.filter((nombre) =>
+    nombre.toLocaleLowerCase("es").includes(value.trim().toLocaleLowerCase("es"))
+  );
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const cerrarFuera = (event) => {
+      if (!containerRef.current?.contains(event.target)) setAbierto(false);
+    };
+    const cerrarEscape = (event) => {
+      if (event.key === "Escape") setAbierto(false);
+    };
+    document.addEventListener("mousedown", cerrarFuera);
+    document.addEventListener("keydown", cerrarEscape);
+    return () => {
+      document.removeEventListener("mousedown", cerrarFuera);
+      document.removeEventListener("keydown", cerrarEscape);
+    };
+  }, [abierto]);
+
+  return (
+    <div className="responsible-combobox" ref={containerRef}>
+      <div className="responsible-combobox-control">
+        <input
+          id={id}
+          type="text"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={abierto && opcionesFiltradas.length > 0}
+          aria-controls={abierto && opcionesFiltradas.length > 0 ? `${id}-options` : undefined}
+          autoComplete="off"
+          maxLength={150}
+          value={value}
+          onFocus={() => setAbierto(true)}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setAbierto(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              if (!abierto) setAbierto(true);
+              else listRef.current?.querySelector("button")?.focus();
+            } else if (event.key === "Escape") {
+              setAbierto(false);
+            }
+          }}
+          placeholder="Busca o escribe un nombre"
+        />
+        {value && (
+          <button
+            type="button"
+            className="responsible-combobox-clear"
+            aria-label="Quitar responsable"
+            onClick={() => {
+              onChange("");
+              setAbierto(false);
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {abierto && opcionesFiltradas.length > 0 && (
+        <div
+          className="responsible-combobox-options"
+          id={`${id}-options`}
+          role="listbox"
+          aria-label="Responsables existentes"
+          ref={listRef}
+        >
+          {opcionesFiltradas.map((nombre) => (
+            <button
+              key={nombre}
+              type="button"
+              role="option"
+              aria-selected={value === nombre}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(nombre);
+                setAbierto(false);
+              }}
+            >
+              {nombre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Header({
   ruta,
   abrirCrear,
+  abrirCrearSubtarea,
   busquedaEventos,
   onBuscarEventos,
+  modoOscuro,
+  alternarTema,
 }) {
   const [mostrarCerrarSesion, setMostrarCerrarSesion] = useState(false);
   const [mostrarMenuMovil, setMostrarMenuMovil] = useState(false);
+  const [mostrarMenuPerfil, setMostrarMenuPerfil] = useState(false);
+  const [mostrarMenuCrear, setMostrarMenuCrear] = useState(false);
+  const perfilMenuRef = useRef(null);
+  const perfilMenuTriggerRef = useRef(null);
+  const crearMenuRef = useRef(null);
+  const creacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
+  const [perfil, setPerfil] = useState(obtenerDatosPerfil);
+  const [fotoPerfilHeader, setFotoPerfilHeader] = useState("");
+  const [horasPerfil, setHorasPerfil] = useState(null);
+
+  useEffect(() => {
+    let activo = true;
+    const cargarPerfil = async () => {
+      try {
+        const fotoData = await obtenerFotoPerfil();
+        if (!activo) return;
+        setFotoPerfilHeader(fotoData?.foto_perfil_url || "");
+      } catch (error) {
+        console.error("No fue posible recuperar el perfil del usuario.", error);
+      }
+    };
+    const actualizarFoto = (event) => {
+      const { fotoPerfilUrl, nombre, apellido } = event.detail || {};
+      if (typeof fotoPerfilUrl === "string") {
+        setFotoPerfilHeader(fotoPerfilUrl);
+      } else if (!nombre && !apellido) {
+        void cargarPerfil();
+      }
+
+      if (nombre || apellido) {
+        const nuevoNombre = [nombre, apellido].filter(Boolean).join(" ").trim();
+        setPerfil((actual) => ({
+          ...actual,
+          nombre: nuevoNombre,
+          iniciales: nuevoNombre
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+            .join("") || "EH",
+        }));
+      }
+    };
+    void cargarPerfil();
+    window.addEventListener("eventhub-profile-updated", actualizarFoto);
+    return () => {
+      activo = false;
+      window.removeEventListener("eventhub-profile-updated", actualizarFoto);
+    };
+  }, []);
+
+  useEffect(() => {
+    let activo = true;
+    obtenerPerfilUsuario()
+      .then((perfilData) => {
+        if (!activo) return;
+        const nombre =
+          [perfilData?.nombre, perfilData?.apellido]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || obtenerDatosPerfil().nombre;
+        setPerfil({
+          ...obtenerDatosPerfil(),
+          nombre,
+          correo: perfilData?.email || obtenerDatosPerfil().correo,
+          iniciales: nombre
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+            .join("") || "EH",
+        });
+      })
+      .catch((error) => {
+        console.error("No fue posible recuperar el nombre del usuario.", error);
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    obtenerConfiguracionUsuario()
+      .then((config) => setHorasPerfil(Number(config?.horas_dia) || 6))
+      .catch(() => setHorasPerfil(null));
+  }, []);
+
+  useEffect(() => {
+    if (!mostrarMenuPerfil) return undefined;
+    const cerrarFuera = (event) => {
+      if (perfilMenuRef.current && !perfilMenuRef.current.contains(event.target)) {
+        setMostrarMenuPerfil(false);
+      }
+    };
+    const cerrarEscape = (event) => {
+      if (event.key === "Escape") {
+        setMostrarMenuPerfil(false);
+        perfilMenuTriggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", cerrarFuera);
+    document.addEventListener("keydown", cerrarEscape);
+    return () => {
+      document.removeEventListener("mousedown", cerrarFuera);
+      document.removeEventListener("keydown", cerrarEscape);
+    };
+  }, [mostrarMenuPerfil, ruta]);
+
+  useEffect(() => {
+    if (!mostrarMenuCrear) return undefined;
+    const cerrarFuera = (event) => {
+      if (crearMenuRef.current && !crearMenuRef.current.contains(event.target)) {
+        setMostrarMenuCrear(false);
+      }
+    };
+    const cerrarEscape = (event) => {
+      if (event.key === "Escape") {
+        setMostrarMenuCrear(false);
+        crearMenuRef.current?.querySelector("button")?.focus();
+      }
+    };
+    document.addEventListener("mousedown", cerrarFuera);
+    document.addEventListener("keydown", cerrarEscape);
+    return () => {
+      document.removeEventListener("mousedown", cerrarFuera);
+      document.removeEventListener("keydown", cerrarEscape);
+    };
+  }, [mostrarMenuCrear]);
+
+  useEffect(() => {
+    setMostrarMenuCrear(false);
+  }, [ruta]);
 
   const confirmarCerrarSesion = () => {
     cerrarSesion();
@@ -652,7 +1165,7 @@ function Header({
           onClick={() => navegar("/eventos")}
         >
           <img
-            src={logo_Jaguar}
+            src={modoOscuro ? logo_Blanco : logo_Jaguar}
             alt="Jaguar EventHub"
             className="brand-logo"
           />
@@ -712,13 +1225,40 @@ function Header({
           </form>
         )}
 
-        <button
-          className="btn primary header-create"
-          type="button"
-          onClick={abrirCrear}
+        <div
+          className={`header-create-anchor${mostrarMenuCrear ? " is-open" : ""}`}
+          ref={crearMenuRef}
         >
-          ＋ Crear Evento
-        </button>
+          <button
+            className="btn primary header-create"
+            type="button"
+            onClick={
+              creacionGlobalDisponible
+                ? () => setMostrarMenuCrear((visible) => !visible)
+                : abrirCrear
+            }
+            aria-haspopup={creacionGlobalDisponible ? "menu" : undefined}
+            aria-expanded={creacionGlobalDisponible ? mostrarMenuCrear : undefined}
+            aria-controls={creacionGlobalDisponible ? "header-create-menu" : undefined}
+          >
+            + Crear
+          </button>
+
+          {creacionGlobalDisponible && (
+            <CreateMenu
+              id="header-create-menu"
+              abierto={mostrarMenuCrear}
+              onCrearEvento={() => {
+                setMostrarMenuCrear(false);
+                abrirCrear();
+              }}
+              onCrearSubtarea={() => {
+                setMostrarMenuCrear(false);
+                abrirCrearSubtarea();
+              }}
+            />
+          )}
+        </div>
 
         <button
           className="mobile-tools-button"
@@ -730,24 +1270,130 @@ function Header({
           ☰ <span>Herramientas</span>
         </button>
 
-        <button
-          className="avatar"
-          type="button"
-          aria-label="Abrir configuración"
-          onClick={() => navegar("/configuracion")}
-        >
-          LV
-        </button>
+        <div className="profile-menu-anchor" ref={perfilMenuRef}>
+          <button
+            ref={perfilMenuTriggerRef}
+            className={`profile-menu-trigger ${mostrarMenuPerfil ? "is-open" : ""}`}
+            type="button"
+            aria-label={`Abrir menú de usuario: ${perfil.nombre.split(/\s+/)[0] || "Organizador"}`}
+            aria-expanded={mostrarMenuPerfil}
+            aria-haspopup="menu"
+            aria-controls="profile-user-menu"
+            onClick={() => setMostrarMenuPerfil((visible) => !visible)}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              setMostrarMenuPerfil(true);
+              window.requestAnimationFrame(() => {
+                const items = perfilMenuRef.current?.querySelectorAll('[role="menuitem"]');
+                const item = event.key === "ArrowUp" ? items?.[items.length - 1] : items?.[0];
+                item?.focus();
+              });
+            }}
+          >
+            <span className="avatar profile-menu-avatar" aria-hidden="true">
+              {fotoPerfilHeader ? (
+                <img src={fotoPerfilHeader} alt="" className="avatar-photo" />
+              ) : perfil.iniciales}
+            </span>
+            <span className="profile-header-name" title={perfil.nombre}>
+              {perfil.nombre.split(/\s+/)[0] || "Organizador"}
+            </span>
+          </button>
 
-        <button
-          className="icon-button logout-button"
-          type="button"
-          aria-label="Cerrar sesión"
-          title="Cerrar sesión"
-          onClick={() => setMostrarCerrarSesion(true)}
-        >
-          <FaDoorOpen aria-hidden="true" />
-        </button>
+          {mostrarMenuPerfil && (
+            <div
+              id="profile-user-menu"
+              className="profile-dropdown"
+              role="menu"
+              aria-label="Menú del perfil"
+              onKeyDown={(event) => {
+                if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+                const items = Array.from(
+                  event.currentTarget.querySelectorAll('[role="menuitem"]:not(:disabled)')
+                );
+                if (items.length === 0) return;
+                event.preventDefault();
+                const currentIndex = items.indexOf(document.activeElement);
+                let nextIndex = currentIndex;
+                if (event.key === "Home") nextIndex = 0;
+                else if (event.key === "End") nextIndex = items.length - 1;
+                else if (currentIndex < 0) {
+                  nextIndex = event.key === "ArrowDown" ? 0 : items.length - 1;
+                } else {
+                  const direction = event.key === "ArrowDown" ? 1 : -1;
+                  nextIndex = (currentIndex + direction + items.length) % items.length;
+                }
+                items[nextIndex]?.focus();
+              }}
+            >
+              <div className="profile-dropdown-user">
+                <div className="profile-dropdown-avatar">
+                  {fotoPerfilHeader ? (
+                    <img src={fotoPerfilHeader} alt="" />
+                  ) : perfil.iniciales}
+                  <span className="profile-online-dot" aria-label="Sesión activa" />
+                </div>
+                <div className="profile-dropdown-identity">
+                  <strong>{perfil.nombre}</strong>
+                  <span>{perfil.correo || "Cuenta de EventHub"}</span>
+                </div>
+                <span className="profile-active-badge">ACTIVO</span>
+              </div>
+
+              <div className="profile-dropdown-shift">
+                <span><span aria-hidden="true">◷</span> Jornada diaria</span>
+                <strong>{horasPerfil === null ? "Configuración" : `${horasPerfil}h disponibles`}</strong>
+              </div>
+
+              <button
+                className="profile-dropdown-action"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMostrarMenuPerfil(false);
+                  navegar("/configuracion");
+                }}
+              >
+                <span className="profile-action-icon" aria-hidden="true">⚙</span>
+                <span className="profile-action-copy">
+                  <strong>Configuración</strong>
+                  <small>Foto de perfil y jornada laboral</small>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+
+              <button
+                className="profile-dropdown-theme"
+                type="button"
+                role="menuitem"
+                onClick={alternarTema}
+              >
+                <span className="profile-action-icon" aria-hidden="true">{modoOscuro ? "☀" : "☾"}</span>
+                <span className="profile-action-copy">
+                  <strong>{modoOscuro ? "Tema claro" : "Tema oscuro"}</strong>
+                  <small>{modoOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}</small>
+                </span>
+                <span className={`profile-theme-switch ${modoOscuro ? "enabled" : ""}`} aria-hidden="true">
+                  <span />
+                </span>
+              </button>
+
+              <button
+                className="profile-dropdown-logout"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMostrarMenuPerfil(false);
+                  setMostrarCerrarSesion(true);
+                }}
+              >
+                <FaDoorOpen aria-hidden="true" /> Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
+
       </header>
 
       {mostrarMenuMovil && (
@@ -810,18 +1456,6 @@ function Header({
               <span aria-hidden="true">›</span>
             </button>
 
-            <button
-              className="mobile-tools-link"
-              type="button"
-              onClick={() => {
-                setMostrarMenuMovil(false);
-                setMostrarCerrarSesion(true);
-              }}
-            >
-              <span aria-hidden="true">↪</span>
-              <span><strong>Cerrar sesión</strong><small>Salir de tu cuenta de EventHub</small></span>
-              <span aria-hidden="true">›</span>
-            </button>
           </aside>
         </div>
       )}
@@ -1129,7 +1763,7 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
   const [enviando, setEnviando] = useState(false);
   const [crearSubtareaInicial, setCrearSubtareaInicial] = useState(false);
   const [subtareas, setSubtareas] = useState([
-    { id: "subtarea-1", titulo: "", horas_estimadas: "", estado: "", dia_objetivo: "" },
+    { id: "subtarea-1", titulo: "", horas_estimadas: "", estado: "", dia_objetivo: "", responsable: "", notas: "" },
   ]);
   const [errorSubtarea, setErrorSubtarea] = useState("");
   const [conflicto, setConflicto] = useState(null);
@@ -1149,6 +1783,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
         horas_estimadas: "",
         estado: "",
         dia_objetivo: "",
+        responsable: "",
+        notas: "",
       },
     ]);
     setErrorSubtarea("");
@@ -1218,9 +1854,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
       Boolean(siguiente.fecha),
       Boolean(
         siguiente.horas &&
-        Number(siguiente.horas) >= 1 &&
-        Number(siguiente.horas) <= 24 &&
-        Number.isInteger(Number(siguiente.horas))
+        Number(siguiente.horas) > 0 &&
+        Number(siguiente.horas) <= 24
       ),
       Boolean(siguiente.usuario_responsable.trim()),
     ];
@@ -1266,10 +1901,9 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
 
     if (
       !formulario.horas ||
-      horas <= 0 ||
-      !Number.isInteger(horas)
+      horas <= 0
     ) {
-      next.horas = "Las horas deben ser mayor a 0.";
+      next.horas = "La duración debe ser mayor a 0 minutos.";
     } else if (horas > 24) {
       next.horas = "Las horas no pueden ser mayores a 24.";
     }
@@ -1292,10 +1926,9 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
       if (
         !item.horas_estimadas ||
         Number(item.horas_estimadas) <= 0 ||
-        Number(item.horas_estimadas) > 24 ||
-        !Number.isInteger(Number(item.horas_estimadas))
+        Number(item.horas_estimadas) > 24
       ) {
-        erroresItem.push("indica las horas (de 1 a 24)");
+        erroresItem.push("indica una duración mayor a 0 minutos y hasta 24 horas");
       }
       if (!item.estado) erroresItem.push("selecciona el estado");
       if (
@@ -1369,6 +2002,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
         horas_estimadas: Number(item.horas_estimadas),
         estado: item.estado,
         dia_objetivo: item.fechaObjetivo,
+        responsable: item.responsable.trim() || null,
+        notas: item.notas.trim() || null,
       }))
     );
   };
@@ -1435,6 +2070,8 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
         horas_estimadas: Number(item.horas_estimadas),
         estado: item.estado,
         dia_objetivo: item.fechaObjetivo,
+        responsable: item.responsable.trim() || null,
+        notas: item.notas.trim() || null,
       }))
     );
   };
@@ -1464,21 +2101,16 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
           )}
         </div>
         <div>
-          <div className="field-header"><label htmlFor="horas">Horas <span>*</span></label><small>Duración estimada</small></div>
-          <input
+          <div className="field-header"><label htmlFor="horas-hours">Duración estimada <span>*</span></label><small>Horas y minutos</small></div>
+          <DurationInput
             id="horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={formulario.horas}
             onChange={actualizar}
-            placeholder="4"
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
           {errores.horas && <p className="inline-error" role="alert">{errores.horas}</p>}
-          {!errores.horas && <p className="helper">ⓘ Las horas deben ser entre 1 y 24</p>}
+          {!errores.horas && <p className="helper">ⓘ Indica la duración en horas y minutos (máximo 24h)</p>}
         </div>
       </div>
 
@@ -1519,11 +2151,14 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
           />
           <span>
             <strong>Crear una subtarea</strong>
-            <small>Se guardará vinculada al evento y con una fecha límite dentro de su periodo.</small>
+            <small>¿Qué necesitas hacer para este evento? Agrega subtareas para organizar tus actividades y encontrarlas dentro del evento.</small>
           </span>
         </label>
         {crearSubtareaInicial && (
           <div className="create-event-subtask-fields">
+            <p className="create-event-subtask-help">
+              Las subtareas son actividades necesarias para organizar o ejecutar el evento; puedes asignar responsable, fecha y duración estimada.
+            </p>
             {subtareas.map((item, indice) => (
               <div className="create-event-subtask-item" key={item.id}>
                 <div className="field-header">
@@ -1549,17 +2184,13 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
                 <div className="form-two-columns">
                   <div>
                     <div className="field-header">
-                      <label htmlFor={`evento-subtarea-horas-${item.id}`}>Horas <span>*</span></label>
+                      <label htmlFor={`evento-subtarea-horas-${item.id}-hours`}>Duración <span>*</span></label>
                     </div>
-                    <input
+                    <DurationInput
                       id={`evento-subtarea-horas-${item.id}`}
-                      type="number"
-                      min="1"
-                      max="24"
-                      step="1"
+                      name="horas_estimadas"
                       value={item.horas_estimadas}
                       onChange={(event) => actualizarSubtarea(item.id, "horas_estimadas", event.target.value)}
-                      placeholder="2"
                     />
                   </div>
                   <div>
@@ -1585,18 +2216,45 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
                   id={`evento-subtarea-fecha-${item.id}`}
                   type="date"
                   min={obtenerFechaLocalHoy()}
-                  max={formulario.fecha}
-                  value={limitarFechaSubtarea(
-                    item.dia_objetivo || formulario.fecha,
-                    formulario.fecha
-                  )}
+                  max={formulario.fecha || undefined}
+                  value={item.dia_objetivo || ""}
                   onChange={(event) => actualizarSubtarea(item.id, "dia_objetivo", event.target.value)}
-                  disabled={
-                    !formulario.fecha ||
-                    formulario.fecha < obtenerFechaLocalHoy()
-                  }
                   aria-invalid={Boolean(errorSubtarea)}
+                  aria-describedby={`evento-subtarea-fecha-ayuda-${item.id}`}
                 />
+                <p className="helper" id={`evento-subtarea-fecha-ayuda-${item.id}`}>
+                  {formulario.fecha
+                    ? "Selecciona una fecha desde hoy hasta la fecha del evento."
+                    : "Puedes elegir una fecha desde hoy; al guardar, debe ser igual o anterior a la fecha del evento."}
+                </p>
+                <StitchOptionalSection
+                  id={`evento-subtarea-responsable-${item.id}`}
+                  icon={<FaUser />}
+                  title="Asignar responsable"
+                >
+                  <label htmlFor={`evento-subtarea-responsable-${item.id}-input`}>Responsable de la subtarea</label>
+                  <input
+                    id={`evento-subtarea-responsable-${item.id}-input`}
+                    value={item.responsable || ""}
+                    onChange={(event) => actualizarSubtarea(item.id, "responsable", event.target.value)}
+                    placeholder="Nombre de la persona responsable"
+                  />
+                </StitchOptionalSection>
+                <StitchOptionalSection
+                  id={`evento-subtarea-notas-${item.id}`}
+                  icon={<FaRegFileAlt />}
+                  title="Agregar nota"
+                >
+                  <label htmlFor={`evento-subtarea-notas-${item.id}-textarea`}>Notas e instrucciones</label>
+                  <textarea
+                    id={`evento-subtarea-notas-${item.id}-textarea`}
+                    value={item.notas || ""}
+                    onChange={(event) => actualizarSubtarea(item.id, "notas", event.target.value)}
+                    placeholder="Agrega detalles o instrucciones para esta subtarea"
+                    rows={2}
+                    maxLength={300}
+                  />
+                </StitchOptionalSection>
               </div>
             ))}
             <button
@@ -1652,14 +2310,18 @@ function CrearSubtareaForm({
   eventoId,
   eventoFecha,
   eventoTitulo,
+  permitirCambiarEvento = false,
   onCancelar,
   onCreada,
 }) {
+  const seleccionEvento = permitirCambiarEvento || !eventoId;
   const [form, setForm] = useState({
     nombre: "",
     horas: "",
     estado: "pendiente",
     dia_objetivo: limitarFechaSubtarea(eventoFecha, eventoFecha),
+    responsable: "",
+    notas: "",
   });
 
   const [errores, setErrores] = useState({});
@@ -1668,6 +2330,85 @@ function CrearSubtareaForm({
   const [conflicto, setConflicto] = useState(null);
   const [agenda, setAgenda] = useState([]);
   const [capacidad, setCapacidad] = useState(6);
+
+  const [eventosDisponibles, setEventosDisponibles] = useState([]);
+  const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState(
+    eventoId ? String(eventoId) : ""
+  );
+  const [cargandoEventos, setCargandoEventos] = useState(true);
+  const [errorEventos, setErrorEventos] = useState("");
+  const [responsablesDisponibles, setResponsablesDisponibles] = useState([]);
+  const enviandoRef = useRef(false);
+
+  // Datos del evento activo. En el detalle del evento se conservan las props
+  // originales; en /hoy se resuelven desde el selector obligatorio.
+  const eventoSeleccionado = eventosDisponibles.find(
+    (evento) => String(evento.id) === String(eventoSeleccionadoId)
+  );
+  const eventoActivo = seleccionEvento
+    ? eventoSeleccionado
+    : eventoSeleccionado || {
+        id: eventoId,
+        fecha: eventoFecha,
+        titulo: eventoTitulo,
+      };
+  const eventoIdActual = eventoActivo?.id ?? (seleccionEvento ? "" : eventoId);
+  const fechaEventoActual = eventoActivo?.fecha ?? "";
+  const tituloEventoActual = eventoActivo?.titulo ?? "";
+
+  const cargarOpciones = async () => {
+    try {
+      const [eventosData, subtareasData] = await Promise.all([
+        obtenerEventos(),
+        obtenerSubtareas(),
+      ]);
+
+      const listaEventos = Array.isArray(eventosData) ? eventosData : [];
+      const listaSubtareas = Array.isArray(subtareasData) ? subtareasData : [];
+
+      setEventosDisponibles(listaEventos);
+      setErrorEventos("");
+
+      // No existe un endpoint de usuarios en el contrato actual. Las opciones
+      // se construyen con el usuario de la sesión y los responsables ya
+      // registrados en eventos/subtareas, sin alterar el backend.
+      const nombres = new Set();
+      const perfil = obtenerDatosPerfil();
+      if (perfil.nombre && perfil.nombre !== "Organizador") {
+        nombres.add(perfil.nombre);
+      }
+
+      const agregarResponsable = (registro) => {
+        const nombre = obtenerResponsableSubtarea(registro);
+        if (nombre) nombres.add(nombre);
+      };
+
+      listaEventos.forEach(agregarResponsable);
+      listaSubtareas.forEach(agregarResponsable);
+
+      setResponsablesDisponibles(
+        Array.from(nombres).sort((a, b) => a.localeCompare(b, "es"))
+      );
+    } catch (error) {
+      console.error("Error al cargar eventos y responsables:", error);
+      setErrorEventos(
+        error.message ||
+          "No fue posible cargar los eventos disponibles."
+      );
+    } finally {
+      setCargandoEventos(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarOpciones();
+  }, []);
+
+  const reintentarOpciones = () => {
+    setCargandoEventos(true);
+    setErrorEventos("");
+    cargarOpciones();
+  };
 
   const cargarAgenda = async () => {
     const [subtareasData, hoyData, eventosData] = await Promise.all([
@@ -1700,6 +2441,8 @@ function CrearSubtareaForm({
   };
 
   const registrarSubtarea = async (datos) => {
+    if (enviandoRef.current) return;
+    enviandoRef.current = true;
     setEnviando(true);
     setErrorServidor("");
 
@@ -1712,12 +2455,13 @@ function CrearSubtareaForm({
       setErrorServidor(
         error.message || "No fue posible crear la subtarea."
       );
+      enviandoRef.current = false;
       setEnviando(false);
     }
   };
 
   const aplicarDecisionSobrecarga = async ({ fecha, horas }) => {
-    if (!esFechaSubtareaValida(fecha, eventoFecha)) {
+    if (!esFechaSubtareaValida(fecha, fechaEventoActual)) {
       setErrores((prev) => ({
         ...prev,
         dia_objetivo:
@@ -1737,8 +2481,8 @@ function CrearSubtareaForm({
         fechaObjetivo: fecha,
       }],
       capacidadDiaria: capacidad,
-      eventoTitulo,
-      fechaLimite: obtenerFechaLimiteSubtarea(eventoFecha),
+      eventoTitulo: tituloEventoActual,
+      fechaLimite: obtenerFechaLimiteSubtarea(fechaEventoActual),
     });
 
     if (conflictoResidual) {
@@ -1746,26 +2490,15 @@ function CrearSubtareaForm({
       return;
     }
 
-    setEnviando(true);
-    setErrorServidor("");
-
-    try {
-      await crearSubtarea({
-        evento_id: eventoId,
-        titulo: form.nombre.trim(),
-        dia_objetivo: fecha,
-        horas_estimadas: Number(horas),
-        estado: form.estado,
-      });
-      setConflicto(null);
-      onCreada();
-    } catch (error) {
-      console.error("Error al crear subtarea:", error);
-      setErrorServidor(
-        error.message || "No fue posible crear la subtarea."
-      );
-      setEnviando(false);
-    }
+    await registrarSubtarea({
+      evento_id: eventoIdActual,
+      titulo: form.nombre.trim(),
+      dia_objetivo: fecha,
+      horas_estimadas: Number(horas),
+      estado: form.estado,
+      responsable: form.responsable.trim() || null,
+      notas: form.notas.trim() || null,
+    });
   };
 
   const actualizar = (event) => {
@@ -1784,10 +2517,37 @@ function CrearSubtareaForm({
     setErrorServidor("");
   };
 
+  const seleccionarEvento = (event) => {
+    const nuevoId = event.target.value;
+    const evento = eventosDisponibles.find(
+      (item) => String(item.id) === String(nuevoId)
+    );
+
+    setEventoSeleccionadoId(nuevoId);
+    setForm((prev) => ({
+      ...prev,
+      // Al cambiar de evento se conserva la fecha si sigue dentro del rango
+      // permitido; de lo contrario se ajusta al límite del nuevo evento.
+      dia_objetivo: evento
+        ? limitarFechaSubtarea(prev.dia_objetivo, evento.fecha)
+        : "",
+    }));
+    setErrores((prev) => ({
+      ...prev,
+      evento_id: "",
+      dia_objetivo: "",
+    }));
+    setErrorServidor("");
+  };
+
   const enviar = async (event) => {
     event.preventDefault();
 
     const next = {};
+
+    if (seleccionEvento && !eventoIdActual) {
+      next.evento_id = "Selecciona el evento al que pertenece la subtarea.";
+    }
 
     if (!form.nombre.trim()) {
       next.nombre = "El nombre de la subtarea es requerido.";
@@ -1796,14 +2556,13 @@ function CrearSubtareaForm({
     if (
       !form.horas ||
       Number(form.horas) <= 0 ||
-      Number(form.horas) > 24 ||
-      !Number.isInteger(Number(form.horas))
+      Number(form.horas) > 24
     ) {
-      next.horas = "Las horas deben ser un número entero entre 1 y 24.";
+      next.horas = "La duración debe ser mayor a 0 minutos y hasta 24 horas.";
     }
 
     if (
-      !esFechaSubtareaValida(form.dia_objetivo, eventoFecha)
+      !esFechaSubtareaValida(form.dia_objetivo, fechaEventoActual)
     ) {
       next.dia_objetivo =
         "Selecciona una fecha límite entre hoy y la fecha del evento.";
@@ -1839,8 +2598,8 @@ function CrearSubtareaForm({
           fechaObjetivo: form.dia_objetivo,
         }],
         capacidadDiaria: capacidadActual,
-        eventoTitulo,
-        fechaLimite: obtenerFechaLimiteSubtarea(eventoFecha),
+        eventoTitulo: tituloEventoActual,
+        fechaLimite: obtenerFechaLimiteSubtarea(fechaEventoActual),
       });
 
       if (conflictoNuevo) {
@@ -1850,11 +2609,13 @@ function CrearSubtareaForm({
     }
 
     await registrarSubtarea({
-      evento_id: eventoId,
+      evento_id: eventoIdActual,
       titulo: form.nombre.trim(),
       dia_objetivo: form.dia_objetivo,
       horas_estimadas: Number(form.horas),
       estado: form.estado,
+      responsable: form.responsable.trim() || null,
+      notas: form.notas.trim() || null,
     });
   };
 
@@ -1882,25 +2643,132 @@ function CrearSubtareaForm({
         </p>
       )}
 
-      <div className="form-two-columns">
-        <div>
+      {seleccionEvento ? (
+        <>
           <div className="field-header">
-            <label htmlFor="sub-horas">
-              Horas <span>*</span>
+            <label htmlFor="sub-evento">
+              Evento asociado <span>*</span>
             </label>
           </div>
 
-          <input
+          <select
+            id="sub-evento"
+            name="evento_id"
+            className="create-subtask-event-select"
+            value={eventoSeleccionadoId}
+            onChange={seleccionarEvento}
+            aria-invalid={Boolean(errores.evento_id)}
+            disabled={
+              cargandoEventos ||
+              (Boolean(errorEventos) && eventosDisponibles.length === 0)
+            }
+          >
+            <option value="">
+              {cargandoEventos
+                ? "Cargando eventos…"
+                : "Selecciona un evento"}
+            </option>
+
+            {eventosDisponibles.map((evento) => {
+              const vencido =
+                String(evento.fecha || "").slice(0, 10) <
+                obtenerFechaLocalHoy();
+
+              return (
+                <option key={evento.id} value={evento.id} disabled={vencido}>
+                  {evento.titulo}
+                  {evento.fecha ? ` · ${formatearFecha(evento.fecha)}` : ""}
+                  {vencido ? " (vencido)" : ""}
+                </option>
+              );
+            })}
+          </select>
+
+          {errorEventos && (
+            <div className="event-load-error" role="alert">
+              <p className="inline-error">{errorEventos}</p>
+              <button
+                className="btn ghost"
+                type="button"
+                onClick={reintentarOpciones}
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {!cargandoEventos && !errorEventos && eventosDisponibles.length === 0 && (
+            <p className="helper">
+              No tienes eventos disponibles. Crea un evento primero.
+            </p>
+          )}
+
+          {errores.evento_id && (
+            <p className="inline-error" role="alert">
+              {errores.evento_id}
+            </p>
+          )}
+        </>
+      ) : (
+        <div className="subtask-event-locked">
+          <span className="subtask-event-locked-icon" aria-hidden="true">
+            <FaCalendarAlt />
+          </span>
+          <span className="subtask-event-locked-copy">
+            <small>EVENTO ASOCIADO</small>
+            <strong>{eventoTitulo || "Evento"}</strong>
+          </span>
+          <span className="subtask-event-locked-date">
+            {formatearFecha(eventoFecha)}
+          </span>
+        </div>
+      )}
+
+      <div className="field-header">
+        <label htmlFor="sub-dia-objetivo">
+          Fecha límite <span>*</span>
+        </label>
+      </div>
+
+      <input
+        id="sub-dia-objetivo"
+        name="dia_objetivo"
+        type="date"
+        min={obtenerFechaLocalHoy()}
+        max={fechaEventoActual || undefined}
+        value={form.dia_objetivo}
+        onChange={actualizar}
+        disabled={
+          !fechaEventoActual || fechaEventoActual < obtenerFechaLocalHoy()
+        }
+        aria-invalid={Boolean(errores.dia_objetivo)}
+      />
+      <p className="helper">
+        {fechaEventoActual
+          ? `Selecciona entre hoy y la fecha del evento (${formatearFecha(fechaEventoActual)}).`
+          : "Selecciona primero el evento asociado."}
+      </p>
+
+      {errores.dia_objetivo && (
+        <p className="inline-error" role="alert">
+          {errores.dia_objetivo}
+        </p>
+      )}
+
+      <div className="form-two-columns">
+        <div>
+          <div className="field-header">
+            <label htmlFor="sub-horas-hours">
+              Duración estimada <span>*</span>
+            </label>
+          </div>
+
+          <DurationInput
             id="sub-horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={form.horas}
             onChange={actualizar}
-            placeholder="2"
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
 
           {errores.horas ? (
@@ -1909,7 +2777,7 @@ function CrearSubtareaForm({
             </p>
           ) : (
             <p className="helper">
-              ⓘ Las horas deben ser entre 1 y 24
+              ⓘ Ingresa horas y minutos (máximo 24h)
             </p>
           )}
         </div>
@@ -1936,30 +2804,47 @@ function CrearSubtareaForm({
         </div>
       </div>
 
-      <div className="field-header">
-        <label htmlFor="sub-dia-objetivo">
-          Fecha límite <span>*</span>
+      <StitchOptionalSection
+        id="sub-responsable"
+        icon={<FaUser />}
+        title="Asignar responsable"
+        defaultOpen={Boolean(form.responsable)}
+      >
+        <label htmlFor="sub-responsable-select">
+          Responsable de la subtarea
         </label>
-      </div>
-
-      <input
-        id="sub-dia-objetivo"
-        name="dia_objetivo"
-        type="date"
-        min={obtenerFechaLocalHoy()}
-        max={eventoFecha}
-        value={form.dia_objetivo}
-        onChange={actualizar}
-        disabled={!eventoFecha || eventoFecha < obtenerFechaLocalHoy()}
-        aria-invalid={Boolean(errores.dia_objetivo)}
-      />
-      <p className="helper">Selecciona entre hoy y la fecha del evento.</p>
-
-      {errores.dia_objetivo && (
-        <p className="inline-error" role="alert">
-          {errores.dia_objetivo}
+        <ResponsibleCombobox
+          id="sub-responsable-select"
+          value={form.responsable}
+          options={responsablesDisponibles}
+          onChange={(responsable) => {
+            setForm((prev) => ({ ...prev, responsable }));
+            setErrorServidor("");
+          }}
+        />
+        <p className="helper">
+          Elige un responsable existente o escribe un nombre. Puedes dejarlo vacío.
         </p>
-      )}
+      </StitchOptionalSection>
+
+      <StitchOptionalSection
+        id="sub-notas"
+        icon={<FaRegFileAlt />}
+        title="Agregar nota"
+        defaultOpen={Boolean(form.notas)}
+      >
+        <label htmlFor="sub-notas">Notas e instrucciones</label>
+        <textarea
+          id="sub-notas"
+          name="notas"
+          value={form.notas}
+          onChange={actualizar}
+          placeholder="Añade notas o especificaciones de apoyo..."
+          rows={3}
+          maxLength={300}
+        />
+        <p className="helper">{form.notas.length}/300 caracteres</p>
+      </StitchOptionalSection>
 
       {errorServidor && (
         <div className="alert alert-error" role="alert">
@@ -2024,6 +2909,68 @@ function ConfirmModal({ title, message, confirmLabel = "Eliminar", close, onConf
             {loading && <span className="mini-spinner danger-spinner" />}
             {loading ? "Eliminando…" : confirmLabel}
           </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function EvidencePreviewModal({ url, title, onClose }) {
+  const [errorImagen, setErrorImagen] = useState(false);
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const manejarEscape = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", manejarEscape);
+    return () => document.removeEventListener("keydown", manejarEscape);
+  }, [onClose]);
+
+  return (
+    <div
+      className="evidence-preview-overlay"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="evidence-preview-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="evidence-preview-title"
+      >
+        <header className="evidence-preview-header">
+          <div>
+            <FaPaperclip aria-hidden="true" />
+            <h2 id="evidence-preview-title">Evidencia adjunta</h2>
+            <p>{title}</p>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            className="evidence-preview-close"
+            onClick={onClose}
+            aria-label="Cerrar vista previa"
+          >
+            <FaTimes aria-hidden="true" />
+          </button>
+        </header>
+        <div className="evidence-preview-content">
+          {errorImagen ? (
+            <p className="evidence-preview-error" role="alert">
+              No se pudo cargar la imagen de evidencia. Cierra esta ventana e
+              inténtalo más tarde.
+            </p>
+          ) : (
+            <img
+              src={url}
+              alt={`Evidencia adjunta de ${title}`}
+              onError={() => setErrorImagen(true)}
+            />
+          )}
         </div>
       </section>
     </div>
@@ -2122,10 +3069,9 @@ function EditarEventoForm({ evento, subtareas = [], onCancelar, onGuardado }) {
 
     if (
       !formulario.horas ||
-      horas <= 0 ||
-      !Number.isInteger(horas)
+      horas <= 0
     ) {
-      next.horas = "Las horas deben ser mayor a 0.";
+      next.horas = "La duración debe ser mayor a 0 minutos.";
     } else if (horas > 24) {
       next.horas = "Las horas no pueden ser mayores a 24.";
     }
@@ -2177,22 +3123,18 @@ function EditarEventoForm({ evento, subtareas = [], onCancelar, onGuardado }) {
           )}
         </div>
         <div>
-          <div className="field-header"><label htmlFor="edit-horas">Horas <span>*</span></label></div>
-          <input
+          <div className="field-header"><label htmlFor="edit-horas-hours">Duración estimada <span>*</span></label></div>
+          <DurationInput
             id="edit-horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={formulario.horas}
             onChange={actualizar}
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
           {errores.horas ? (
             <p className="inline-error" role="alert">{errores.horas}</p>
           ) : (
-            <p className="helper">ⓘ Las horas deben ser entre 1 y 24</p>
+            <p className="helper">ⓘ Ingresa horas y minutos (máximo 24h)</p>
           )}
         </div>
       </div>
@@ -2257,6 +3199,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
     // La nota ya guardada se precarga; si la API falla permanece en el
     // estado local y no se pierde.
     notas: obtenerNotaSubtarea(subtarea),
+    responsable: obtenerResponsableSubtarea(subtarea),
   });
 
   // La nota crece automáticamente a medida que el usuario escribe.
@@ -2356,12 +3299,18 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
       horas_estimadas: Number(horas),
       estado: estadoAGuardar,
       notas: form.notas.trim() || null,
+      responsable: form.responsable.trim() || null,
     });
 
     return { guardada: true };
   };
 
   const guardarEdicion = async ({ fecha, horas }) => {
+    // Estos valores deben calcularse en el mismo alcance donde se usan al
+    // actualizar la interfaz después de guardar.
+    const titulo = form.nombre.trim();
+    const estadoAGuardar = normalizarEstadoAGuardar(form.estado);
+
     setGuardando(true);
     setErrorServidor("");
 
@@ -2375,7 +3324,16 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
       }
 
       setConflicto(null);
-      onGuardado();
+      onGuardado({
+        id: subtarea.id,
+        titulo,
+        nombre: titulo,
+        dia_objetivo: fecha,
+        horas_estimadas: Number(horas),
+        estado: estadoAGuardar,
+        responsable: form.responsable.trim() || null,
+        notas: form.notas.trim() || null,
+      });
     } catch (error) {
       console.error("Error al actualizar subtarea:", error);
 
@@ -2399,10 +3357,9 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
     if (
       !form.horas ||
       Number(form.horas) <= 0 ||
-      Number(form.horas) > 24 ||
-      !Number.isInteger(Number(form.horas))
+      Number(form.horas) > 24
     ) {
-      next.horas = "Las horas deben ser un número entero entre 1 y 24.";
+      next.horas = "La duración debe ser mayor a 0 minutos y hasta 24 horas.";
     }
     if (
       !esFechaSubtareaValida(form.dia_objetivo, eventoFecha)
@@ -2465,21 +3422,17 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
       <div className="form-two-columns">
         <div>
           <div className="field-header">
-            <label htmlFor="edit-sub-horas">
-              Horas <span>*</span>
+            <label htmlFor="edit-sub-horas-hours">
+              Duración estimada <span>*</span>
             </label>
           </div>
 
-          <input
+          <DurationInput
             id="edit-sub-horas"
             name="horas"
-            type="number"
-            min="1"
-            max="24"
-            step="1"
             value={form.horas}
             onChange={actualizar}
-            aria-invalid={Boolean(errores.horas)}
+            ariaInvalid={Boolean(errores.horas)}
           />
 
           {errores.horas && (
@@ -2536,16 +3489,25 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
         </p>
       )}
 
-      {/* Nota opcional: card del mismo ancho que la fecha, auto-expandible */}
-      <div className="note-card">
-        <div className="note-card-header">
-          <FaStickyNote aria-hidden="true" />
-          <label htmlFor="edit-sub-notas">Nota opcional</label>
-          <span className="note-card-hint">Se guarda al editar</span>
-        </div>
+      <StitchOptionalSection
+        id="edit-sub-responsable"
+        icon={<FaUser />}
+        title="Asignar responsable"
+        defaultOpen={Boolean(form.responsable)}
+      >
+        <label htmlFor="edit-sub-responsable-input">Responsable de la subtarea</label>
+        <input id="edit-sub-responsable-input" name="responsable" value={form.responsable} onChange={actualizar} placeholder="Nombre de la persona responsable" />
+      </StitchOptionalSection>
 
+      <StitchOptionalSection
+        id="edit-sub-notas"
+        icon={<FaRegFileAlt />}
+        title="Agregar nota"
+        defaultOpen
+      >
+        <label htmlFor="edit-sub-notas-textarea">Notas e instrucciones</label>
         <textarea
-          id="edit-sub-notas"
+          id="edit-sub-notas-textarea"
           name="notas"
           ref={notaRef}
           value={form.notas}
@@ -2555,7 +3517,8 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
           maxLength={300}
           placeholder="Añade una nota (opcional)"
         />
-      </div>
+        <p className="helper">Se guarda al editar.</p>
+      </StitchOptionalSection>
 
       {errorServidor && (
         <div className="alert alert-error" role="alert">
@@ -2619,7 +3582,7 @@ function Eventos({ eventos, cargando, error, recargar, crear, busqueda }) {
       {!cargando && !error && eventosVisibles.length > 0 && <section className="event-grid" aria-label="Eventos guardados">
         {eventosVisibles.map((evento) => <article className="event-card card" key={evento.id ?? `${evento.titulo}-${evento.fecha}`}>
           <div className="event-card-icon">✦</div>
-          <div className="event-card-content"><span className="status-pill">● En preparación</span><h2>{evento.titulo}</h2><p>{formatearFecha(evento.fecha)} {evento.horas ? `• ${evento.horas} horas` : ""}</p>{evento.descripcion && <p className="muted-line">{evento.descripcion}</p>}</div>
+          <div className="event-card-content"><span className="status-pill">● En preparación</span><h2>{evento.titulo}</h2><p>{formatearFecha(evento.fecha)} {evento.horas ? `• ${formatearDuracion(evento.horas)}` : ""}</p>{evento.descripcion && <p className="muted-line">{evento.descripcion}</p>}</div>
           <button className="btn secondary" onClick={() => navegar(`/eventos/${evento.id}`)}>Ver detalle</button>
         </article>)}
       </section>}
@@ -2639,6 +3602,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const [eliminando, setEliminando] = useState(false);
   const [actualizandoEstadoSubtarea, setActualizandoEstadoSubtarea] = useState(null);
   const [conflictoCheckbox, setConflictoCheckbox] = useState(null);
+  const [evidenciaAbierta, setEvidenciaAbierta] = useState(null);
 
   const cargar = async () => {
     setCargandoEvento(true); setErrorEvento("");
@@ -2782,8 +3746,27 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const eventoActualizado = async () => {
     setModal(null); await cargar(); onEventosChanged?.(); onNotify("Evento actualizado correctamente");
   };
-  const subtareaActualizada = async () => {
-    setModal(null); await cargarSubtareas(); onNotify("Subtarea actualizada correctamente");
+  const subtareaActualizada = async (datosActualizados) => {
+    setModal(null);
+    try {
+      const data = await obtenerSubtareas(id);
+      const lista = Array.isArray(data) ? data : [];
+      const listaConDatosActualizados = lista.map((item) => {
+        if (String(item.id) !== String(datosActualizados?.id)) return item;
+        return {
+          ...item,
+          ...datosActualizados,
+          responsable: datosActualizados.responsable ?? obtenerResponsableSubtarea(item),
+          notas: datosActualizados.notas ?? obtenerNotaSubtarea(item),
+        };
+      });
+      setSubtareas(listaConDatosActualizados);
+      setEstadoSubtareas(listaConDatosActualizados.length ? "success" : "empty");
+      setErrorSubtareas("");
+    } catch (error) {
+      await cargarSubtareas();
+    }
+    onNotify("Subtarea actualizada correctamente");
   };
   const ejecutarEliminacion = async () => {
     if (!confirmacion) return;
@@ -2823,7 +3806,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
 
       <section className="event-info card">
         <InfoBlock icon="fecha" title="FECHA DEL EVENTO"><strong>{formatearFecha(evento.fecha)}</strong><span>Fecha registrada</span></InfoBlock>
-        <InfoBlock icon="duracion" title="DURACIÓN ESTIMADA"><strong>{evento.horas ?? "—"} horas</strong><span>Jornada estimada</span></InfoBlock>
+        <InfoBlock icon="duracion" title="DURACIÓN ESTIMADA"><strong>{evento.horas == null ? "—" : formatearDuracion(evento.horas)}</strong><span>Jornada estimada</span></InfoBlock>
         <InfoBlock icon="responsable" title="USUARIO RESPONSABLE"><strong>{responsableTexto || "Sin asignar"}</strong><span>Responsable</span></InfoBlock>
         <InfoBlock icon="descripcion" title="DESCRIPCIÓN COMPLETA"><strong className="description-value">{evento.descripcion || "Sin descripción"}</strong></InfoBlock>
       </section>
@@ -2839,20 +3822,45 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
             const estado = normalizarEstado(task.estado);
             const titulo = obtenerTituloSubtarea(task);
             const nota = obtenerNotaSubtarea(task);
+            const responsableSubtarea = obtenerResponsableSubtarea(task);
+            const evidenciaUrl =
+              typeof task.comprobante_url === "string"
+                ? task.comprobante_url.trim()
+                : "";
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
-              <button
-                type="button"
-                className={`task-check ${estado === "hecho" ? "completed" : ""}`}
-                role="checkbox"
-                aria-checked={estado === "hecho"}
-                aria-label={estado === "hecho" ? `Marcar ${titulo} como pendiente` : `Marcar ${titulo} como hecha`}
-                title={estado === "hecho" ? "Desmarcar y volver a pendiente" : "Marcar como hecha"}
-                disabled={actualizandoEstadoSubtarea === task.id}
-                onClick={() => alternarEstadoSubtarea(task)}
-              >
-                {actualizandoEstadoSubtarea === task.id ? <span className="mini-spinner" aria-label="Guardando" /> : estado === "hecho" ? "✓" : ""}
-              </button>
-              <div className="task-main"><h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3><p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {obtenerHoras(task)} {obtenerHoras(task) === 1 ? "hora" : "horas"}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p></div>
+              <div className="subtask-row-controls">
+                <button
+                  type="button"
+                  className={`task-check ${estado === "hecho" ? "completed" : ""}`}
+                  role="checkbox"
+                  aria-checked={estado === "hecho"}
+                  aria-label={estado === "hecho" ? `Marcar ${titulo} como pendiente` : `Marcar ${titulo} como hecha`}
+                  title={estado === "hecho" ? "Desmarcar y volver a pendiente" : "Marcar como hecha"}
+                  disabled={actualizandoEstadoSubtarea === task.id}
+                  onClick={() => alternarEstadoSubtarea(task)}
+                >
+                  {actualizandoEstadoSubtarea === task.id ? <span className="mini-spinner" aria-label="Guardando" /> : estado === "hecho" ? "✓" : ""}
+                </button>
+                {evidenciaUrl && (
+                  <button
+                    type="button"
+                    className="subtask-evidence-trigger"
+                    aria-label={`Ver evidencia adjunta de ${titulo}`}
+                    title="Ver evidencia adjunta"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setEvidenciaAbierta({ url: evidenciaUrl, titulo });
+                    }}
+                  >
+                    <FaPaperclip aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+              <div className="task-main">
+                <h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3>
+                <p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {formatearDuracion(obtenerHoras(task))}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p>
+                {responsableSubtarea && <p className="subtask-responsible">Responsable: {responsableSubtarea}</p>}
+              </div>
               <div className="subtask-status">
                 <span className={`badge ${claveBadgeEstado(task)}`}>{etiquetaBadgeEstado(task)}</span>
               </div>
@@ -2862,13 +3870,20 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
         </div>}
       </section>
 
-      <section className="progress-card card"><div className="progress-icon">✓</div><div><h2>Progreso global de subtareas</h2><p>{subtareas.length === 0 ? "Sin gestiones registradas (0%)." : `${completadas} de ${subtareas.length} completadas (${porcentaje}%) • ${horasRegistradas} horas totales registradas`}</p></div><strong>{porcentaje}%</strong><div className="progress-track" role="progressbar" aria-valuenow={porcentaje} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso global de subtareas"><span style={{ width: `${porcentaje}%` }} /></div></section>
+      <section className="progress-card card"><div className="progress-icon">✓</div><div><h2>Progreso global de subtareas</h2><p>{subtareas.length === 0 ? "Sin gestiones registradas (0%)." : `${completadas} de ${subtareas.length} completadas (${porcentaje}%) • ${formatearDuracion(horasRegistradas)} totales registradas`}</p></div><strong>{porcentaje}%</strong><div className="progress-track" role="progressbar" aria-valuenow={porcentaje} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso global de subtareas"><span style={{ width: `${porcentaje}%` }} /></div></section>
 
       {modal === "create-subtask" && <Modal title="Crear subtarea" subtitle="Agrega una nueva tarea para este evento." close={() => setModal(null)}><CrearSubtareaForm eventoId={id} eventoFecha={evento.fecha} eventoTitulo={evento.titulo} onCancelar={() => setModal(null)} onCreada={async () => { setModal(null); onNotify("Subtarea creada correctamente"); await cargarSubtareas(); }} /></Modal>}
       {modal === "edit-event" && <Modal title="Editar evento" subtitle="Actualiza la información del evento." close={() => setModal(null)} wide><EditarEventoForm evento={evento} subtareas={subtareas} onCancelar={() => setModal(null)} onGuardado={eventoActualizado} /></Modal>}
       {modal?.type === "edit-subtask" && <Modal title="Editar subtarea" subtitle="Actualiza la información de la subtarea." close={() => setModal(null)}><EditarSubtareaForm subtarea={modal.item} eventoId={id} eventoFecha={evento.fecha} eventoTitulo={evento.titulo} onCancelar={() => setModal(null)} onGuardado={subtareaActualizada} /></Modal>}
       {confirmacion?.type === "evento" && <ConfirmModal title="¿Eliminar evento?" message="Esta acción eliminará el evento y sus subtareas. No se puede deshacer." close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
       {confirmacion?.type === "subtarea" && <ConfirmModal title="¿Eliminar subtarea?" message={`Esta acción eliminará “${obtenerTituloSubtarea(confirmacion.item)}”. No se puede deshacer.`} close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
+      {evidenciaAbierta && (
+        <EvidencePreviewModal
+          url={evidenciaAbierta.url}
+          title={evidenciaAbierta.titulo}
+          onClose={() => setEvidenciaAbierta(null)}
+        />
+      )}
       {conflictoCheckbox && (
         <ModalResolucionSobrecarga
           key={`checkbox-${conflictoCheckbox.tarea.id}-${conflictoCheckbox.conflicto.fecha_objetivo}-${conflictoCheckbox.conflicto.horas_asignadas}`}
@@ -3010,7 +4025,7 @@ function CrearEventoPage({ onCancelar, onCrear }) {
           <ul>
             <li><b>Título:</b> Debe tener al menos 3 caracteres.</li>
             <li><b>Fecha:</b> Debe ser hoy o una fecha futura.</li>
-            <li><b>Horas:</b> Debe ser un número entero entre 1 y 24.</li>
+            <li><b>Duración:</b> Debe ser mayor a 0 minutos y no superar las 24 horas; se ingresa en horas y minutos.</li>
             <li><b>Usuario responsable:</b> Debe indicar la persona responsable del evento.</li>
           </ul>
         </section>
@@ -3028,7 +4043,21 @@ function ConfiguracionUsuario({ onNotify }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [errorCampo, setErrorCampo] = useState("");
+  const [errorPerfil, setErrorPerfil] = useState("");
   const [conflictoConfiguracion, setConflictoConfiguracion] = useState(null);
+  const [fotoPerfil, setFotoPerfil] = useState("");
+  const [errorFoto, setErrorFoto] = useState("");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [mostrarModalFoto, setMostrarModalFoto] = useState(false);
+  const [fotoSeleccionada, setFotoSeleccionada] = useState(null);
+  const [vistaPreviaFoto, setVistaPreviaFoto] = useState("");
+  const inputFotoRef = useRef(null);
+  const fotoTriggerRef = useRef(null);
+  const vistaPreviaFotoRef = useRef("");
+  const [perfilActual, setPerfilActual] = useState(obtenerDatosPerfil);
+  const [nombrePerfil, setNombrePerfil] = useState("");
+  const [apellidoPerfil, setApellidoPerfil] = useState("");
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
 
   useEffect(() => {
     const cargarConfiguracion = async () => {
@@ -3056,6 +4085,64 @@ function ConfiguracionUsuario({ onNotify }) {
     cargarConfiguracion();
   }, []);
 
+  useEffect(() => {
+    let activo = true;
+    const cargarPerfil = async () => {
+      const [perfilResultado, fotoResultado] = await Promise.allSettled([
+        obtenerPerfilUsuario(),
+        obtenerFotoPerfil(),
+      ]);
+      if (!activo) return;
+
+      if (perfilResultado.status === "fulfilled") {
+        const perfilData = perfilResultado.value;
+        setNombrePerfil(perfilData?.nombre || "");
+        setApellidoPerfil(perfilData?.apellido || "");
+        const nombre =
+          [perfilData?.nombre, perfilData?.apellido]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || obtenerDatosPerfil().nombre;
+        setPerfilActual({
+          ...obtenerDatosPerfil(),
+          nombre,
+          correo: perfilData?.email || obtenerDatosPerfil().correo,
+          iniciales: nombre
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+            .join("") || "EH",
+        });
+      } else {
+        setErrorPerfil(
+          perfilResultado.reason?.message ||
+            "No fue posible consultar el perfil del usuario."
+        );
+      }
+
+      if (fotoResultado.status === "fulfilled") {
+        setFotoPerfil(fotoResultado.value?.foto_perfil_url || "");
+      } else {
+        setErrorFoto(
+          fotoResultado.reason?.message ||
+            "No fue posible consultar tu foto de perfil."
+        );
+      }
+    };
+
+    void cargarPerfil();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  useEffect(() => () => {
+    if (vistaPreviaFotoRef.current) {
+      URL.revokeObjectURL(vistaPreviaFotoRef.current);
+    }
+  }, []);
+
   const cambiarHoras = (event) => {
     const value = event.target.value;
 
@@ -3078,9 +4165,7 @@ function ConfiguracionUsuario({ onNotify }) {
     return "";
   };
 
-  const guardar = async (event) => {
-    event.preventDefault();
-
+  const guardar = async () => {
     const errorValidacion = validar();
 
     if (errorValidacion) {
@@ -3190,16 +4275,162 @@ function ConfiguracionUsuario({ onNotify }) {
     }
   };
 
+  const seleccionarFotoPerfil = (archivo) => {
+    setErrorFoto("");
+    if (!archivo || subiendoFoto) return;
+    if (!["image/jpeg", "image/png"].includes(archivo.type)) {
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
+      setErrorFoto("Selecciona una imagen JPG o PNG.");
+      return;
+    }
+    if (archivo.size === 0) {
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
+      setErrorFoto("El archivo está vacío.");
+      return;
+    }
+    if (archivo.size > 5 * 1024 * 1024) {
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
+      setErrorFoto("La imagen debe pesar 5 MB o menos.");
+      return;
+    }
+
+    if (vistaPreviaFotoRef.current) {
+      URL.revokeObjectURL(vistaPreviaFotoRef.current);
+    }
+    const url = URL.createObjectURL(archivo);
+    vistaPreviaFotoRef.current = url;
+    setVistaPreviaFoto(url);
+    setFotoSeleccionada(archivo);
+  };
+
+  const limpiarVistaPreviaFoto = useCallback(() => {
+    if (vistaPreviaFotoRef.current) {
+      URL.revokeObjectURL(vistaPreviaFotoRef.current);
+      vistaPreviaFotoRef.current = "";
+    }
+    setVistaPreviaFoto("");
+  }, []);
+
+  const abrirModalFoto = () => {
+    setErrorFoto("");
+    setFotoSeleccionada(null);
+    limpiarVistaPreviaFoto();
+    setMostrarModalFoto(true);
+  };
+
+  const cerrarModalFoto = useCallback(() => {
+    if (subiendoFoto) return;
+    setMostrarModalFoto(false);
+    setFotoSeleccionada(null);
+    setErrorFoto("");
+    limpiarVistaPreviaFoto();
+    window.requestAnimationFrame(() => fotoTriggerRef.current?.focus());
+  }, [subiendoFoto, limpiarVistaPreviaFoto]);
+
+  const guardarFotoPerfil = async () => {
+    if (!fotoSeleccionada || subiendoFoto) return;
+
+    setSubiendoFoto(true);
+    try {
+      const resultado = await subirFotoPerfil(fotoSeleccionada);
+      const url = resultado?.foto_perfil_url;
+      if (!url) {
+        throw new Error("El servidor no devolvió la URL de la foto guardada.");
+      }
+
+      setFotoPerfil(url);
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
+      setMostrarModalFoto(false);
+      window.dispatchEvent(
+        new CustomEvent("eventhub-profile-updated", {
+          detail: { fotoPerfilUrl: url },
+        })
+      );
+      window.requestAnimationFrame(() => fotoTriggerRef.current?.focus());
+      onNotify("Foto de perfil actualizada.");
+    } catch (errorActual) {
+      setErrorFoto(
+        errorActual.message || "No fue posible guardar la foto de perfil."
+      );
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const guardarPerfil = async () => {
+    const nombre = nombrePerfil.trim();
+    const apellido = apellidoPerfil.trim();
+    if (nombre.length < 2 || nombre.length > 100) {
+      setErrorPerfil("El nombre debe tener entre 2 y 100 caracteres.");
+      return;
+    }
+    if (apellido.length < 2 || apellido.length > 100) {
+      setErrorPerfil("El apellido debe tener entre 2 y 100 caracteres.");
+      return;
+    }
+
+    setGuardandoPerfil(true);
+    setErrorPerfil("");
+    try {
+      const resultado = await actualizarPerfilUsuario({ nombre, apellido });
+      const nombreGuardado = resultado?.nombre?.trim();
+      const apellidoGuardado = resultado?.apellido?.trim();
+      if (!nombreGuardado || !apellidoGuardado) {
+        throw new Error("El servidor no confirmó los datos actualizados.");
+      }
+
+      setNombrePerfil(nombreGuardado);
+      setApellidoPerfil(apellidoGuardado);
+      const nombreCompleto = `${nombreGuardado} ${apellidoGuardado}`;
+      setPerfilActual((actual) => ({
+        ...actual,
+        nombre: nombreCompleto,
+        correo: resultado.email || actual.correo,
+        iniciales: `${nombreGuardado[0]}${apellidoGuardado[0]}`.toLocaleUpperCase("es-CO"),
+      }));
+      window.dispatchEvent(
+        new CustomEvent("eventhub-profile-updated", {
+          detail: { nombre: nombreGuardado, apellido: apellidoGuardado },
+        })
+      );
+      onNotify("Nombre y apellido actualizados correctamente.");
+    } catch (errorActual) {
+      setErrorPerfil(
+        errorActual.message || "No fue posible actualizar el perfil."
+      );
+    } finally {
+      setGuardandoPerfil(false);
+    }
+  };
+
+  const ajustarHoras = (cambio) => {
+    const actual = Number(horasDia);
+    const base = Number.isFinite(actual) ? actual : 1;
+    const siguiente = Math.min(16, Math.max(1, base + cambio));
+    setHorasDia(String(siguiente));
+    setErrorCampo("");
+  };
+
+  const cancelarCambios = () => {
+    setHorasDia(horasGuardadas);
+    setErrorCampo("");
+    navegar("/eventos");
+  };
+
   return (
     <section className="page configuration-page">
+      <div className="configuration-breadcrumb" aria-label="Ruta de navegación">
+        <span>EventHub</span><span aria-hidden="true">/</span><strong>Configuración</strong>
+      </div>
+
       <div className="configuration-header">
         <div>
-          <small>CONFIGURACIÓN DEL ORGANIZADOR</small>
-          <h1>Disponibilidad</h1>
-          <p>
-            Define cuántas horas al día tienes disponibles para gestionar tus
-            eventos.
-          </p>
+          <h1>Configuración</h1>
+          <p>Administra tu perfil y tu jornada de trabajo.</p>
         </div>
       </div>
 
@@ -3208,79 +4439,265 @@ function ConfiguracionUsuario({ onNotify }) {
           <span className="spinner" />
           Consultando tu configuración...
         </section>
-      ) : error ? (
-        <section className="card state-card error-state" role="alert">
-          <div>
-            <b>No se pudo cargar la configuración.</b>
-            <p>{error}</p>
-          </div>
-        </section>
       ) : (
-        <section className="card configuration-card">
-          <div className="configuration-card-header">
-            <div>
-              <h2>Límite diario de gestión</h2>
-              <p>
-                El sistema utilizará este límite para detectar sobrecarga en
-                tu planificación diaria.
+        <div className="profile-settings-form">
+          {error && (
+            <section className="card state-card error-state" role="alert">
+              <div>
+                <b>No se pudo cargar o guardar el límite diario.</b>
+                <p>{error}</p>
+              </div>
+            </section>
+          )}
+          <section className="card configuration-card profile-data-card">
+            <div className="settings-section-heading">
+              <button
+                ref={fotoTriggerRef}
+                className="settings-section-icon profile-photo-icon-trigger"
+                type="button"
+                aria-label="Cambiar foto de perfil"
+                title="Cambiar foto de perfil"
+                onClick={abrirModalFoto}
+              >
+                {fotoPerfil ? (
+                  <img src={fotoPerfil} alt="" />
+                ) : (
+                  <span>{perfilActual.iniciales || <FaUser />}</span>
+                )}
+                <span className="profile-photo-add-badge" aria-hidden="true">+</span>
+              </button>
+              <div>
+                <h2>Datos del perfil</h2>
+                <p>Actualiza el nombre que aparece en tu espacio de trabajo.</p>
+              </div>
+            </div>
+            <div className="profile-data-fields">
+              <div>
+                <label htmlFor="perfil-nombre">Nombre</label>
+                <input
+                  id="perfil-nombre"
+                  name="nombre"
+                  type="text"
+                  autoComplete="given-name"
+                  maxLength={100}
+                  value={nombrePerfil}
+                  onChange={(event) => {
+                    setNombrePerfil(event.target.value);
+                    setErrorPerfil("");
+                  }}
+                  disabled={guardandoPerfil}
+                />
+              </div>
+              <div>
+                <label htmlFor="perfil-apellido">Apellido</label>
+                <input
+                  id="perfil-apellido"
+                  name="apellido"
+                  type="text"
+                  autoComplete="family-name"
+                  maxLength={100}
+                  value={apellidoPerfil}
+                  onChange={(event) => {
+                    setApellidoPerfil(event.target.value);
+                    setErrorPerfil("");
+                  }}
+                  disabled={guardandoPerfil}
+                />
+              </div>
+              <div className="profile-email-field">
+                <label htmlFor="perfil-email">Correo electrónico</label>
+                <input
+                  id="perfil-email"
+                  type="email"
+                  value={perfilActual.correo}
+                  readOnly
+                  aria-readonly="true"
+                />
+              </div>
+            </div>
+            {errorPerfil && (
+              <p className="inline-error profile-data-error" role="alert">
+                {errorPerfil}
               </p>
-            </div>
-          </div>
-
-          <form onSubmit={guardar} noValidate>
-            <div className="configuration-field">
-              <label htmlFor="horas-dia">
-                Horas disponibles por día <span>*</span>
-              </label>
-
-              <input
-                id="horas-dia"
-                name="horas-dia"
-                type="number"
-                min="1"
-                max="16"
-                step="1"
-                value={horasDia}
-                onChange={cambiarHoras}
-                aria-invalid={Boolean(errorCampo)}
-                aria-describedby="horas-dia-ayuda horas-dia-error"
-              />
-
-              <small id="horas-dia-ayuda">
-                Introduce un número entero entre 1 y 16 horas.
-              </small>
-
-              {errorCampo && (
-                <p
-                  id="horas-dia-error"
-                  className="inline-error"
-                  role="alert"
-                >
-                  {errorCampo}
-                </p>
-              )}
-            </div>
-
-            <div className="configuration-actions">
+            )}
+            {errorFoto && !mostrarModalFoto && (
+              <p className="inline-error profile-data-error" role="alert">
+                {errorFoto}
+              </p>
+            )}
+            <div className="profile-data-actions">
               <button
                 className="btn primary"
-                type="submit"
-                disabled={guardando}
-              >
-                {guardando ? "Guardando..." : "Guardar configuración"}
-              </button>
-
-              <button
-                className="btn secondary"
                 type="button"
-                disabled={guardando}
-                onClick={() => navegar("/eventos")}
+                disabled={guardandoPerfil}
+                onClick={guardarPerfil}
               >
-                Cancelar
+                {guardandoPerfil ? "Guardando perfil..." : "Guardar perfil"}
               </button>
             </div>
-          </form>
-        </section>
+          </section>
+
+          {mostrarModalFoto && (
+            <Modal
+              title="Actualizar foto de perfil"
+              subtitle="Esta imagen aparece en la navegación y en tus actividades."
+              close={cerrarModalFoto}
+            >
+              <div className="profile-photo-modal-content">
+                <div className="profile-photo-preview" aria-label={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}>
+                  {vistaPreviaFoto || fotoPerfil ? (
+                    <img
+                      src={vistaPreviaFoto || fotoPerfil}
+                      alt={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}
+                    />
+                  ) : (
+                    <span>{perfilActual.iniciales}</span>
+                  )}
+                </div>
+                <input
+                  ref={inputFotoRef}
+                  className="profile-photo-input"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  aria-label="Seleccionar foto de perfil"
+                  disabled={subiendoFoto}
+                  onChange={(event) => {
+                    seleccionarFotoPerfil(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+                <button
+                  className="btn secondary profile-change-photo"
+                  type="button"
+                  disabled={subiendoFoto}
+                  onClick={() => inputFotoRef.current?.click()}
+                >
+                  {fotoSeleccionada ? "Elegir otra foto" : "Seleccionar imagen"}
+                </button>
+                <small className="profile-photo-hint">JPG o PNG · Máximo 5 MB</small>
+                <div
+                  className={`profile-photo-dropzone${subiendoFoto ? " disabled" : ""}`}
+                  role="button"
+                  tabIndex={subiendoFoto ? -1 : 0}
+                  aria-disabled={subiendoFoto}
+                  onClick={() => {
+                    if (!subiendoFoto) inputFotoRef.current?.click();
+                  }}
+                  onKeyDown={(event) => {
+                    if (subiendoFoto) return;
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      inputFotoRef.current?.click();
+                    }
+                  }}
+                  onDragOver={(event) => {
+                    if (!subiendoFoto) event.preventDefault();
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!subiendoFoto) seleccionarFotoPerfil(event.dataTransfer.files?.[0]);
+                  }}
+                >
+                  <span className="profile-drop-icon" aria-hidden="true">⇧</span>
+                  <span>
+                    <strong>Arrastra y suelta una imagen aquí</strong>
+                    <small>o selecciona una imagen desde tu dispositivo.</small>
+                  </span>
+                </div>
+                {fotoSeleccionada && (
+                  <p className="profile-photo-selected" title={fotoSeleccionada.name}>
+                    {fotoSeleccionada.name}
+                  </p>
+                )}
+                {errorFoto && <p className="inline-error profile-photo-error" role="alert">{errorFoto}</p>}
+                {subiendoFoto && (
+                  <p className="profile-photo-status" role="status">
+                    Subiendo y guardando tu foto de perfil...
+                  </p>
+                )}
+                <div className="profile-photo-modal-actions">
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={subiendoFoto}
+                    onClick={cerrarModalFoto}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="btn primary"
+                    type="button"
+                    disabled={!fotoSeleccionada || subiendoFoto}
+                    onClick={guardarFotoPerfil}
+                  >
+                    {subiendoFoto ? "Guardando..." : "Guardar foto"}
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          )}
+
+          <section className="card configuration-card work-limit-card">
+            <div className="settings-section-heading">
+              <span className="settings-section-icon" aria-hidden="true">◷</span>
+              <div>
+                <h2>Límite diario de trabajo</h2>
+                <p>Define cuántas horas puedes planificar al día.</p>
+              </div>
+            </div>
+
+            <div className="work-limit-panel">
+              <div className="work-limit-copy">
+                <strong>Máximo de horas por día</strong>
+                <span>Jornada óptima estimada para asignación de eventos.</span>
+              </div>
+              <div className="hours-stepper" aria-label="Máximo de horas por día">
+                <button
+                  type="button"
+                  aria-label="Disminuir horas por día"
+                  disabled={Number(horasDia) <= 1 || guardando}
+                  onClick={() => ajustarHoras(-1)}
+                >−</button>
+                <input
+                  id="horas-dia"
+                  name="horas-dia"
+                  type="number"
+                  min="1"
+                  max="16"
+                  step="1"
+                  value={horasDia}
+                  onChange={cambiarHoras}
+                  aria-label="Máximo de horas por día"
+                  aria-invalid={Boolean(errorCampo)}
+                  aria-describedby="horas-dia-ayuda horas-dia-error"
+                />
+                <span>horas</span>
+                <button
+                  type="button"
+                  aria-label="Aumentar horas por día"
+                  disabled={Number(horasDia) >= 16 || guardando}
+                  onClick={() => ajustarHoras(1)}
+                >+</button>
+              </div>
+
+              <small id="horas-dia-ayuda" className="work-limit-help">
+                <span aria-hidden="true">ⓘ</span> Este límite se usa para detectar sobrecargas en tu planificación.
+              </small>
+              {errorCampo && (
+                <p id="horas-dia-error" className="inline-error" role="alert">{errorCampo}</p>
+              )}
+            </div>
+          </section>
+
+          <div className="configuration-actions profile-settings-actions">
+            <button className="btn secondary" type="button" disabled={guardando} onClick={cancelarCambios}>
+              Cancelar
+            </button>
+            <button className="btn primary" type="button" disabled={guardando} onClick={guardar}>
+              {guardando ? "Guardando..." : "▣  Guardar cambios"}
+            </button>
+          </div>
+        </div>
       )}
 
       {conflictoConfiguracion && (
@@ -3450,13 +4867,13 @@ function ModalReprogramarLimite({ conflicto, guardando, onCancelar, onGuardar })
               <span className="agenda-warning-icon">⚠</span>
               <div>
                 <h2 id="limit-reschedule-title">Sobrecarga al reducir el límite</h2>
-                <p>Al reducir el límite a {limite}h, las subtareas del {formatearFecha(conflicto.fecha_objetivo)} superan la nueva capacidad. Pulsa «Reprogramar» en cada tarea que quieras mover de día o ajustar de duración.</p>
+                <p>Al reducir el límite a {formatearDuracion(limite)}, las subtareas del {formatearFecha(conflicto.fecha_objetivo)} superan la nueva capacidad. Pulsa «Reprogramar» en cada tarea que quieras mover de día o ajustar de duración.</p>
               </div>
             </div>
             <div className="agenda-capacity-card">
               <div>
-                <strong>{maximoDiario.toFixed(1)}h <small>máximo por día tras los cambios</small></strong>
-                <span>{limite.toFixed(1)}h de tope · {hayExceso ? `+${fechasConExceso.reduce((sum, item) => sum + item.exceso, 0).toFixed(1)}h de exceso` : "sin sobrecarga"}</span>
+                <strong>{formatearDuracion(maximoDiario)} <small>máximo por día tras los cambios</small></strong>
+                <span>{formatearDuracion(limite)} de tope · {hayExceso ? `+${formatearDuracion(fechasConExceso.reduce((sum, item) => sum + item.exceso, 0))} de exceso` : "sin sobrecarga"}</span>
               </div>
               <div className="agenda-capacity-track"><span style={{ width: `${Math.min((maximoDiario / Math.max(limite, 1)) * 100, 100)}%`, background: hayExceso ? "#c7353d" : "#07835b" }} /></div>
             </div>
@@ -3469,9 +4886,9 @@ function ModalReprogramarLimite({ conflicto, guardando, onCancelar, onGuardar })
                   <div className="agenda-reschedule-limit-item agenda-reschedule-limit-item-action" key={tarea.id}>
                     <div className="agenda-reschedule-limit-info">
                       <strong>{tarea.titulo}</strong>
-                      <small>{tarea.evento || "Evento sin título"} · {tarea.horas_estimadas.toFixed(1)}h</small>
+                      <small>{tarea.evento || "Evento sin título"} · {formatearDuracion(tarea.horas_estimadas)}</small>
                       <small>{cambioAplicado ? `Nueva fecha: ${formatearFecha(tarea.fecha)} · Original: ${formatearFecha(tarea.fechaOriginal)}` : `Fecha actual: ${formatearFecha(tarea.fechaOriginal)}`}</small>
-                      {excesoEnFecha && <small className="agenda-reschedule-date-error">Este día todavía supera las {limite}h disponibles.</small>}
+                      {excesoEnFecha && <small className="agenda-reschedule-date-error">Este día todavía supera las {formatearDuracion(limite)} disponibles.</small>}
                     </div>
                     <button type="button" className="btn secondary agenda-reschedule-one-button" disabled={guardando} onClick={() => setTareaSeleccionada(tarea)}>Reprogramar</button>
                   </div>
@@ -3492,7 +4909,7 @@ function ModalReprogramarLimite({ conflicto, guardando, onCancelar, onGuardar })
           horasCausa={tareaSeleccionada.horas_estimadas}
           tituloCausa={tareaSeleccionada.titulo}
           titulo={`Reprogramar: ${tareaSeleccionada.titulo}`}
-          descripcion={`Elige si deseas mover esta subtarea a otro día o reducir sus horas para ajustarte al límite diario de ${limite}h.`}
+          descripcion={`Elige si deseas mover esta subtarea a otro día o reducir su duración para ajustarte al límite diario de ${formatearDuracion(limite)}.`}
           etiquetaAccion="Resolver conflicto →"
           guardando={guardando}
           permitirResolucion={true}
@@ -3628,7 +5045,7 @@ function ModalResolucionSobrecarga({
                 </h2>
                 <p>
                   {descripcion ??
-                    `El ${formatearFecha(conflicto.fecha_objetivo)} superarías tu jornada máxima configurada (${conflicto.limite_horas}h).`}
+                    `El ${formatearFecha(conflicto.fecha_objetivo)} superarías tu jornada máxima configurada (${formatearDuracion(conflicto.limite_horas)}).`}
                 </p>
               </div>
             </div>
@@ -3636,12 +5053,12 @@ function ModalResolucionSobrecarga({
               <div className="agenda-capacity-card">
                 <div>
                   <strong>
-                    {estadoActual.asignadas.toFixed(1)}h{" "}
+                    {formatearDuracion(estadoActual.asignadas)}{" "}
                     <small>asignadas</small>
                   </strong>
                   <span>
-                    {estadoActual.limite.toFixed(1)}h de tope
-                    {" "}· +{estadoActual.exceso.toFixed(1)}h
+                    {formatearDuracion(estadoActual.limite)} de tope
+                    {" "}· +{formatearDuracion(estadoActual.exceso)}
                     {" "}de exceso
                   </span>
                 </div>
@@ -3679,7 +5096,7 @@ function ModalResolucionSobrecarga({
                         </strong>
                         <small>{gestion.evento}</small>
                       </span>
-                      <b>{Number(gestion.horas_estimadas).toFixed(1)}h</b>
+                      <b>{formatearDuracion(gestion.horas_estimadas)}</b>
                     </div>
                   ))}
                 </div>
@@ -3730,18 +5147,18 @@ function ModalResolucionSobrecarga({
             <h2 id="resolution-title">Resolver sobrecarga de horas</h2>
             <p>
               {formatearFecha(conflicto.fecha_objetivo)} · Exceso de{" "}
-              {estadoActual.exceso.toFixed(1)}h. Selecciona
+              {formatearDuracion(estadoActual.exceso)}. Selecciona
               cómo deseas equilibrar tu agenda.
             </p>
             <div className="agenda-capacity-card compact">
               <div>
                 <strong>
-                  {resolucionActual.asignadas.toFixed(1)}h
+                  {formatearDuracion(resolucionActual.asignadas)}
                   {" "}asignadas
                 </strong>
                 <span>
-                  {resolucionActual.limite.toFixed(1)}h de tope
-                  {" "}· +{resolucionActual.exceso.toFixed(1)}h
+                  {formatearDuracion(resolucionActual.limite)} de tope
+                  {" "}· +{formatearDuracion(resolucionActual.exceso)}
                   {" "}de exceso
                 </span>
               </div>
@@ -3764,7 +5181,7 @@ function ModalResolucionSobrecarga({
             </div>
             <div className="resolution-cause">
               ⚠ {tituloCausa} · Causa del exceso
-              {" "}({horasCausaConflicto.toFixed(1)}h)
+              {" "}({formatearDuracion(horasCausaConflicto)})
             </div>
             <div className="resolution-options">
               <button
@@ -3802,7 +5219,7 @@ function ModalResolucionSobrecarga({
                 <span>
                   <strong>Ajustar manualmente</strong>
                   <small>
-                    Aumenta o disminuye las horas y verifica que no superen la
+                    Aumenta o disminuye la duración y verifica que no supere la
                     disponibilidad de la jornada.
                   </small>
                 </span>
@@ -3810,46 +5227,47 @@ function ModalResolucionSobrecarga({
             </div>
             {estrategia === "manual" && (
               <div className="postpone-field resolution-hours-field">
-                <label>Duración manual (horas)</label>
-                <div
-                  className="postpone-hours-control"
-                  aria-label="Ajustar duración manual"
-                >
-                  <button
-                    type="button"
-                    aria-label="Disminuir media hora"
-                    onClick={() =>
-                      setHorasManuales((horas) =>
-                        redondearHoras(
-                          Math.max(
-                            PASO_HORAS_MANUALES,
-                            Number(horas) - PASO_HORAS_MANUALES
+                <label>Duración manual</label>
+                <div className="resolution-duration-editor">
+                  <DurationInput
+                    id="resolution-duration"
+                    name="resolution-duration"
+                    value={String(horasManuales)}
+                    onChange={(event) => {
+                      const valor = event.target.value;
+                      setHorasManuales(valor === "" ? 0 : Number(valor));
+                    }}
+                    disabled={guardando}
+                    maxHours={24}
+                  />
+                  <div className="resolution-duration-stepper" aria-label="Ajuste rápido de duración">
+                    <button
+                      type="button"
+                      aria-label="Disminuir media hora"
+                      onClick={() =>
+                        setHorasManuales((horas) =>
+                          redondearHoras(
+                            Math.max(1 / 60, Number(horas) - PASO_HORAS_MANUALES)
                           )
                         )
-                      )
-                    }
-                    disabled={
-                      guardando || horasManuales <= PASO_HORAS_MANUALES
-                    }
-                  >
-                    −
-                  </button>
-                  <span className="postpone-hours-value" aria-live="polite">
-                    <strong>{Number(horasManuales).toFixed(1)}</strong>
-                    <span>horas</span>
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Aumentar media hora"
-                    onClick={() =>
-                      setHorasManuales((horas) =>
-                        redondearHoras(Number(horas) + PASO_HORAS_MANUALES)
-                      )
-                    }
-                    disabled={guardando}
-                  >
-                    +
-                  </button>
+                      }
+                      disabled={guardando || horasManuales <= (1 / 60)}
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Aumentar media hora"
+                      onClick={() =>
+                        setHorasManuales((horas) =>
+                          redondearHoras(Number(horas) + PASO_HORAS_MANUALES)
+                        )
+                      }
+                      disabled={guardando || horasManuales >= 24}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 {resolucionActual.alerta && (
                   <small className="resolution-hours-alert" role="alert">
@@ -3888,7 +5306,7 @@ function ModalResolucionSobrecarga({
   );
 }
 
-function Today({ onNotify }) {
+function Today({ onNotify, recargaToken = 0 }) {
   const [tareas, setTareas] = useState([]);
   const [gestionesVencidas, setGestionesVencidas] = useState([]);
   const [proximasGestiones, setProximasGestiones] = useState([]);
@@ -3897,6 +5315,11 @@ function Today({ onNotify }) {
   const [error, setError] = useState("");
   const [actualizando, setActualizando] = useState(null);
   const [seleccionada, setSeleccionada] = useState(null);
+  const [archivoEvidencia, setArchivoEvidencia] = useState(null);
+  const [vistaPreviaEvidencia, setVistaPreviaEvidencia] = useState("");
+  const [subiendoEvidencia, setSubiendoEvidencia] = useState(false);
+  const [errorEvidencia, setErrorEvidencia] = useState("");
+  const inputEvidenciaRef = useRef(null);
   const [capacidadDiaria, setCapacidadDiaria] = useState(6);
   const [filtroBusqueda, setFiltroBusqueda] = useState("");
   const [filtroEvento, setFiltroEvento] = useState("");
@@ -3933,6 +5356,22 @@ function Today({ onNotify }) {
       return new Set();
     }
   })());
+
+  useEffect(() => {
+    if (!archivoEvidencia) {
+      setVistaPreviaEvidencia("");
+      return undefined;
+    }
+
+    const url = URL.createObjectURL(archivoEvidencia);
+    setVistaPreviaEvidencia(url);
+    return () => URL.revokeObjectURL(url);
+  }, [archivoEvidencia]);
+
+  useEffect(() => {
+    setArchivoEvidencia(null);
+    setErrorEvidencia("");
+  }, [seleccionada?.id]);
 
 
   const cargarHoy = async () => {
@@ -4076,7 +5515,65 @@ function Today({ onNotify }) {
 
   useEffect(() => {
     cargarHoy();
-  }, []);
+  }, [recargaToken]);
+
+  const seleccionarEvidencia = (archivo) => {
+    setErrorEvidencia("");
+    if (!archivo) return;
+    if (!archivo.type.startsWith("image/")) {
+      setErrorEvidencia("Selecciona un archivo de imagen.");
+      return;
+    }
+    if (archivo.size === 0) {
+      setErrorEvidencia("El archivo está vacío.");
+      return;
+    }
+    if (archivo.size > 10 * 1024 * 1024) {
+      setErrorEvidencia("La imagen debe pesar 10 MB o menos.");
+      return;
+    }
+    setArchivoEvidencia(archivo);
+  };
+
+  const guardarEvidencia = async () => {
+    if (!seleccionada || !archivoEvidencia || subiendoEvidencia) return;
+
+    setSubiendoEvidencia(true);
+    setErrorEvidencia("");
+    try {
+      const resultado = await subirComprobanteSubtarea(
+        seleccionada.id,
+        archivoEvidencia
+      );
+      const url = resultado?.comprobante_url;
+      if (!url) {
+        throw new Error("El servidor no devolvió la URL de la evidencia guardada.");
+      }
+
+      const actualizarEnLista = (lista) =>
+        lista.map((item) =>
+          String(item.id) === String(seleccionada.id)
+            ? { ...item, comprobante_url: url }
+            : item
+        );
+      setSeleccionada((actual) =>
+        actual && String(actual.id) === String(seleccionada.id)
+          ? { ...actual, comprobante_url: url }
+          : actual
+      );
+      setTareas(actualizarEnLista);
+      setGestionesVencidas(actualizarEnLista);
+      setProximasGestiones(actualizarEnLista);
+      setArchivoEvidencia(null);
+      onNotify("Evidencia guardada correctamente.");
+    } catch (errorActual) {
+      setErrorEvidencia(
+        errorActual.message || "No fue posible guardar la evidencia."
+      );
+    } finally {
+      setSubiendoEvidencia(false);
+    }
+  };
 
   // El campo arranca con tres líneas, pero se ajusta al contenido cuando el
   // modal se abre con una nota larga ya guardada.
@@ -4469,7 +5966,7 @@ function Today({ onNotify }) {
               </span>
             )}
 
-            <span className="today-hours">{horasTarea}h</span>
+            <span className="today-hours">{formatearDuracion(horasTarea)}</span>
           </div>
 
           <h3>{titulo}</h3>
@@ -4569,7 +6066,7 @@ function Today({ onNotify }) {
         <div className="today-capacity">
           <span>Capacidad del día </span>
           <strong>
-            {horasPendientes}h / {capacidadDiaria}h
+            {formatearDuracion(horasPendientes)} / {formatearDuracion(capacidadDiaria)}
           </strong>
 
           <div className="today-capacity-track">
@@ -4616,8 +6113,8 @@ function Today({ onNotify }) {
           <span className="today-summary-icon">◴</span>
           <div>
             <small>TIEMPO ESTIMADO</small>
-            <strong>{horas}h</strong>
-            <span>Horas de trabajo</span>
+            <strong>{formatearDuracion(horas)}</strong>
+            <span>Duración total estimada</span>
           </div>
         </article>
       </div>
@@ -4803,7 +6300,7 @@ function Today({ onNotify }) {
                           </span>
 
                           <span className="today-hours">
-                            {obtenerHoras(tarea)}h
+                            {formatearDuracion(obtenerHoras(tarea))}
                           </span>
 
                         </div>
@@ -4931,7 +6428,7 @@ function Today({ onNotify }) {
 
               <div className="today-panel-info">
                 <span>Horas estimadas: </span>
-                <strong>{obtenerHoras(seleccionada)}h</strong>
+                <strong>{formatearDuracion(obtenerHoras(seleccionada))}</strong>
               </div>
 
               <div className="today-panel-info">
@@ -4948,23 +6445,146 @@ function Today({ onNotify }) {
                 </strong>
               </div>
 
+              <div className="today-panel-info">
+                <span>Responsable: </span>
+                <strong>
+                  {obtenerResponsableSubtarea(seleccionada) || "Sin asignar"}
+                </strong>
+              </div>
+
+              {obtenerNotaSubtarea(seleccionada) && (
+                <div className="today-panel-note">
+                  <strong>Nota logística</strong>
+                  <p>{obtenerNotaSubtarea(seleccionada)}</p>
+                </div>
+              )}
+
+              <section className="today-evidence-section" aria-labelledby="today-evidence-title">
+                <div className="today-evidence-heading">
+                  <FaPaperclip aria-hidden="true" />
+                  <div>
+                    <h3 id="today-evidence-title">Evidencia (opcional)</h3>
+                    <p>Adjunta una imagen de respaldo para esta subtarea.</p>
+                  </div>
+                </div>
+
+                <input
+                  ref={inputEvidenciaRef}
+                  className="today-evidence-input"
+                  type="file"
+                  accept="image/*"
+                  aria-label="Seleccionar imagen de evidencia"
+                  disabled={subiendoEvidencia || actualizando === seleccionada.id}
+                  onChange={(event) => {
+                    seleccionarEvidencia(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+
+                {(vistaPreviaEvidencia || seleccionada.comprobante_url) && (
+                  <div className="today-evidence-preview">
+                    <img
+                      src={vistaPreviaEvidencia || seleccionada.comprobante_url}
+                      alt={archivoEvidencia?.name || "Evidencia guardada de la subtarea"}
+                    />
+                    <div className="today-evidence-file">
+                      <strong>
+                        {archivoEvidencia?.name || "Evidencia guardada"}
+                      </strong>
+                      <span>
+                        {archivoEvidencia
+                          ? `${(archivoEvidencia.size / (1024 * 1024)).toFixed(2)} MB · Lista para cargar`
+                          : "Disponible"}
+                      </span>
+                    </div>
+                    {seleccionada.comprobante_url && !archivoEvidencia && (
+                      <a
+                        className="today-evidence-open"
+                        href={seleccionada.comprobante_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Ver
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {archivoEvidencia ? (
+                  <div className="today-evidence-actions">
+                    <button
+                      className="today-panel-secondary"
+                      type="button"
+                      disabled={subiendoEvidencia}
+                      onClick={() => inputEvidenciaRef.current?.click()}
+                    >
+                      Reemplazar archivo
+                    </button>
+                    <button
+                      className="today-evidence-remove"
+                      type="button"
+                      disabled={subiendoEvidencia}
+                      onClick={() => setArchivoEvidencia(null)}
+                    >
+                      Quitar selección
+                    </button>
+                    <button
+                      className="btn primary today-evidence-upload"
+                      type="button"
+                      disabled={subiendoEvidencia}
+                      onClick={guardarEvidencia}
+                    >
+                      {subiendoEvidencia ? "Subiendo evidencia..." : "Guardar evidencia"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="today-panel-secondary today-evidence-choose"
+                    type="button"
+                    disabled={subiendoEvidencia || actualizando === seleccionada.id}
+                    onClick={() => inputEvidenciaRef.current?.click()}
+                  >
+                    <FaImage aria-hidden="true" />
+                    {subiendoEvidencia
+                      ? "Subiendo evidencia..."
+                      : seleccionada.comprobante_url
+                        ? "Reemplazar"
+                        : "Adjuntar imagen"}
+                  </button>
+                )}
+
+                {errorEvidencia && (
+                  <p className="today-evidence-error" role="alert">
+                    {errorEvidencia}
+                  </p>
+                )}
+              </section>
+
               {normalizarEstado(seleccionada.estado) !== "hecho" ? (
                 <>
                   <button
                     className="today-register-button"
                     type="button"
-                    disabled={actualizando === seleccionada.id}
+                    disabled={
+                      actualizando === seleccionada.id ||
+                      subiendoEvidencia ||
+                      Boolean(archivoEvidencia)
+                    }
                     onClick={() => cambiarEstado(seleccionada, "hecho")}
                   >
-                    {actualizando === seleccionada.id
+                    {subiendoEvidencia
+                      ? "Guardando evidencia..."
+                      : actualizando === seleccionada.id
                       ? "Guardando…"
-                      : "✓ Registrar ejecución"}
+                      : "Marcar como hecho"}
                   </button>
 
                   <button
                     className="today-panel-secondary"
                     type="button"
-                    disabled={actualizando === seleccionada.id}
+                    disabled={
+                      actualizando === seleccionada.id || subiendoEvidencia
+                    }
                     onClick={() => abrirModalPosponer(seleccionada)}
                   >
                     Reprogramar gestión
@@ -5068,7 +6688,7 @@ function Today({ onNotify }) {
                   </div>
 
                   <div className="today-upcoming-hours">
-                    {obtenerHoras(tarea)}h
+                    {formatearDuracion(obtenerHoras(tarea))}
                   </div>
 
                   <span className="today-upcoming-arrow">
@@ -5128,7 +6748,7 @@ function Today({ onNotify }) {
 
             <div className="postpone-calendar-heading">
               <h3>
-                <span aria-hidden="true">▦</span>{" "}
+                <span aria-hidden="true">📅</span>{" "}
                 {new Intl.DateTimeFormat("es-CO", {
                   month: "long",
                   year: "numeric",
@@ -5221,7 +6841,7 @@ function Today({ onNotify }) {
                     onClick={() => setNuevaFecha(fecha)}
                   >
                     <span>{dia}</span>
-                    <small>{horasDelDia}h/{capacidadDiaria}h</small>
+                    <small>{formatearDuracion(horasDelDia)}/{formatearDuracion(capacidadDiaria)}</small>
                   </button>
                 );
               })}
@@ -5232,68 +6852,65 @@ function Today({ onNotify }) {
                 <strong>⚠</strong>
                 <span>
                   {formatearFecha(nuevaFecha)} supera tu jornada diaria:{" "}
-                  {horasAsignadasEnFecha.toFixed(1)}h acumuladas frente a{" "}
-                  {capacidadDiaria.toFixed(1)}h de tope.
+                  {formatearDuracion(horasAsignadasEnFecha)} acumuladas frente a{" "}
+                  {formatearDuracion(capacidadDiaria)} de tope.
                 </span>
               </div>
             )}
 
             <div className="postpone-fields-row">
               <div className="postpone-field postpone-hours-field">
-                <label htmlFor="horas-reprogramacion">
-                  Horas estimadas de ejecución
+                <label htmlFor="horas-reprogramacion-hours">
+                  Duración estimada de ejecución
                 </label>
                 <div className="postpone-hours-control">
                   <button
                     type="button"
                     aria-label="Reducir duración"
-                    disabled={guardandoPosposicion || horasPosposicion <= 0.5}
+                    disabled={guardandoPosposicion || horasPosposicion <= (1 / 60)}
                     onClick={() =>
                       setHorasPosposicion((horas) =>
-                        Math.max(0.5, Number((Number(horas) - 0.5).toFixed(1)))
+                        Math.max(1 / 60, redondearHoras(Number(horas) - 0.5))
                       )
                     }
                   >
                     −
                   </button>
-                  <span className="postpone-hours-value">
-                    <input
+                  <div className="postpone-duration-editor">
+                    <DurationInput
                       id="horas-reprogramacion"
-                      type="number"
-                      min="0.5"
-                      max="24"
-                      step="0.5"
+                      name="horas_reprogramacion"
                       value={horasPosposicion}
-                      onFocus={() => {
-                        if (Number(horasPosposicion) === 0) {
-                          setHorasPosposicion("");
-                        }
-                      }}
                       onChange={(event) => {
                         const valor = event.target.value;
                         setHorasPosposicion(valor === "" ? "" : Number(valor));
                       }}
                       disabled={guardandoPosposicion}
                     />
-                    <span>horas</span>
-                  </span>
+                  </div>
                   <button
                     type="button"
                     aria-label="Aumentar duración"
                     disabled={guardandoPosposicion || horasPosposicion >= 24}
                     onClick={() =>
                       setHorasPosposicion((horas) =>
-                        Math.min(24, Number((Number(horas) + 0.5).toFixed(1)))
+                        Math.min(24, redondearHoras(Number(horas) + 0.5))
                       )
                     }
                   >
                     +
                   </button>
                 </div>
-                <small>Base: {obtenerHoras(tareaPosponer)}h</small>
+                <small>Base: {formatearDuracion(obtenerHoras(tareaPosponer))}</small>
               </div>
 
-              <div className="postpone-field">
+              <StitchOptionalSection
+                id="postpone-note"
+                className="postpone-note-section"
+                icon={<FaRegFileAlt />}
+                title="Agregar nota"
+                defaultOpen
+              >
                 <label htmlFor="nota-posposicion">Nota</label>
                 <textarea
                   id="nota-posposicion"
@@ -5308,7 +6925,7 @@ function Today({ onNotify }) {
                   rows={3}
                   maxLength={300}
                 />
-              </div>
+              </StitchOptionalSection>
             </div>
 
             <div className="postpone-actions">
@@ -5476,13 +7093,21 @@ function derivarEstadoEvento(porcentaje, total) {
   return { clave: "planificacion", etiqueta: "Planificación" };
 }
 
-function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
+function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [datos, setDatos] = useState({ resumen: null, eventos: [] });
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   // "asc" | "desc" | "fecha"
   const [orden, setOrden] = useState("desc");
+  const [subtareasCalendario, setSubtareasCalendario] = useState([]);
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
+  const [fechaCalendario, setFechaCalendario] = useState(obtenerFechaLocalHoy());
+  const [vistaCalendario, setVistaCalendario] = useState("mes");
+  const [mesCalendarioProgreso, setMesCalendarioProgreso] = useState(() => {
+    const hoy = new Date();
+    return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  });
 
   const cargar = async () => {
     setCargando(true);
@@ -5496,6 +7121,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
 
       const eventos = Array.isArray(eventosData) ? eventosData : [];
       const subtareas = Array.isArray(subtareasData) ? subtareasData : [];
+      setSubtareasCalendario(subtareas);
 
       setDatos(calcularProgreso(eventos, subtareas));
     } catch (errorActual) {
@@ -5510,7 +7136,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
 
   useEffect(() => {
     cargar();
-  }, []);
+  }, [recargaToken]);
 
   // Los vencimientos dependen del día local, así que al cruzar la medianoche
   // los contadores y las etiquetas quedan obsoletos aunque la pestaña siga
@@ -5620,6 +7246,156 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
     { clave: "fecha", etiqueta: "Fecha: más recientes" },
   ];
 
+  const [categoriaSubtareasActiva, setCategoriaSubtareasActiva] = useState(null);
+  const panelSubtareasRef = useRef(null);
+
+  const subtareasPorCategoria = useMemo(() => {
+    const base = {
+      completadas: [],
+      pendientes: [],
+      pospuestas: [],
+      vencidas: [],
+    };
+
+    subtareasCalendario.forEach((subtarea) => {
+      const estado = estadoEfectivoSubtarea(subtarea);
+      const categoria = {
+        hecho: "completadas",
+        pendiente: "pendientes",
+        pospuesto: "pospuestas",
+        vencido: "vencidas",
+      }[estado];
+      if (categoria) base[categoria].push(subtarea);
+    });
+
+    return base;
+  }, [subtareasCalendario]);
+
+  const categoriasSubtareas = [
+    {
+      clave: "completadas",
+      titulo: "Completadas",
+      descripcion: "Gestiones ejecutadas",
+      clase: "stat-done",
+      icono: <FaCheckCircle aria-hidden="true" />,
+      etiquetaEstado: "Completada",
+    },
+    {
+      clave: "pendientes",
+      titulo: "Pendientes",
+      descripcion: "En ritmo ordinario",
+      clase: "stat-pending",
+      icono: <FaClock aria-hidden="true" />,
+      etiquetaEstado: "Pendiente",
+    },
+    {
+      clave: "pospuestas",
+      titulo: "Pospuestas",
+      descripcion: "Reprogramadas",
+      clase: "stat-postponed",
+      icono: <FaClock aria-hidden="true" />,
+      etiquetaEstado: "Pospuesta",
+    },
+    {
+      clave: "vencidas",
+      titulo: "Vencidas",
+      descripcion: "Requieren atención",
+      clase: "stat-risk",
+      icono: <FaExclamationTriangle aria-hidden="true" />,
+      etiquetaEstado: "Vencida",
+    },
+  ];
+
+  const activarCategoriaSubtareas = (categoria) => {
+    setCategoriaSubtareasActiva((actual) =>
+      actual === categoria ? null : categoria
+    );
+  };
+
+  useEffect(() => {
+    const manejarClicFuera = (event) => {
+      if (!categoriaSubtareasActiva) return;
+
+      const panel = panelSubtareasRef.current;
+      const elemento = event.target instanceof Element ? event.target : null;
+      const cardActiva = elemento?.closest(".progress-stat-card");
+
+      if (!panel?.contains(elemento) && !cardActiva) {
+        setCategoriaSubtareasActiva(null);
+      }
+    };
+
+    document.addEventListener("mousedown", manejarClicFuera);
+    return () => document.removeEventListener("mousedown", manejarClicFuera);
+  }, [categoriaSubtareasActiva]);
+
+  const contenidoCategoriaSubtareas =
+    categoriaSubtareasActiva ? subtareasPorCategoria[categoriaSubtareasActiva] : [];
+  const fechaSeleccionadaCalendario = new Date(`${fechaCalendario}T12:00:00`);
+  const inicioSemanaCalendario = new Date(fechaSeleccionadaCalendario);
+  inicioSemanaCalendario.setDate(
+    inicioSemanaCalendario.getDate() -
+      ((inicioSemanaCalendario.getDay() + 6) % 7)
+  );
+  const diasVisiblesCalendario =
+    vistaCalendario === "semana"
+      ? Array.from({ length: 7 }, (_, index) => {
+          const date = new Date(inicioSemanaCalendario);
+          date.setDate(date.getDate() + index);
+          return {
+            fecha: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+            dia: date.getDate(),
+            mesActual: date.getMonth() === mesCalendarioProgreso.getMonth(),
+          };
+        })
+      : Array.from(
+          {
+            length:
+              (mesCalendarioProgreso.getDay() + 6) % 7 +
+              new Date(
+                mesCalendarioProgreso.getFullYear(),
+                mesCalendarioProgreso.getMonth() + 1,
+                0
+              ).getDate(),
+          },
+          (_, index) => {
+            const primerDia = (mesCalendarioProgreso.getDay() + 6) % 7;
+            if (index < primerDia) return null;
+            const dia = index - primerDia + 1;
+            return {
+              fecha: `${mesCalendarioProgreso.getFullYear()}-${String(mesCalendarioProgreso.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
+              dia,
+              mesActual: true,
+            };
+          }
+        );
+  const eventosDelDiaSeleccionado = datos.eventos.filter(
+    (evento) => String(evento.fecha || "").slice(0, 10) === fechaCalendario
+  );
+  const subtareasDelDiaSeleccionado = subtareasCalendario.filter(
+    (subtarea) => obtenerFechaObjetivo(subtarea) === fechaCalendario
+  );
+  const minutosEstimadosDia = sumarMinutosEstimados(subtareasDelDiaSeleccionado);
+  const navegarCalendario = (direccion) => {
+    const fechaBase =
+      vistaCalendario === "semana"
+        ? new Date(fechaSeleccionadaCalendario)
+        : new Date(
+            mesCalendarioProgreso.getFullYear(),
+            mesCalendarioProgreso.getMonth(),
+            1,
+            12
+          );
+    if (vistaCalendario === "semana") {
+      fechaBase.setDate(fechaBase.getDate() + direccion * 7);
+    } else {
+      fechaBase.setMonth(fechaBase.getMonth() + direccion);
+    }
+    const fechaNueva = `${fechaBase.getFullYear()}-${String(fechaBase.getMonth() + 1).padStart(2, "0")}-${String(fechaBase.getDate()).padStart(2, "0")}`;
+    setFechaCalendario(fechaNueva);
+    setMesCalendarioProgreso(new Date(fechaBase.getFullYear(), fechaBase.getMonth(), 1));
+  };
+
   return (
     <section className="page progress-page">
       <div className="progress-header">
@@ -5699,12 +7475,29 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
       {!cargando && !error && resumen && (
         <>
           {resumen.total === 0 ? (
-            <section className="card state-card empty-state">
-              <div className="empty-icon">✓</div>
-              <h2>Sin gestiones registradas</h2>
+            <section className="card state-card empty-state progress-empty-state">
+              <div className="empty-icon progress-empty-icon" aria-hidden="true">
+                <FaChartLine />
+              </div>
+              <h2>
+                {datos.eventos.length === 0
+                  ? "Aún no hay eventos"
+                  : "Aún no hay subtareas"}
+              </h2>
               <p>
-                Aún no hay subtareas en tus eventos para medir el avance.
+                {datos.eventos.length === 0
+                  ? "Crea tu primer evento y organiza tus actividades para empezar a seguir el progreso."
+                  : "Agrega subtareas a tus eventos para empezar a medir el avance."}
               </p>
+              {datos.eventos.length === 0 && (
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() => navegar("/crear-evento")}
+                >
+                  Crear el primer evento
+                </button>
+              )}
             </section>
           ) : (
             <>
@@ -5738,7 +7531,6 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
                 </div>
 
                 <div className="progress-rendimiento-info">
-                  <small>RENDIMIENTO OPERATIVO</small>
                   <h2>Progreso general</h2>
                   <p>
                     {resumen.completadas} de {resumen.total} subtareas
@@ -5750,48 +7542,106 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
                 </div>
 
                 <div className="progress-rendimiento-stats">
-                  <article className="progress-stat-card stat-done">
-                    <small>COMPLETADAS</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">✓</span>
-                      <strong>{resumen.completadas}</strong>
-                    </div>
-                    <span>
-                      {resumen.total
-                        ? Math.round((resumen.completadas / resumen.total) * 100)
-                        : 0}
-                      % del total
-                    </span>
-                  </article>
-
-                  <article className="progress-stat-card stat-pending">
-                    <small>PENDIENTES</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">○</span>
-                      <strong>{resumen.pendientes}</strong>
-                    </div>
-                    <span>En ritmo ordinario</span>
-                  </article>
-
-                  <article className="progress-stat-card stat-postponed">
-                    <small>POSPUESTAS</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">◷</span>
-                      <strong>{resumen.pospuestas}</strong>
-                    </div>
-                    <span>Reprogramadas</span>
-                  </article>
-
-                  <article className="progress-stat-card stat-risk">
-                    <small>VENCIDAS</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">!</span>
-                      <strong>{resumen.vencidas}</strong>
-                    </div>
-                    <span>Requieren atención</span>
-                  </article>
+                  {categoriasSubtareas.map((categoria) => {
+                    const activa = categoriaSubtareasActiva === categoria.clave;
+                    const cantidad = subtareasPorCategoria[categoria.clave].length;
+                    const porcentaje = subtareasCalendario.length
+                      ? Math.round((cantidad / subtareasCalendario.length) * 100)
+                      : 0;
+                    return (
+                      <button
+                        key={categoria.clave}
+                        type="button"
+                        className={`progress-stat-card ${categoria.clase}${activa ? " selected" : ""}`}
+                        aria-pressed={activa}
+                        aria-expanded={activa}
+                        aria-controls={activa ? "progress-status-panel" : undefined}
+                        onClick={() => activarCategoriaSubtareas(categoria.clave)}
+                      >
+                        <small>{categoria.titulo.toUpperCase()}</small>
+                        <div className="progress-stat-figure">
+                          <span className="progress-stat-icon">{categoria.icono}</span>
+                          <strong>{cantidad}</strong>
+                        </div>
+                        <span>{categoria.clave === "completadas" ? `${porcentaje}% del total` : categoria.descripcion}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
+
+              {categoriaSubtareasActiva && (
+                  <div
+                    id="progress-status-panel"
+                    className="progress-status-panel"
+                    ref={panelSubtareasRef}
+                    role="region"
+                    aria-live="polite"
+                    aria-label={`Subtareas ${categoriaSubtareasActiva}`}
+                  >
+                    {cargando ? (
+                      <div className="progress-status-state">
+                        <span className="spinner" /> Cargando subtareas...
+                      </div>
+                    ) : error ? (
+                      <div className="progress-status-state error" role="alert">
+                        No se pudieron cargar las subtareas de esta categoría.
+                      </div>
+                    ) : contenidoCategoriaSubtareas.length === 0 ? (
+                      <div className="progress-status-state empty">
+                        <strong>No hay subtareas {categoriasSubtareas.find((item) => item.clave === categoriaSubtareasActiva)?.titulo.toLowerCase()}.</strong>
+                        <span>Los registros aparecerán aquí cuando existan.</span>
+                      </div>
+                    ) : (
+                      <div className="progress-status-list">
+                        {contenidoCategoriaSubtareas.map((subtarea, index) => {
+                          const evento = datos.eventos.find(
+                            (item) => String(item.id) === String(subtarea.evento_id)
+                          );
+                          const nota = obtenerNotaSubtarea(subtarea);
+                          const responsable = obtenerResponsableSubtarea(subtarea);
+                          const categoria = categoriasSubtareas.find(
+                            (item) => item.clave === categoriaSubtareasActiva
+                          );
+
+                          return (
+                            <article
+                              className="progress-status-item"
+                              key={
+                                subtarea.id ?? `${subtarea.evento_id}-${subtarea.titulo ?? "subtarea"}-${index}`
+                              }
+                            >
+                              <div className="progress-status-item-main">
+                                <span className={`progress-status-item-tag ${categoria?.clase || ""}`}>
+                                  {categoria?.etiquetaEstado}
+                                </span>
+                                <h3>{subtarea.titulo || subtarea.nombre || "Subtarea sin nombre"}</h3>
+                                <p className="progress-status-event">
+                                  Evento: {evento?.titulo || "Evento no asociado"}
+                                </p>
+                                <div className="progress-status-meta">
+                                  <span>Fecha: {subtarea.dia_objetivo ? formatearFecha(subtarea.dia_objetivo) : "Sin fecha"}</span>
+                                  <span>Responsable: {responsable || "Sin asignar"}</span>
+                                  <span>Estimado: {formatearDuracion(obtenerHoras(subtarea))}</span>
+                                </div>
+                                {nota && <p className="progress-status-note">{nota}</p>}
+                              </div>
+                              {evento?.id && (
+                                <button
+                                  className="progress-status-event-link"
+                                  type="button"
+                                  onClick={() => navegar(`/eventos/${evento.id}`)}
+                                >
+                                  Ver evento →
+                                </button>
+                              )}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+              )}
 
               <section className="progress-breakdown">
                 <div className="progress-breakdown-header">
@@ -5914,6 +7764,205 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
             </>
           )}
         </>
+      )}
+
+      <button
+        className="progress-calendar-fab"
+        type="button"
+        onClick={() => setMostrarCalendario(true)}
+        aria-label="Abrir calendario de progreso"
+        title="Ver calendario"
+      >
+        <FaCalendarAlt aria-hidden="true" />
+      </button>
+
+      {mostrarCalendario && (
+        <div className="progress-calendar-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setMostrarCalendario(false); }}>
+          <section className="progress-calendar-modal" role="dialog" aria-modal="true" aria-labelledby="progress-calendar-title">
+            <header className="progress-calendar-modal-header">
+              <div>
+                <span className="progress-calendar-eyebrow">EVENTHUB · PLANIFICACIÓN</span>
+                <h2 id="progress-calendar-title">Calendario de Progreso y Entregas</h2>
+                <p>Consulta fechas, hitos y gestiones de tus eventos.</p>
+              </div>
+              <button type="button" className="progress-calendar-close" onClick={() => setMostrarCalendario(false)} aria-label="Cerrar calendario">
+                <FaTimes aria-hidden="true" />
+              </button>
+            </header>
+            <div className="progress-calendar-body">
+              <div className="progress-calendar-main">
+                <div className="progress-calendar-monthbar">
+                  <h3>
+                    {vistaCalendario === "semana"
+                      ? `${new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" }).format(inicioSemanaCalendario)} – ${new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" }).format(new Date(inicioSemanaCalendario.getFullYear(), inicioSemanaCalendario.getMonth(), inicioSemanaCalendario.getDate() + 6, 12))}`
+                      : new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" }).format(mesCalendarioProgreso)}
+                  </h3>
+                  <div className="progress-calendar-month-actions">
+                    <button type="button" aria-label={vistaCalendario === "semana" ? "Semana anterior" : "Mes anterior"} onClick={() => navegarCalendario(-1)}>
+                      <FaChevronLeft aria-hidden="true" />
+                    </button>
+                    <button type="button" className="progress-calendar-today" onClick={() => {
+                      const hoy = obtenerFechaLocalHoy();
+                      const fechaHoy = new Date(`${hoy}T12:00:00`);
+                      setMesCalendarioProgreso(new Date(fechaHoy.getFullYear(), fechaHoy.getMonth(), 1));
+                      setFechaCalendario(hoy);
+                    }}>Hoy</button>
+                    <button type="button" aria-label={vistaCalendario === "semana" ? "Semana siguiente" : "Mes siguiente"} onClick={() => navegarCalendario(1)}>
+                      <FaChevronRight aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="progress-calendar-view-switch" role="group" aria-label="Vista del calendario">
+                    <button type="button" className={vistaCalendario === "mes" ? "active" : ""} aria-pressed={vistaCalendario === "mes"} onClick={() => setVistaCalendario("mes")}>Mes</button>
+                    <button type="button" className={vistaCalendario === "semana" ? "active" : ""} aria-pressed={vistaCalendario === "semana"} onClick={() => setVistaCalendario("semana")}>Semana</button>
+                  </div>
+                </div>
+                <div className="progress-calendar-grid">
+                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => <span className="progress-calendar-weekday" key={d}>{d}</span>)}
+                  {diasVisiblesCalendario.map((dia, index) => {
+                    if (!dia) {
+                      return <span className="progress-calendar-empty" key={`empty-${index}`} />;
+                    }
+                    const { fecha, dia: numeroDia } = dia;
+                    const eventosDia = datos.eventos.filter((evento) => String(evento.fecha || "").slice(0, 10) === fecha);
+                    const tareasDia = subtareasCalendario.filter((subtarea) => obtenerFechaObjetivo(subtarea) === fecha);
+                    const esHoy = fecha === obtenerFechaLocalHoy();
+                    const fechaCompleta = new Intl.DateTimeFormat("es-CO", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    }).format(new Date(`${fecha}T12:00:00`));
+                    return (
+                      <button
+                        type="button"
+                        key={fecha}
+                        className={`progress-calendar-day ${fechaCalendario === fecha ? "selected" : ""} ${esHoy ? "today" : ""} ${eventosDia.length || tareasDia.length ? "has-items" : ""}`}
+                        onClick={() => {
+                          setFechaCalendario(fecha);
+                          const date = new Date(`${fecha}T12:00:00`);
+                          setMesCalendarioProgreso(new Date(date.getFullYear(), date.getMonth(), 1));
+                        }}
+                        aria-pressed={fechaCalendario === fecha}
+                        aria-label={`${fechaCompleta}: ${eventosDia.length} eventos y ${tareasDia.length} subtareas`}
+                      >
+                        <span className="progress-calendar-day-number">{numeroDia}</span>
+                        {eventosDia.slice(0, 1).map((evento) => (
+                          <span key={evento.id} className="progress-calendar-chip event-chip">
+                            <FaCalendarAlt aria-hidden="true" /> {evento.titulo}
+                          </span>
+                        ))}
+                        {tareasDia.slice(0, 1).map((subtarea) => {
+                          const estado = estadoEfectivoSubtarea(subtarea);
+                          return (
+                            <span key={subtarea.id} className={`progress-calendar-chip task-chip ${estado}`}>
+                              {estado === "hecho" ? <FaCheckCircle aria-hidden="true" /> : estado === "vencido" ? <FaExclamationTriangle aria-hidden="true" /> : <FaClock aria-hidden="true" />}
+                              {subtarea.titulo || subtarea.nombre || "Subtarea"}
+                            </span>
+                          );
+                        })}
+                        {eventosDia.length + tareasDia.length > 2 && <small className="progress-calendar-more">+{eventosDia.length + tareasDia.length - 2} más</small>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="progress-calendar-legend" aria-label="Leyenda de estados">
+                  <span className="legend-pending"><FaClock aria-hidden="true" /> Pendiente</span>
+                  <span className="legend-progress"><FaClock aria-hidden="true" /> Pospuesta</span>
+                  <span className="legend-done"><FaCheckCircle aria-hidden="true" /> Completada</span>
+                  <span className="legend-overdue"><FaExclamationTriangle aria-hidden="true" /> Vencida</span>
+                  <span className="legend-event"><FaCalendarAlt aria-hidden="true" /> Hito</span>
+                </div>
+              </div>
+              <aside className="progress-calendar-detail">
+                <span className="progress-calendar-eyebrow">
+                  <FaCalendarAlt aria-hidden="true" /> DÍA SELECCIONADO
+                </span>
+                <h3>
+                  {new Intl.DateTimeFormat("es-CO", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }).format(fechaSeleccionadaCalendario)}
+                </h3>
+                <div className="progress-calendar-hours-summary">
+                  <FaClock aria-hidden="true" />
+                  <span>
+                    <strong>{formatearDuracion(minutosAHoras(minutosEstimadosDia))}</strong>
+                    <small>Tiempo estimado · {subtareasDelDiaSeleccionado.length} subtareas</small>
+                  </span>
+                </div>
+                {!eventosDelDiaSeleccionado.length && !subtareasDelDiaSeleccionado.length ? (
+                  <div className="progress-calendar-empty-detail">
+                    <FaCalendarAlt aria-hidden="true" />
+                    <strong>Sin actividades programadas</strong>
+                    <p>Selecciona otro día para consultar sus entregas.</p>
+                  </div>
+                ) : (
+                  <div className="progress-calendar-items">
+                    {eventosDelDiaSeleccionado.map((evento) => (
+                      <article className="progress-calendar-item event-item" key={`evento-${evento.id}`}>
+                        <span className="progress-calendar-item-label">
+                          <FaCalendarAlt aria-hidden="true" /> HITO · {evento.estado?.etiqueta || "Programado"}
+                        </span>
+                        <h4>{evento.titulo}</h4>
+                        <p>Progreso acumulado: {evento.porcentaje}%</p>
+                        <button type="button" onClick={() => navegar(`/eventos/${evento.id}`)}>
+                          Ver evento →
+                        </button>
+                      </article>
+                    ))}
+                    {subtareasDelDiaSeleccionado.map((subtarea) => {
+                      const estado = estadoEfectivoSubtarea(subtarea);
+                      const evento = datos.eventos.find(
+                        (item) => String(item.id) === String(subtarea.evento_id)
+                      );
+                      const etiqueta =
+                        estado === "hecho"
+                          ? "Completada"
+                          : estado === "vencido"
+                            ? "Vencida"
+                            : estado === "pospuesto"
+                              ? "Pospuesta"
+                              : "Pendiente";
+                      return (
+                        <article
+                          className={`progress-calendar-item task-item task-${estado}`}
+                          key={`tarea-${subtarea.id}`}
+                        >
+                          <span className="progress-calendar-item-label">
+                            {estado === "hecho" ? <FaCheckCircle aria-hidden="true" /> : estado === "vencido" ? <FaExclamationTriangle aria-hidden="true" /> : <FaClock aria-hidden="true" />}
+                            SUBTAREA · {etiqueta}
+                          </span>
+                          <h4>{subtarea.titulo || subtarea.nombre || "Subtarea"}</h4>
+                          <p>Evento: {evento?.titulo || "Evento no asociado"}</p>
+                          <div className="progress-calendar-task-meta">
+                            <span>Responsable: {obtenerResponsableSubtarea(subtarea) || "Sin asignar"}</span>
+                            <span>Estimado: {formatearDuracion(obtenerHoras(subtarea))}</span>
+                          </div>
+                          {obtenerNotaSubtarea(subtarea) && (
+                            <p>{obtenerNotaSubtarea(subtarea)}</p>
+                          )}
+                          {evento && (
+                            <button type="button" onClick={() => navegar(`/eventos/${evento.id}`)}>
+                              Ver evento →
+                            </button>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </aside>
+            </div>
+            <footer className="progress-calendar-footer">
+              <span>Selecciona un día para consultar sus actividades y carga horaria.</span>
+              <button type="button" className="btn secondary" onClick={() => setMostrarCalendario(false)}>
+                <FaTimes aria-hidden="true" /> Cerrar calendario
+              </button>
+            </footer>
+          </section>
+        </div>
       )}
     </section>
   );
@@ -6573,7 +8622,101 @@ function RegistroUsuario() {
     </main>
   );
 }
+function MobileCreateButton({ ruta, onCrearEvento, onCrearSubtarea }) {
+  const [abierto, setAbierto] = useState(false);
+  const anclaRef = useRef(null);
+  const esCreacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const cerrarFuera = (event) => {
+      if (anclaRef.current && !anclaRef.current.contains(event.target)) {
+        setAbierto(false);
+      }
+    };
+    const cerrarEscape = (event) => {
+      if (event.key === "Escape") {
+        setAbierto(false);
+        anclaRef.current?.querySelector(".mobile-create-fab")?.focus();
+      }
+    };
+    document.addEventListener("mousedown", cerrarFuera);
+    document.addEventListener("keydown", cerrarEscape);
+    return () => {
+      document.removeEventListener("mousedown", cerrarFuera);
+      document.removeEventListener("keydown", cerrarEscape);
+    };
+  }, [abierto]);
+
+  useEffect(() => {
+    setAbierto(false);
+  }, [ruta]);
+
+  const alternar = () => {
+    if (!esCreacionGlobalDisponible) {
+      onCrearEvento();
+      return;
+    }
+    setAbierto((visible) => !visible);
+  };
+
+  return (
+    <div
+      className={`mobile-create-anchor${abierto ? " is-open" : ""}`}
+      ref={anclaRef}
+    >
+      <button
+        className="mobile-create-fab"
+        type="button"
+        aria-label={esCreacionGlobalDisponible ? "Abrir opciones de creación" : "Crear evento"}
+        title={esCreacionGlobalDisponible ? "Crear" : "Crear evento"}
+        aria-haspopup={esCreacionGlobalDisponible ? "menu" : undefined}
+        aria-expanded={esCreacionGlobalDisponible ? abierto : undefined}
+        aria-controls={esCreacionGlobalDisponible && abierto ? "mobile-create-menu" : undefined}
+        onClick={alternar}
+      >
+        {abierto ? "×" : "+"}
+      </button>
+
+      {esCreacionGlobalDisponible && (
+        <CreateMenu
+          id="mobile-create-menu"
+          variant="mobile"
+          abierto={abierto}
+          onCrearEvento={() => {
+            setAbierto(false);
+            onCrearEvento();
+          }}
+          onCrearSubtarea={() => {
+            setAbierto(false);
+            onCrearSubtarea();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function App() {
+  const [modoOscuro, setModoOscuro] = useState(() => {
+    try {
+      return window.localStorage.getItem("eventhub-theme") === "dark";
+    } catch {
+      return false;
+    }
+  });
+  const alternarTema = () => setModoOscuro((actual) => !actual);
+  useEffect(() => {
+    const tema = modoOscuro ? "dark" : "light";
+    document.documentElement.dataset.theme = tema;
+    document.body.dataset.theme = tema;
+    try {
+      window.localStorage.setItem("eventhub-theme", tema);
+    } catch {
+      // La aplicación sigue funcionando aunque el almacenamiento esté bloqueado.
+    }
+  }, [modoOscuro]);
+
   const [ruta, setRuta] = useState(obtenerRutaInicial);
   const [eventos, setEventos] = useState([]);
   const [busquedaEventos, setBusquedaEventos] = useState("");
@@ -6581,6 +8724,8 @@ export default function App() {
   const [errorEventos, setErrorEventos] = useState("");
   const [toast, setToast] = useState({ type: "success", message: "" });
   const toastTimer = useRef(null);
+  const [crearSubtareaAbierta, setCrearSubtareaAbierta] = useState(false);
+  const [recargaHoy, setRecargaHoy] = useState(0);
 
   const cargarEventos = async () => {
     setCargandoEventos(true); setErrorEventos("");
@@ -6676,8 +8821,11 @@ export default function App() {
     if (lista.length && creado?.id) {
       for (const subtarea of lista) {
         try {
+          // Normaliza el responsable opcional antes de enviar la subtarea creada junto al evento.
+          const responsableSubtarea = obtenerResponsableSubtarea(subtarea);
           await crearSubtarea({
             ...subtarea,
+            responsable: responsableSubtarea || null,
             evento_id: creado.id,
           });
         } catch (error) {
@@ -6720,12 +8868,15 @@ export default function App() {
     return <OnboardingRegistro />;
   }
 
-  return <main className="app">
+  return <main className={`app${modoOscuro ? " theme-dark" : ""}`}>
     <Header
       ruta={ruta}
       abrirCrear={() => navegar("/crear-evento")}
+      abrirCrearSubtarea={() => setCrearSubtareaAbierta(true)}
       busquedaEventos={busquedaEventos}
       onBuscarEventos={setBusquedaEventos}
+      modoOscuro={modoOscuro}
+      alternarTema={alternarTema}
     />
     <nav className="mobile-bottom-nav" aria-label="Navegación móvil">
       <button type="button" className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/eventos")}>
@@ -6738,10 +8889,14 @@ export default function App() {
         <span aria-hidden="true">▥</span><span>Progreso</span>
       </button>
     </nav>
-    <button className="mobile-create-fab" type="button" aria-label="Crear evento" title="Crear evento" onClick={() => navegar("/crear-evento")}>+</button>
+    <MobileCreateButton
+      ruta={ruta}
+      onCrearEvento={() => navegar("/crear-evento")}
+      onCrearSubtarea={() => setCrearSubtareaAbierta(true)}
+    />
     <Toast type={toast.type} message={toast.message} />
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} busqueda={busquedaEventos} />}
-    {ruta === "/hoy" && <Today onNotify={notify} />}
+    {ruta === "/hoy" && <Today onNotify={notify} recargaToken={recargaHoy} />}
     {/* El widget de ayuda explica el orden y el uso de la vista Hoy, por
         eso solo aparece en esa ruta. */}
     {ruta === "/hoy" && (
@@ -6771,10 +8926,28 @@ export default function App() {
     {ruta === "/progreso" && (
       <Progreso
         busquedaEventos={busquedaEventos}
+        recargaToken={recargaHoy}
         onLimpiarBusqueda={() => setBusquedaEventos("")}
       />
     )}
     {ruta === "/configuracion" && (<ConfiguracionUsuario onNotify={notify} />)}
+    {(ruta === "/hoy" || ruta === "/progreso") && crearSubtareaAbierta && (
+      <Modal
+        title="Crear subtarea"
+        subtitle="Elige el evento y define los detalles de la nueva subtarea."
+        close={() => setCrearSubtareaAbierta(false)}
+      >
+        <CrearSubtareaForm
+          permitirCambiarEvento
+          onCancelar={() => setCrearSubtareaAbierta(false)}
+          onCreada={() => {
+            setCrearSubtareaAbierta(false);
+            setRecargaHoy((valor) => valor + 1);
+            notify("Subtarea creada correctamente");
+          }}
+        />
+      </Modal>
+    )}
     {detalleId && <DetalleEvento id={detalleId} volver={() => navegar("/eventos")} onNotify={notify} onEventosChanged={cargarEventos} />}
     {ruta === "/crear-evento" && <CrearEventoPage onCancelar={() => navegar("/eventos")} onCrear={crear} />}
   </main>;
