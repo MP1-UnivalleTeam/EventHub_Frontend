@@ -4259,6 +4259,37 @@ function ConfiguracionUsuario({ onNotify }) {
         }
       }
 
+      const nombre = nombrePerfil.trim();
+      const apellido = apellidoPerfil.trim();
+      if (nombre.length < 2 || nombre.length > 100) {
+        setErrorPerfil("El nombre debe tener entre 2 y 100 caracteres.");
+        return;
+      }
+      if (apellido.length < 2 || apellido.length > 100) {
+        setErrorPerfil("El apellido debe tener entre 2 y 100 caracteres.");
+        return;
+      }
+
+      const resultadoPerfil = await actualizarPerfilUsuario({ nombre, apellido });
+      const nombreGuardado = resultadoPerfil?.nombre?.trim();
+      const apellidoGuardado = resultadoPerfil?.apellido?.trim();
+      if (!nombreGuardado || !apellidoGuardado) {
+        throw new Error("El servidor no confirmó los datos del perfil.");
+      }
+      setNombrePerfil(nombreGuardado);
+      setApellidoPerfil(apellidoGuardado);
+      setPerfilActual((actual) => ({
+        ...actual,
+        nombre: `${nombreGuardado} ${apellidoGuardado}`,
+        correo: resultadoPerfil.email || actual.correo,
+        iniciales: `${nombreGuardado[0]}${apellidoGuardado[0]}`.toLocaleUpperCase("es-CO"),
+      }));
+      window.dispatchEvent(
+        new CustomEvent("eventhub-profile-updated", {
+          detail: { nombre: nombreGuardado, apellido: apellidoGuardado },
+        })
+      );
+
       const data = await actualizarConfiguracionUsuario(nuevasHoras);
 
       setHorasDia(Number(data.horas_dia));
@@ -4361,51 +4392,6 @@ function ConfiguracionUsuario({ onNotify }) {
     }
   };
 
-  const guardarPerfil = async () => {
-    const nombre = nombrePerfil.trim();
-    const apellido = apellidoPerfil.trim();
-    if (nombre.length < 2 || nombre.length > 100) {
-      setErrorPerfil("El nombre debe tener entre 2 y 100 caracteres.");
-      return;
-    }
-    if (apellido.length < 2 || apellido.length > 100) {
-      setErrorPerfil("El apellido debe tener entre 2 y 100 caracteres.");
-      return;
-    }
-
-    setGuardandoPerfil(true);
-    setErrorPerfil("");
-    try {
-      const resultado = await actualizarPerfilUsuario({ nombre, apellido });
-      const nombreGuardado = resultado?.nombre?.trim();
-      const apellidoGuardado = resultado?.apellido?.trim();
-      if (!nombreGuardado || !apellidoGuardado) {
-        throw new Error("El servidor no confirmó los datos actualizados.");
-      }
-
-      setNombrePerfil(nombreGuardado);
-      setApellidoPerfil(apellidoGuardado);
-      const nombreCompleto = `${nombreGuardado} ${apellidoGuardado}`;
-      setPerfilActual((actual) => ({
-        ...actual,
-        nombre: nombreCompleto,
-        correo: resultado.email || actual.correo,
-        iniciales: `${nombreGuardado[0]}${apellidoGuardado[0]}`.toLocaleUpperCase("es-CO"),
-      }));
-      window.dispatchEvent(
-        new CustomEvent("eventhub-profile-updated", {
-          detail: { nombre: nombreGuardado, apellido: apellidoGuardado },
-        })
-      );
-      onNotify("Nombre y apellido actualizados correctamente.");
-    } catch (errorActual) {
-      setErrorPerfil(
-        errorActual.message || "No fue posible actualizar el perfil."
-      );
-    } finally {
-      setGuardandoPerfil(false);
-    }
-  };
 
   const ajustarHoras = (cambio) => {
     const actual = Number(horasDia);
@@ -4525,16 +4511,6 @@ function ConfiguracionUsuario({ onNotify }) {
                 {errorFoto}
               </p>
             )}
-            <div className="profile-data-actions">
-              <button
-                className="btn primary"
-                type="button"
-                disabled={guardandoPerfil}
-                onClick={guardarPerfil}
-              >
-                {guardandoPerfil ? "Guardando perfil..." : "Guardar perfil"}
-              </button>
-            </div>
           </section>
 
           {mostrarModalFoto && (
@@ -4693,8 +4669,8 @@ function ConfiguracionUsuario({ onNotify }) {
             <button className="btn secondary" type="button" disabled={guardando} onClick={cancelarCambios}>
               Cancelar
             </button>
-            <button className="btn primary" type="button" disabled={guardando} onClick={guardar}>
-              {guardando ? "Guardando..." : "▣  Guardar cambios"}
+            <button className="btn primary" type="button" disabled={guardando || guardandoPerfil} onClick={guardar}>
+              {guardando || guardandoPerfil ? "Guardando..." : "💾 Guardar cambios"}
             </button>
           </div>
         </div>
