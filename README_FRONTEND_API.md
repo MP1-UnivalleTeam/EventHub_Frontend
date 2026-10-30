@@ -47,6 +47,61 @@ Payload:
 }
 ```
 
+## Comprobante de imagen (Cloudinary)
+
+Sube una imagen de comprobante (justificante de posposición) para una subtarea. La imagen se almacena en Cloudinary y su URL pública se guarda en la columna `comprobante_url` de la subtarea.
+
+- `POST /subtareas/{subtarea_id}/comprobante` — subir imagen de comprobante
+
+### Parámetros
+
+| Parámetro | Tipo | Ubicación | Descripción |
+|-----------|------|-----------|-------------|
+| `subtarea_id` | string (UUID) | Path | ID de la subtarea a la que se adjunta el comprobante |
+| `file` | archivo (imagen) | Form-data | La imagen del comprobante (JPG, PNG, etc.) |
+
+### Cabeceras
+
+```http
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+```
+
+> **Importante:** no establishes `Content-Type` manualmente en JavaScript; el navegador lo asigna automáticamente con el `boundary` cuando usas `FormData`.
+
+### Ejemplo de petición (fetch)
+
+```javascript
+const formData = new FormData();
+formData.append("file", archivoImagen); // archivoImagen es un File de <input type="file">
+
+const respuesta = await fetch(`${VITE_API_URL}/subtareas/${subtareaId}/comprobante`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+  body: formData,
+});
+```
+
+### Respuesta exitosa (200 OK)
+
+```json
+{
+  "message": "Comprobante subido correctamente.",
+  "subtarea_id": "uuid-de-la-subtarea",
+  "comprobante_url": "https://res.cloudinary.com/tu-cloud-name/image/upload/v1234567890/eventhub/comprobantes/abc123.jpg"
+}
+```
+
+### Posibles errores
+
+| Código | Significado |
+|--------|-------------|
+| `401` | Token inválido o expirado |
+| `404` | Subtarea no encontrada o no pertenece al usuario autenticado |
+| `502` | Error subiendo la imagen a Cloudinary o guardando la URL |
+
 ## Vista Hoy y reprogramación
 
 - `GET /hoy` — devuelve gestiones activas agrupadas en `vencidas`, `urgentes` y `proximas`, y el límite diario configurado dentro de `resumen`.
