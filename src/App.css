@@ -10760,3 +10760,59 @@ body[data-theme="dark"] .work-limit-help span {
     width: 100%;
   }
 }
+
+
+/* Alineación de campos del formulario Crear evento */
+.create-form-card .form-two-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  column-gap: 18px;
+  row-gap: 16px;
+}
+
+.create-form-card .form-two-columns > div {
+  min-width: 0;
+}
+
+.create-form-card .form-two-columns > div > .field-header {
+  margin-top: 0;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.create-form-card .form-two-columns .duration-input {
+  margin-top: 0;
+  align-items: end;
+}
+
+.create-form-card .create-event-subtask-fields .form-two-columns {
+  grid-template-columns: minmax(0, 1.2fr) minmax(170px, 0.9fr);
+  align-items: start;
+  margin-top: 14px;
+}
+
+.create-form-card .create-event-subtask-fields .form-two-columns > div > .field-header {
+  margin-top: 0;
+  min-height: 18px;
+}
+
+.create-form-card .create-event-subtask-fields .duration-input {
+  grid-template-columns: minmax(44px, 1fr) auto minmax(52px, 1fr) auto;
+  gap: 6px;
+}
+
+.create-form-card .create-event-subtask-fields .duration-input-preview {
+  font-size: 11px;
+}
+
+@media (max-width: 680px) {
+  .create-form-card .form-two-columns,
+  .create-form-card .create-event-subtask-fields .form-two-columns {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+}
