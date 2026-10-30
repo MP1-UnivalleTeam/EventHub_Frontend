@@ -11619,6 +11619,220 @@ body[data-theme="dark"] .today-evidence-file span {
   outline-offset: 2px;
 }
 
+.profile-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(220px, 30vw);
+  padding: 5px 9px 5px 5px;
+  overflow: visible;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.profile-menu-trigger:hover,
+.profile-menu-trigger.is-open {
+  border-color: #dbe5f5;
+  background: #f4f7fc;
+}
+
+.profile-menu-trigger:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.profile-menu-avatar {
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+}
+
+.profile-menu-trigger .profile-header-name {
+  max-width: 150px;
+  color: inherit;
+}
+
+.profile-photo-icon-trigger {
+  position: relative;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  cursor: pointer;
+}
+
+.profile-photo-icon-trigger:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
+}
+
+.profile-photo-icon-trigger > img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.profile-photo-icon-trigger > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.profile-photo-add-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #315bd5;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.profile-data-error {
+  margin: 12px 0 0;
+}
+
+.profile-photo-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-photo-modal-content .profile-photo-preview {
+  width: 112px;
+  height: 112px;
+  flex-basis: 112px;
+  margin: 2px 0 4px;
+  overflow: hidden;
+}
+
+.profile-photo-modal-content .profile-change-photo {
+  min-height: 38px;
+}
+
+.profile-photo-modal-content .profile-photo-dropzone {
+  min-height: 72px;
+  padding: 12px;
+}
+
+.profile-photo-selected,
+.profile-photo-status {
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.profile-photo-error {
+  width: 100%;
+  text-align: center;
+}
+
+.profile-photo-modal-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.profile-photo-modal-actions .btn {
+  min-height: 40px;
+}
+
+body[data-theme="dark"] .profile-menu-trigger {
+  color: var(--eh-text-primary);
+}
+
+body[data-theme="dark"] .profile-menu-trigger:hover,
+body[data-theme="dark"] .profile-menu-trigger.is-open {
+  border-color: var(--eh-border);
+  background: var(--eh-surface-hover);
+}
+
+body[data-theme="dark"] .profile-photo-icon-trigger {
+  color: #93c5fd;
+}
+
+body[data-theme="dark"] .profile-photo-add-badge {
+  border-color: #131f33;
+  background: #3b82f6;
+  color: #fff;
+}
+
+body[data-theme="dark"] .profile-photo-modal-content .profile-photo-preview {
+  border-color: #2d4567;
+  background: #203b5d;
+  color: #bfdbfe;
+}
+
+body[data-theme="dark"] .profile-photo-selected,
+body[data-theme="dark"] .profile-photo-status {
+  color: var(--eh-text-secondary);
+}
+
+@media (max-width: 720px) {
+  .profile-menu-trigger {
+    gap: 6px;
+    max-width: min(145px, 35vw);
+    padding-right: 6px;
+  }
+
+  .profile-menu-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .profile-menu-trigger .profile-header-name {
+    max-width: 76px;
+    font-size: 12px;
+  }
+
+  .profile-photo-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .profile-photo-modal-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-menu-trigger {
+    gap: 5px;
+    max-width: 112px;
+  }
+
+  .profile-menu-trigger .profile-header-name {
+    max-width: 58px;
+    font-size: 11px;
+  }
+
+  .profile-menu-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .profile-photo-modal-content .profile-photo-dropzone {
+    align-items: flex-start;
+  }
+}
+
 .evidence-preview-overlay {
   position: fixed;
   inset: 0;

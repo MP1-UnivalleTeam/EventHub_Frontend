@@ -23,7 +23,7 @@ import {
   FaImage,
   FaPaperclip,
 } from "react-icons/fa";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   actualizarEvento,
@@ -1021,6 +1021,7 @@ function Header({
   const [mostrarMenuPerfil, setMostrarMenuPerfil] = useState(false);
   const [mostrarMenuCrear, setMostrarMenuCrear] = useState(false);
   const perfilMenuRef = useRef(null);
+  const perfilMenuTriggerRef = useRef(null);
   const crearMenuRef = useRef(null);
   const creacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
   const [perfil, setPerfil] = useState(obtenerDatosPerfil);
@@ -1110,7 +1111,10 @@ function Header({
       }
     };
     const cerrarEscape = (event) => {
-      if (event.key === "Escape") setMostrarMenuPerfil(false);
+      if (event.key === "Escape") {
+        setMostrarMenuPerfil(false);
+        perfilMenuTriggerRef.current?.focus();
+      }
     };
     document.addEventListener("mousedown", cerrarFuera);
     document.addEventListener("keydown", cerrarEscape);
@@ -1266,25 +1270,61 @@ function Header({
 
         <div className="profile-menu-anchor" ref={perfilMenuRef}>
           <button
-            className={`avatar profile-menu-trigger ${mostrarMenuPerfil ? "is-open" : ""}`}
+            ref={perfilMenuTriggerRef}
+            className={`profile-menu-trigger ${mostrarMenuPerfil ? "is-open" : ""}`}
             type="button"
-            aria-label="Abrir menú del perfil"
+            aria-label={`Abrir menú de usuario: ${perfil.nombre.split(/\s+/)[0] || "Organizador"}`}
             aria-expanded={mostrarMenuPerfil}
             aria-haspopup="menu"
+            aria-controls="profile-user-menu"
             onClick={() => setMostrarMenuPerfil((visible) => !visible)}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              setMostrarMenuPerfil(true);
+              window.requestAnimationFrame(() => {
+                const items = perfilMenuRef.current?.querySelectorAll('[role="menuitem"]');
+                const item = event.key === "ArrowUp" ? items?.[items.length - 1] : items?.[0];
+                item?.focus();
+              });
+            }}
           >
-            {fotoPerfilHeader ? (
-              <img src={fotoPerfilHeader} alt="" className="avatar-photo" />
-            ) : (
-              perfil.iniciales
-            )}
+            <span className="avatar profile-menu-avatar" aria-hidden="true">
+              {fotoPerfilHeader ? (
+                <img src={fotoPerfilHeader} alt="" className="avatar-photo" />
+              ) : perfil.iniciales}
+            </span>
+            <span className="profile-header-name" title={perfil.nombre}>
+              {perfil.nombre.split(/\s+/)[0] || "Organizador"}
+            </span>
           </button>
-          <span className="profile-header-name" title={perfil.nombre}>
-            {perfil.nombre}
-          </span>
 
           {mostrarMenuPerfil && (
-            <div className="profile-dropdown" role="menu" aria-label="Menú del perfil">
+            <div
+              id="profile-user-menu"
+              className="profile-dropdown"
+              role="menu"
+              aria-label="Menú del perfil"
+              onKeyDown={(event) => {
+                if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+                const items = Array.from(
+                  event.currentTarget.querySelectorAll('[role="menuitem"]:not(:disabled)')
+                );
+                if (items.length === 0) return;
+                event.preventDefault();
+                const currentIndex = items.indexOf(document.activeElement);
+                let nextIndex = currentIndex;
+                if (event.key === "Home") nextIndex = 0;
+                else if (event.key === "End") nextIndex = items.length - 1;
+                else if (currentIndex < 0) {
+                  nextIndex = event.key === "ArrowDown" ? 0 : items.length - 1;
+                } else {
+                  const direction = event.key === "ArrowDown" ? 1 : -1;
+                  nextIndex = (currentIndex + direction + items.length) % items.length;
+                }
+                items[nextIndex]?.focus();
+              }}
+            >
               <div className="profile-dropdown-user">
                 <div className="profile-dropdown-avatar">
                   {fotoPerfilHeader ? (
@@ -4006,9 +4046,11 @@ function ConfiguracionUsuario({ onNotify }) {
   const [fotoPerfil, setFotoPerfil] = useState("");
   const [errorFoto, setErrorFoto] = useState("");
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [mostrarModalFoto, setMostrarModalFoto] = useState(false);
   const [fotoSeleccionada, setFotoSeleccionada] = useState(null);
   const [vistaPreviaFoto, setVistaPreviaFoto] = useState("");
   const inputFotoRef = useRef(null);
+  const fotoTriggerRef = useRef(null);
   const vistaPreviaFotoRef = useRef("");
   const [perfilActual, setPerfilActual] = useState(obtenerDatosPerfil);
   const [nombrePerfil, setNombrePerfil] = useState("");
@@ -4235,14 +4277,20 @@ function ConfiguracionUsuario({ onNotify }) {
     setErrorFoto("");
     if (!archivo || subiendoFoto) return;
     if (!["image/jpeg", "image/png"].includes(archivo.type)) {
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
       setErrorFoto("Selecciona una imagen JPG o PNG.");
       return;
     }
     if (archivo.size === 0) {
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
       setErrorFoto("El archivo está vacío.");
       return;
     }
     if (archivo.size > 5 * 1024 * 1024) {
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
       setErrorFoto("La imagen debe pesar 5 MB o menos.");
       return;
     }
@@ -4256,13 +4304,29 @@ function ConfiguracionUsuario({ onNotify }) {
     setFotoSeleccionada(archivo);
   };
 
-  const limpiarVistaPreviaFoto = () => {
+  const limpiarVistaPreviaFoto = useCallback(() => {
     if (vistaPreviaFotoRef.current) {
       URL.revokeObjectURL(vistaPreviaFotoRef.current);
       vistaPreviaFotoRef.current = "";
     }
     setVistaPreviaFoto("");
+  }, []);
+
+  const abrirModalFoto = () => {
+    setErrorFoto("");
+    setFotoSeleccionada(null);
+    limpiarVistaPreviaFoto();
+    setMostrarModalFoto(true);
   };
+
+  const cerrarModalFoto = useCallback(() => {
+    if (subiendoFoto) return;
+    setMostrarModalFoto(false);
+    setFotoSeleccionada(null);
+    setErrorFoto("");
+    limpiarVistaPreviaFoto();
+    window.requestAnimationFrame(() => fotoTriggerRef.current?.focus());
+  }, [subiendoFoto, limpiarVistaPreviaFoto]);
 
   const guardarFotoPerfil = async () => {
     if (!fotoSeleccionada || subiendoFoto) return;
@@ -4278,15 +4342,13 @@ function ConfiguracionUsuario({ onNotify }) {
       setFotoPerfil(url);
       setFotoSeleccionada(null);
       limpiarVistaPreviaFoto();
+      setMostrarModalFoto(false);
       window.dispatchEvent(
         new CustomEvent("eventhub-profile-updated", {
-          detail: {
-            fotoPerfilUrl: url,
-            nombre: nombrePerfil.trim(),
-            apellido: apellidoPerfil.trim(),
-          },
+          detail: { fotoPerfilUrl: url },
         })
       );
+      window.requestAnimationFrame(() => fotoTriggerRef.current?.focus());
       onNotify("Foto de perfil actualizada.");
     } catch (errorActual) {
       setErrorFoto(
@@ -4387,9 +4449,21 @@ function ConfiguracionUsuario({ onNotify }) {
           )}
           <section className="card configuration-card profile-data-card">
             <div className="settings-section-heading">
-              <span className="settings-section-icon" aria-hidden="true">
-                <FaUser />
-              </span>
+              <button
+                ref={fotoTriggerRef}
+                className="settings-section-icon profile-photo-icon-trigger"
+                type="button"
+                aria-label="Cambiar foto de perfil"
+                title="Cambiar foto de perfil"
+                onClick={abrirModalFoto}
+              >
+                {fotoPerfil ? (
+                  <img src={fotoPerfil} alt="" />
+                ) : (
+                  <span>{perfilActual.iniciales || <FaUser />}</span>
+                )}
+                <span className="profile-photo-add-badge" aria-hidden="true">+</span>
+              </button>
               <div>
                 <h2>Datos del perfil</h2>
                 <p>Actualiza el nombre que aparece en tu espacio de trabajo.</p>
@@ -4444,6 +4518,11 @@ function ConfiguracionUsuario({ onNotify }) {
                 {errorPerfil}
               </p>
             )}
+            {errorFoto && !mostrarModalFoto && (
+              <p className="inline-error profile-data-error" role="alert">
+                {errorFoto}
+              </p>
+            )}
             <div className="profile-data-actions">
               <button
                 className="btn primary"
@@ -4456,38 +4535,23 @@ function ConfiguracionUsuario({ onNotify }) {
             </div>
           </section>
 
-          <section className="card configuration-card profile-photo-card">
-            <div className="settings-section-heading">
-              <span className="settings-section-icon" aria-hidden="true">♙</span>
-              <div>
-                <h2>Foto de perfil</h2>
-                <p>Esta imagen aparece en la navegación y en tus actividades.</p>
-              </div>
-            </div>
-
-            <div className="profile-photo-content">
-              <div className="profile-photo-preview" aria-label={`Foto de perfil de ${perfilActual.nombre}`}>
-                {vistaPreviaFoto || fotoPerfil ? (
-                  <img
-                    src={vistaPreviaFoto || fotoPerfil}
-                    alt={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}
-                  />
-                ) : (
-                  <span>{perfilActual.iniciales}</span>
-                )}
-                <button
-                  className="profile-photo-camera"
-                  type="button"
-                  disabled={subiendoFoto}
-                  aria-label="Cambiar foto de perfil"
-                  title="Cambiar foto de perfil"
-                  onClick={() => inputFotoRef.current?.click()}
-                >
-                  ▣
-                </button>
-              </div>
-
-              <div className="profile-photo-controls">
+          {mostrarModalFoto && (
+            <Modal
+              title="Actualizar foto de perfil"
+              subtitle="Esta imagen aparece en la navegación y en tus actividades."
+              close={cerrarModalFoto}
+            >
+              <div className="profile-photo-modal-content">
+                <div className="profile-photo-preview" aria-label={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}>
+                  {vistaPreviaFoto || fotoPerfil ? (
+                    <img
+                      src={vistaPreviaFoto || fotoPerfil}
+                      alt={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}
+                    />
+                  ) : (
+                    <span>{perfilActual.iniciales}</span>
+                  )}
+                </div>
                 <input
                   ref={inputFotoRef}
                   className="profile-photo-input"
@@ -4506,33 +4570,8 @@ function ConfiguracionUsuario({ onNotify }) {
                   disabled={subiendoFoto}
                   onClick={() => inputFotoRef.current?.click()}
                 >
-                  <span aria-hidden="true">↥</span> {fotoSeleccionada ? "Elegir otra foto" : "Seleccionar foto"}
+                  {fotoSeleccionada ? "Elegir otra foto" : "Seleccionar imagen"}
                 </button>
-                {fotoSeleccionada && (
-                  <div className="profile-photo-pending">
-                    <span title={fotoSeleccionada.name}>{fotoSeleccionada.name}</span>
-                    <button
-                      className="btn secondary"
-                      type="button"
-                      disabled={subiendoFoto}
-                      onClick={guardarFotoPerfil}
-                    >
-                      {subiendoFoto ? "Guardando foto..." : "Guardar foto"}
-                    </button>
-                    <button
-                      className="profile-photo-cancel"
-                      type="button"
-                      disabled={subiendoFoto}
-                      onClick={() => {
-                        setFotoSeleccionada(null);
-                        limpiarVistaPreviaFoto();
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                )}
-                {subiendoFoto && <p className="profile-photo-status" role="status">Subiendo y guardando tu foto de perfil...</p>}
                 <small className="profile-photo-hint">JPG o PNG · Máximo 5 MB</small>
                 <div
                   className={`profile-photo-dropzone${subiendoFoto ? " disabled" : ""}`}
@@ -4554,20 +4593,47 @@ function ConfiguracionUsuario({ onNotify }) {
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
-                    if (subiendoFoto) return;
-                    seleccionarFotoPerfil(event.dataTransfer.files?.[0]);
+                    if (!subiendoFoto) seleccionarFotoPerfil(event.dataTransfer.files?.[0]);
                   }}
                 >
                   <span className="profile-drop-icon" aria-hidden="true">⇧</span>
                   <span>
-                    <strong>También puedes arrastrar y soltar una imagen aquí</strong>
-                    <small>o hacer clic en “Cambiar foto” para seleccionarla desde tu dispositivo.</small>
+                    <strong>Arrastra y suelta una imagen aquí</strong>
+                    <small>o selecciona una imagen desde tu dispositivo.</small>
                   </span>
                 </div>
+                {fotoSeleccionada && (
+                  <p className="profile-photo-selected" title={fotoSeleccionada.name}>
+                    {fotoSeleccionada.name}
+                  </p>
+                )}
                 {errorFoto && <p className="inline-error profile-photo-error" role="alert">{errorFoto}</p>}
+                {subiendoFoto && (
+                  <p className="profile-photo-status" role="status">
+                    Subiendo y guardando tu foto de perfil...
+                  </p>
+                )}
+                <div className="profile-photo-modal-actions">
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={subiendoFoto}
+                    onClick={cerrarModalFoto}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="btn primary"
+                    type="button"
+                    disabled={!fotoSeleccionada || subiendoFoto}
+                    onClick={guardarFotoPerfil}
+                  >
+                    {subiendoFoto ? "Guardando..." : "Guardar foto"}
+                  </button>
+                </div>
               </div>
-            </div>
-          </section>
+            </Modal>
+          )}
 
           <section className="card configuration-card work-limit-card">
             <div className="settings-section-heading">
