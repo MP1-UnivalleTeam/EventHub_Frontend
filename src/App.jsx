@@ -25,7 +25,14 @@ import {
   FaPaperclip,
   FaChartLine,
 } from "react-icons/fa";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   actualizarEvento,
@@ -83,6 +90,7 @@ function obtenerDatosPerfil() {
 }
 
 const rutas = ["/login", "/registro", "/registro/onboarding", "/eventos", "/hoy", "/progreso", "/crear-evento", "/configuracion"];
+const CLAVE_ATAJOS_ACCESIBILIDAD = "eventhub-accessibility-shortcuts";
 
 // Deshabilita temporalmente el paso de "Personalización de tu espacio de
 // trabajo." durante este sprint. El componente OnboardingRegistro y sus
@@ -126,6 +134,17 @@ function obtenerRutaInicial() {
   return estaAutenticado() ? "/eventos" : "/login";
 }
 
+function esElementoEditable(elemento) {
+  return (
+    elemento instanceof Element &&
+    Boolean(
+      elemento.closest(
+        'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"]'
+      )
+    )
+  );
+}
+
 function navegar(path) {
   if (path === "/registro/onboarding" && !PERSONALIZACION_HABILITADA) {
     path = "/eventos";
@@ -149,6 +168,22 @@ function navegar(path) {
   window.dispatchEvent(
     new PopStateEvent("popstate", { state: { eventhubInternalNavigation: true } })
   );
+}
+
+function navegarDesdeEnlace(event, path) {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  navegar(path);
 }
 
 function formatearFecha(fecha) {
@@ -781,25 +816,51 @@ function Toast({ type = "success", message }) {
   // Se monta en el body para que ningún overlay, modal o contexto de
   // apilamiento del árbol de la aplicación pueda tapar el mensaje.
   return createPortal(
-    <div className={`toast toast-${type}`} role={type === "error" ? "alert" : "status"}>{type === "success" ? "✓" : "!"} {message}</div>,
+    <div
+      className={`toast toast-${type}`}
+      role={type === "error" ? "alert" : "status"}
+      aria-live={type === "error" ? "assertive" : "polite"}
+      aria-atomic="true"
+    >
+      <span aria-hidden="true">{type === "success" ? "✓" : "!"}</span>{" "}
+      {message}
+    </div>,
     document.body,
   );
 }
 
 function Modal({ title, subtitle, close, children, wide = false }) {
   const closeRef = useRef(null);
+  const closeHandlerRef = useRef(close);
+  const titleId = useId();
+  const subtitleId = useId();
+
+  useEffect(() => {
+    closeHandlerRef.current = close;
+  }, [close]);
+
   useEffect(() => {
     closeRef.current?.focus();
-    const onKey = (event) => event.key === "Escape" && close();
+    const onKey = (event) => {
+      if (event.key === "Escape") closeHandlerRef.current();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [close]);
+  }, []);
+
   return (
     <div className="overlay" onMouseDown={(event) => event.target === event.currentTarget && close()}>
-      <section className={`modal ${wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <section
+        className={`modal ${wide ? "modal-wide" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={subtitle ? subtitleId : undefined}
+        tabIndex={-1}
+      >
         <button ref={closeRef} className="close" type="button" aria-label="Cerrar" onClick={close}>×</button>
-        <h2 id="modal-title">{title}</h2>
-        {subtitle && <p className="modal-subtitle">{subtitle}</p>}
+        <h2 id={titleId}>{title}</h2>
+        {subtitle && <p id={subtitleId} className="modal-subtitle">{subtitle}</p>}
         {children}
       </section>
     </div>
@@ -855,6 +916,30 @@ function CreateMenu({
       </button>
     </div>
   );
+}
+
+function moverFocoMenu(event, menu) {
+  const items = Array.from(
+    menu?.querySelectorAll('[role="menuitem"]:not(:disabled)') || []
+  );
+  if (items.length === 0) return;
+
+  const tecla = event.key;
+  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(tecla)) return;
+
+  event.preventDefault();
+  const indiceActual = items.indexOf(event.target);
+  let siguiente = indiceActual;
+
+  if (tecla === "Home") siguiente = 0;
+  else if (tecla === "End") siguiente = items.length - 1;
+  else if (indiceActual < 0) siguiente = tecla === "ArrowDown" ? 0 : items.length - 1;
+  else {
+    const direccion = tecla === "ArrowDown" ? 1 : -1;
+    siguiente = (indiceActual + direccion + items.length) % items.length;
+  }
+
+  items[siguiente]?.focus();
 }
 
 // Sección opcional compartida; conserva los valores al animar su apertura.
@@ -1027,6 +1112,7 @@ function Header({
   const perfilMenuRef = useRef(null);
   const perfilMenuTriggerRef = useRef(null);
   const crearMenuRef = useRef(null);
+  const crearMenuTriggerRef = useRef(null);
   const creacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
   const [perfil, setPerfil] = useState(obtenerDatosPerfil);
   const [horasPerfil, setHorasPerfil] = useState(null);
@@ -1120,7 +1206,7 @@ function Header({
     const cerrarEscape = (event) => {
       if (event.key === "Escape") {
         setMostrarMenuCrear(false);
-        crearMenuRef.current?.querySelector("button")?.focus();
+        crearMenuTriggerRef.current?.focus();
       }
     };
     document.addEventListener("mousedown", cerrarFuera);
@@ -1146,41 +1232,48 @@ function Header({
         <button
           className="brand"
           type="button"
+          aria-label="Ir a eventos"
           onClick={() => navegar("/eventos")}
         >
           <img
             src={modoOscuro ? logo_Blanco : logo_Jaguar}
-            alt="Jaguar EventHub"
+            alt=""
             className="brand-logo"
           />
           <span>EventHub</span>
         </button>
 
         <nav aria-label="Navegación principal">
-          <button
+          <a
+            href="/eventos"
             className={
               ruta === "/eventos" || ruta.startsWith("/eventos/")
                 ? "nav-link active"
                 : "nav-link"
             }
-            onClick={() => navegar("/eventos")}
+            aria-current={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "page" : undefined}
+            onClick={(event) => navegarDesdeEnlace(event, "/eventos")}
           >
             ✦ Eventos
-          </button>
+          </a>
 
-          <button
+          <a
+            href="/hoy"
             className={ruta === "/hoy" ? "nav-link active" : "nav-link"}
-            onClick={() => navegar("/hoy")}
+            aria-current={ruta === "/hoy" ? "page" : undefined}
+            onClick={(event) => navegarDesdeEnlace(event, "/hoy")}
           >
             Hoy
-          </button>
+          </a>
 
-          <button
+          <a
+            href="/progreso"
             className={ruta === "/progreso" ? "nav-link active" : "nav-link"}
-            onClick={() => navegar("/progreso")}
+            aria-current={ruta === "/progreso" ? "page" : undefined}
+            onClick={(event) => navegarDesdeEnlace(event, "/progreso")}
           >
             Progreso
-          </button>
+          </a>
         </nav>
 
         <div className="header-spacer" />
@@ -1212,8 +1305,14 @@ function Header({
         <div
           className={`header-create-anchor${mostrarMenuCrear ? " is-open" : ""}`}
           ref={crearMenuRef}
+          onKeyDown={(event) => {
+            if (mostrarMenuCrear) {
+              moverFocoMenu(event, crearMenuRef.current?.querySelector('[role="menu"]'));
+            }
+          }}
         >
           <button
+            ref={crearMenuTriggerRef}
             className="btn primary header-create"
             type="button"
             onClick={
@@ -1311,7 +1410,7 @@ function Header({
                 items[nextIndex]?.focus();
               }}
             >
-              <div className="profile-dropdown-user">
+              <div className="profile-dropdown-user" role="group" aria-label="Información del usuario">
                 <div className="profile-dropdown-avatar">
                   {fotoPerfilUrl ? (
                     <img src={fotoPerfilUrl} alt="" />
@@ -1325,7 +1424,7 @@ function Header({
                 <span className="profile-active-badge">ACTIVO</span>
               </div>
 
-              <div className="profile-dropdown-shift">
+              <div className="profile-dropdown-shift" role="group" aria-label="Jornada diaria">
                 <span><span aria-hidden="true">◷</span> Jornada diaria</span>
                 <strong>{horasPerfil === null ? "Configuración" : `${horasPerfil}h disponibles`}</strong>
               </div>
@@ -1538,7 +1637,8 @@ function Login({ onLogin }) {
   };
 
   return (
-    <main className="login-page">
+    <main className="login-page" id="main-content" tabIndex={-1}>
+      <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
       <section className="login-card">
 
         {/* LOGO */}
@@ -2871,19 +2971,29 @@ function CrearSubtareaForm({
 
 function ConfirmModal({ title, message, confirmLabel = "Eliminar", close, onConfirm, loading = false }) {
   const cancelRef = useRef(null);
+  const closeHandlerRef = useRef(close);
+  const titleId = useId();
+  const messageId = useId();
+
+  useEffect(() => {
+    closeHandlerRef.current = close;
+  }, [close]);
+
   useEffect(() => {
     cancelRef.current?.focus();
-    const onKey = (event) => event.key === "Escape" && !loading && close();
+    const onKey = (event) => {
+      if (event.key === "Escape" && !loading) closeHandlerRef.current();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [close, loading]);
+  }, [loading]);
 
   return (
     <div className="overlay" onMouseDown={(event) => event.target === event.currentTarget && !loading && close()}>
-      <section className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+      <section className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={messageId} tabIndex={-1}>
         <div className="confirm-icon">!</div>
-        <h2 id="confirm-title">{title}</h2>
-        <p id="confirm-message" className="modal-subtitle">{message}</p>
+        <h2 id={titleId}>{title}</h2>
+        <p id={messageId} className="modal-subtitle">{message}</p>
         <div className="actions">
           <button ref={cancelRef} className="btn ghost" type="button" onClick={close} disabled={loading}>Cancelar</button>
           <button className="btn danger" type="button" onClick={onConfirm} disabled={loading}>
@@ -2899,15 +3009,21 @@ function ConfirmModal({ title, message, confirmLabel = "Eliminar", close, onConf
 function EvidencePreviewModal({ url, title, onClose }) {
   const [errorImagen, setErrorImagen] = useState(false);
   const closeRef = useRef(null);
+  const closeHandlerRef = useRef(onClose);
+  const titleId = useId();
+
+  useEffect(() => {
+    closeHandlerRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     closeRef.current?.focus();
     const manejarEscape = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeHandlerRef.current();
     };
     document.addEventListener("keydown", manejarEscape);
     return () => document.removeEventListener("keydown", manejarEscape);
-  }, [onClose]);
+  }, []);
 
   return (
     <div
@@ -2921,12 +3037,13 @@ function EvidencePreviewModal({ url, title, onClose }) {
         className="evidence-preview-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="evidence-preview-title"
+        aria-labelledby={titleId}
+        tabIndex={-1}
       >
         <header className="evidence-preview-header">
           <div>
             <FaPaperclip aria-hidden="true" />
-            <h2 id="evidence-preview-title">Evidencia adjunta</h2>
+            <h2 id={titleId}>Evidencia adjunta</h2>
             <p>{title}</p>
           </div>
           <button
@@ -3552,11 +3669,11 @@ function Eventos({ eventos, cargando, error, recargar, crear, busqueda }) {
   );
 
   return (
-    <section className="page">
+    <section className="page" aria-busy={cargando}>
       <div className="heading">
         <div><small>PLANIFICACIÓN</small><h1>Eventos</h1><p>Gestiona tus eventos y organiza las tareas necesarias para completarlos.</p></div>      </div>
 
-      {cargando && <section className="card state-card"><span className="spinner" /> Cargando eventos...</section>}
+      {cargando && <section className="card state-card" role="status" aria-live="polite"><span className="spinner" /> Cargando eventos...</section>}
       {!cargando && error && <section className="card state-card error-state" role="alert"><div><b>No se pudieron cargar los eventos.</b><p>{error}</p></div><button className="btn ghost" onClick={recargar}>Reintentar</button></section>}
       {!cargando && !error && eventos.length === 0 && <section className="card empty-state"><div className="empty-icon">✦</div><h2>Aún no hay eventos</h2><p>¿Deseas crear tu primer evento?</p><button className="btn primary" onClick={crear}>Crear el primer evento</button></section>}
       {!cargando && !error && eventos.length > 0 && eventosVisibles.length === 0 && <section className="card empty-state"><div className="empty-icon">⌕</div><h2>No se encontraron eventos</h2><p>Prueba con otro nombre.</p></section>}
@@ -3771,7 +3888,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
     } finally { setEliminando(false); }
   };
 
-  if (cargandoEvento) return <section className="page"><div className="breadcrumb">← Volver a la lista general de eventos</div><section className="card state-card"><span className="spinner" /> Cargando detalle del evento...</section></section>;
+  if (cargandoEvento) return <section className="page" aria-busy="true"><div className="breadcrumb">← Volver a la lista general de eventos</div><section className="card state-card" role="status" aria-live="polite"><span className="spinner" /> Cargando detalle del evento...</section></section>;
   if (errorEvento || !evento) return <section className="page"><button className="back-link" onClick={volver}>← Volver a la lista general de eventos</button><section className="card state-card error-state" role="alert"><div><b>No se pudo cargar el evento.</b><p>{errorEvento || "El evento no existe."}</p></div><button className="btn ghost" onClick={cargar}>Reintentar</button></section></section>;
 
   return (
@@ -4021,7 +4138,10 @@ function ConfiguracionUsuario({
   onNotify,
   fotoPerfilUrl,
   onFotoPerfilActualizada,
+  atajosHabilitados,
+  onCambiarAtajos,
 }) {
+  const atajosId = useId();
   const [horasDia, setHorasDia] = useState(6);
   const [horasGuardadas, setHorasGuardadas] = useState(6);
   const [cargando, setCargando] = useState(true);
@@ -4387,7 +4507,7 @@ function ConfiguracionUsuario({
   };
 
   return (
-    <section className="page configuration-page">
+    <section className="page configuration-page" aria-busy={cargando}>
       <div className="configuration-breadcrumb" aria-label="Ruta de navegación">
         <span>EventHub</span><span aria-hidden="true">/</span><strong>Configuración</strong>
       </div>
@@ -4400,7 +4520,7 @@ function ConfiguracionUsuario({
       </div>
 
       {cargando ? (
-        <section className="card state-card">
+        <section className="card state-card" role="status" aria-live="polite">
           <span className="spinner" />
           Consultando tu configuración...
         </section>
@@ -4498,7 +4618,7 @@ function ConfiguracionUsuario({
               subtitle="Esta imagen aparece en la navegación y en tus actividades."
               close={cerrarModalFoto}
             >
-              <div className="profile-photo-modal-content">
+              <div className="profile-photo-modal-content" aria-busy={subiendoFoto}>
                 <div className="profile-photo-preview" aria-label={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}>
                   {vistaPreviaFoto || fotoPerfilUrl ? (
                     <img
@@ -4654,6 +4774,60 @@ function ConfiguracionUsuario({
           </div>
         </div>
       )}
+
+      <section
+        className="card configuration-card accessibility-shortcuts-card"
+        aria-labelledby={`${atajosId}-title`}
+      >
+        <div className="settings-section-heading">
+          <span className="settings-section-icon" aria-hidden="true">⌨</span>
+          <div>
+            <h2 id={`${atajosId}-title`}>Atajos de teclado</h2>
+            <p>Acciones rápidas disponibles en las vistas privadas de EventHub.</p>
+          </div>
+        </div>
+        <label className="accessibility-shortcuts-toggle" htmlFor={`${atajosId}-enabled`}>
+          <input
+            id={`${atajosId}-enabled`}
+            type="checkbox"
+            checked={atajosHabilitados}
+            onChange={(event) => onCambiarAtajos(event.target.checked)}
+          />
+          <span>Activar atajos de teclado</span>
+        </label>
+        <p className="accessibility-shortcuts-note">
+          Los atajos usan Alt (Option en macOS) y no se ejecutan mientras el foco está en un campo editable o haya un diálogo abierto.
+          Si interfieren con el navegador o el sistema, puedes desactivarlos aquí.
+        </p>
+        <div className="accessibility-shortcuts-table-wrap">
+          <table>
+            <caption>Atajos disponibles</caption>
+            <thead>
+              <tr>
+                <th scope="col">Combinación</th>
+                <th scope="col">Acción</th>
+                <th scope="col">Funcionamiento</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["N", "Crear evento", "Abre el formulario de creación de eventos."],
+                ["S", "Crear subtarea", "Abre la vista Hoy y el formulario para crear una subtarea."],
+                ["H", "Ir a Hoy", "Navega a la vista de gestiones del día."],
+                ["P", "Ir a Progreso", "Navega al resumen del progreso de eventos."],
+              ].map(([tecla, accion, descripcion]) => (
+                <tr key={tecla}>
+                  <td><kbd>Alt + {tecla}</kbd></td>
+                  <th scope="row">{accion}</th>
+                  <td>{descripcion}</td>
+                  <td>{atajosHabilitados ? "Activado" : "Desactivado"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {conflictoConfiguracion && (
         <ModalReprogramarLimite
@@ -5990,7 +6164,7 @@ function Today({ onNotify, recargaToken = 0 }) {
   };
 
   return (
-    <section className="page today-page">
+    <section className="page today-page" aria-busy={cargando}>
       <div className="today-header">
         <div>
           <small>
@@ -6136,9 +6310,9 @@ function Today({ onNotify, recargaToken = 0 }) {
       </div>
 
       <div className="today-layout">
-        <main className="today-main-column">
+        <div className="today-main-column">
           {cargando && (
-            <section className="card state-card">
+            <section className="card state-card" role="status" aria-live="polite">
               <span className="spinner" />
               Cargando…
             </section>
@@ -6363,7 +6537,7 @@ function Today({ onNotify, recargaToken = 0 }) {
               </section>
             </>
           )}
-        </main>
+        </div>
 
         <aside className="today-side-panel">
           <div className="today-panel-header">
@@ -7352,7 +7526,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
   };
 
   return (
-    <section className="page progress-page">
+    <section className="page progress-page" aria-busy={cargando}>
       <div className="progress-header">
         <div>
           <div className="progress-title-row">
@@ -7409,7 +7583,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
       </div>
 
       {cargando && (
-        <section className="card state-card">
+        <section className="card state-card" role="status" aria-live="polite">
           <span className="spinner" /> Cargando progreso...
         </section>
       )}
@@ -7993,7 +8167,8 @@ function OnboardingRegistro() {
   };
 
   return (
-    <main className="onboarding-page">
+    <main className="onboarding-page" id="main-content" tabIndex={-1}>
+      <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
       <section className="onboarding-container">
 
         {/* BRAND */}
@@ -8241,7 +8416,8 @@ function RegistroUsuario() {
   };
 
   return (
-    <main className="register-page">
+    <main className="register-page" id="main-content" tabIndex={-1}>
+      <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
       <section className="register-card">
 
         {/* BRAND */}
@@ -8619,6 +8795,11 @@ function MobileCreateButton({ ruta, onCrearEvento, onCrearSubtarea }) {
     <div
       className={`mobile-create-anchor${abierto ? " is-open" : ""}`}
       ref={anclaRef}
+      onKeyDown={(event) => {
+        if (abierto) {
+          moverFocoMenu(event, anclaRef.current?.querySelector('[role="menu"]'));
+        }
+      }}
     >
       <button
         className="mobile-create-fab"
@@ -8673,6 +8854,21 @@ export default function App() {
   }, [modoOscuro]);
 
   const [ruta, setRuta] = useState(obtenerRutaInicial);
+  const rutaAnteriorRef = useRef(ruta);
+  useEffect(() => {
+    if (rutaAnteriorRef.current === ruta) return;
+    rutaAnteriorRef.current = ruta;
+    document.getElementById("main-content")?.focus();
+  }, [ruta]);
+
+  const [atajosHabilitados, setAtajosHabilitados] = useState(() => {
+    try {
+      return window.localStorage.getItem(CLAVE_ATAJOS_ACCESIBILIDAD) !== "false";
+    } catch (error) {
+      console.error("No fue posible leer la preferencia de atajos de teclado.", error);
+      return true;
+    }
+  });
   const [fotoPerfilSesion, setFotoPerfilSesion] = useState({
     token: null,
     url: "",
@@ -8693,6 +8889,198 @@ export default function App() {
   const actualizarFotoPerfil = useCallback((url) => {
     fotoPerfilRevisionRef.current += 1;
     setFotoPerfilSesion({ token: obtenerAccessToken(), url });
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        CLAVE_ATAJOS_ACCESIBILIDAD,
+        String(atajosHabilitados)
+      );
+    } catch (error) {
+      console.error("No fue posible guardar la preferencia de atajos de teclado.", error);
+    }
+  }, [atajosHabilitados]);
+
+  useEffect(() => {
+    const manejarAtajo = (event) => {
+      if (
+        !atajosHabilitados ||
+        !esRutaPrivada(ruta) ||
+        !estaAutenticado() ||
+        !event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.repeat ||
+        esElementoEditable(event.target)
+      ) {
+        return;
+      }
+
+      if (
+        document.querySelector(
+          '[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]'
+        )
+      ) {
+        return;
+      }
+
+      const tecla = event.code.startsWith("Key")
+        ? event.code.slice(3).toLowerCase()
+        : event.key.toLowerCase();
+      const acciones = {
+        n: () => navegar("/crear-evento"),
+        s: () => {
+          navegar("/hoy");
+          setCrearSubtareaAbierta(true);
+        },
+        h: () => navegar("/hoy"),
+        p: () => navegar("/progreso"),
+      };
+      const ejecutar = acciones[tecla];
+
+      if (!ejecutar) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      ejecutar();
+    };
+
+    document.addEventListener("keydown", manejarAtajo);
+    return () => document.removeEventListener("keydown", manejarAtajo);
+  }, [atajosHabilitados, ruta]);
+
+  useEffect(() => {
+    let dialogoActivo = null;
+    let focoAnterior = null;
+    const inerciaAnterior = new Map();
+
+    const restaurarFondo = () => {
+      for (const [elemento, estabaInerte] of inerciaAnterior) {
+        elemento.inert = estabaInerte;
+      }
+      inerciaAnterior.clear();
+    };
+
+    const inhabilitarFondo = (dialogo) => {
+      let actual = dialogo;
+
+      while (actual && actual !== document.body) {
+        const padre = actual.parentElement;
+        if (!padre) break;
+
+        for (const hermano of padre.children) {
+          if (hermano === actual || !(hermano instanceof HTMLElement)) continue;
+          if (!inerciaAnterior.has(hermano)) {
+            inerciaAnterior.set(hermano, hermano.inert);
+          }
+          hermano.inert = true;
+        }
+
+        actual = padre;
+      }
+    };
+
+    const obtenerElementosEnFoco = (dialogo) =>
+      Array.from(
+        dialogo.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(
+        (elemento) =>
+          elemento instanceof HTMLElement &&
+          elemento.getAttribute("aria-hidden") !== "true" &&
+          elemento.getClientRects().length > 0
+      );
+
+    const sincronizarDialogo = () => {
+      const dialogos = Array.from(
+        document.querySelectorAll(
+          '[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]'
+        )
+      );
+      const nuevoDialogo = dialogos.at(-1) || null;
+
+      if (nuevoDialogo === dialogoActivo) return;
+
+      restaurarFondo();
+      if (!dialogoActivo && nuevoDialogo) {
+        focoAnterior = document.activeElement;
+      }
+      dialogoActivo = nuevoDialogo;
+
+      if (dialogoActivo) {
+        inhabilitarFondo(dialogoActivo);
+        if (!dialogoActivo.hasAttribute("tabindex")) {
+          dialogoActivo.setAttribute("tabindex", "-1");
+        }
+        const elementos = obtenerElementosEnFoco(dialogoActivo);
+        (elementos[0] || dialogoActivo).focus();
+      } else if (focoAnterior instanceof HTMLElement && focoAnterior.isConnected) {
+        focoAnterior.focus();
+        focoAnterior = null;
+      }
+    };
+
+    const manejarTecladoDialogo = (event) => {
+      if (!dialogoActivo) return;
+
+      if (event.key === "Escape") {
+        const botonCerrar = dialogoActivo.querySelector(
+          'button[aria-label^="Cerrar"]:not([disabled]), button.close:not([disabled]), button.postpone-close:not([disabled]), button.evidence-preview-close:not([disabled]), button.progress-calendar-close:not([disabled])'
+        );
+        const botonCancelar = Array.from(
+          dialogoActivo.querySelectorAll("button:not([disabled])")
+        ).find((boton) =>
+          /^(cancelar|volver)$/i.test(boton.textContent.trim())
+        );
+        const accionCerrar = botonCerrar || botonCancelar;
+
+        if (accionCerrar) {
+          event.preventDefault();
+          event.stopPropagation();
+          accionCerrar.click();
+        }
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const elementos = obtenerElementosEnFoco(dialogoActivo);
+      if (elementos.length === 0) {
+        event.preventDefault();
+        dialogoActivo.focus();
+        return;
+      }
+
+      const primero = elementos[0];
+      const ultimo = elementos[elementos.length - 1];
+      if (event.shiftKey && (document.activeElement === primero || !dialogoActivo.contains(document.activeElement))) {
+        event.preventDefault();
+        ultimo.focus();
+      } else if (!event.shiftKey && (document.activeElement === ultimo || !dialogoActivo.contains(document.activeElement))) {
+        event.preventDefault();
+        primero.focus();
+      }
+    };
+
+    const observador = new MutationObserver(sincronizarDialogo);
+    observador.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["aria-modal", "role"],
+    });
+    document.addEventListener("keydown", manejarTecladoDialogo, true);
+    sincronizarDialogo();
+
+    return () => {
+      observador.disconnect();
+      document.removeEventListener("keydown", manejarTecladoDialogo, true);
+      restaurarFondo();
+      dialogoActivo = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -8868,7 +9256,8 @@ export default function App() {
     return <OnboardingRegistro />;
   }
 
-  return <main className={`app${modoOscuro ? " theme-dark" : ""}`}>
+  return <div className={`app${modoOscuro ? " theme-dark" : ""}`}>
+    <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
     <Header
       ruta={ruta}
       fotoPerfilUrl={fotoPerfilUrl}
@@ -8880,15 +9269,30 @@ export default function App() {
       alternarTema={alternarTema}
     />
     <nav className="mobile-bottom-nav" aria-label="Navegación móvil">
-      <button type="button" className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/eventos")}>
+      <a
+        href="/eventos"
+        aria-current={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "page" : undefined}
+        className={ruta === "/eventos" || ruta.startsWith("/eventos/") ? "mobile-bottom-link active" : "mobile-bottom-link"}
+        onClick={(event) => navegarDesdeEnlace(event, "/eventos")}
+      >
         <span aria-hidden="true">✦</span><span>Eventos</span>
-      </button>
-      <button type="button" className={ruta === "/hoy" ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/hoy")}>
+      </a>
+      <a
+        href="/hoy"
+        aria-current={ruta === "/hoy" ? "page" : undefined}
+        className={ruta === "/hoy" ? "mobile-bottom-link active" : "mobile-bottom-link"}
+        onClick={(event) => navegarDesdeEnlace(event, "/hoy")}
+      >
         <span aria-hidden="true">◷</span><span>Hoy</span>
-      </button>
-      <button type="button" className={ruta === "/progreso" ? "mobile-bottom-link active" : "mobile-bottom-link"} onClick={() => navegar("/progreso")}>
+      </a>
+      <a
+        href="/progreso"
+        aria-current={ruta === "/progreso" ? "page" : undefined}
+        className={ruta === "/progreso" ? "mobile-bottom-link active" : "mobile-bottom-link"}
+        onClick={(event) => navegarDesdeEnlace(event, "/progreso")}
+      >
         <span aria-hidden="true">▥</span><span>Progreso</span>
-      </button>
+      </a>
     </nav>
     <MobileCreateButton
       ruta={ruta}
@@ -8896,6 +9300,7 @@ export default function App() {
       onCrearSubtarea={() => setCrearSubtareaAbierta(true)}
     />
     <Toast type={toast.type} message={toast.message} />
+    <main className="app-content" id="main-content" tabIndex={-1}>
     {ruta === "/eventos" && <Eventos eventos={eventos} cargando={cargandoEventos} error={errorEventos} recargar={cargarEventos} crear={() => navegar("/crear-evento")} busqueda={busquedaEventos} />}
     {ruta === "/hoy" && <Today onNotify={notify} recargaToken={recargaHoy} />}
     {/* El widget de ayuda explica el orden y el uso de la vista Hoy, por
@@ -8936,6 +9341,8 @@ export default function App() {
         onNotify={notify}
         fotoPerfilUrl={fotoPerfilUrl}
         onFotoPerfilActualizada={actualizarFotoPerfil}
+        atajosHabilitados={atajosHabilitados}
+        onCambiarAtajos={setAtajosHabilitados}
       />
     )}
     {(ruta === "/hoy" || ruta === "/progreso") && crearSubtareaAbierta && (
@@ -8957,6 +9364,7 @@ export default function App() {
     )}
     {detalleId && <DetalleEvento id={detalleId} volver={() => navegar("/eventos")} onNotify={notify} onEventosChanged={cargarEventos} />}
     {ruta === "/crear-evento" && <CrearEventoPage onCancelar={() => navegar("/eventos")} onCrear={crear} />}
-  </main>;
+    </main>
+  </div>;
 
 }
