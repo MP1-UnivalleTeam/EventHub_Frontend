@@ -1039,26 +1039,26 @@ function Header({
       }
     };
     const actualizarFoto = (event) => {
-        const { fotoPerfilUrl, nombre, apellido } = event.detail || {};
-        if (typeof fotoPerfilUrl === "string") {
-          setFotoPerfilHeader(fotoPerfilUrl);
-        } else if (!nombre && !apellido) {
-          void cargarPerfil();
-        }
+      const { fotoPerfilUrl, nombre, apellido } = event.detail || {};
+      if (typeof fotoPerfilUrl === "string") {
+        setFotoPerfilHeader(fotoPerfilUrl);
+      } else if (!nombre && !apellido) {
+        void cargarPerfil();
+      }
 
-        if (nombre || apellido) {
-          const nuevoNombre = [nombre, apellido].filter(Boolean).join(" ").trim();
-          setPerfil((actual) => ({
-            ...actual,
-            nombre: nuevoNombre,
-            iniciales: nuevoNombre
-              .split(/\s+/)
-              .slice(0, 2)
-              .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
-              .join("") || "EH",
-          }));
-        }
-      };
+      if (nombre || apellido) {
+        const nuevoNombre = [nombre, apellido].filter(Boolean).join(" ").trim();
+        setPerfil((actual) => ({
+          ...actual,
+          nombre: nuevoNombre,
+          iniciales: nuevoNombre
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+            .join("") || "EH",
+        }));
+      }
+    };
     void cargarPerfil();
     window.addEventListener("eventhub-profile-updated", actualizarFoto);
     return () => {
@@ -2873,6 +2873,68 @@ function ConfirmModal({ title, message, confirmLabel = "Eliminar", close, onConf
   );
 }
 
+function EvidencePreviewModal({ url, title, onClose }) {
+  const [errorImagen, setErrorImagen] = useState(false);
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const manejarEscape = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", manejarEscape);
+    return () => document.removeEventListener("keydown", manejarEscape);
+  }, [onClose]);
+
+  return (
+    <div
+      className="evidence-preview-overlay"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="evidence-preview-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="evidence-preview-title"
+      >
+        <header className="evidence-preview-header">
+          <div>
+            <FaPaperclip aria-hidden="true" />
+            <h2 id="evidence-preview-title">Evidencia adjunta</h2>
+            <p>{title}</p>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            className="evidence-preview-close"
+            onClick={onClose}
+            aria-label="Cerrar vista previa"
+          >
+            <FaTimes aria-hidden="true" />
+          </button>
+        </header>
+        <div className="evidence-preview-content">
+          {errorImagen ? (
+            <p className="evidence-preview-error" role="alert">
+              No se pudo cargar la imagen de evidencia. Cierra esta ventana e
+              inténtalo más tarde.
+            </p>
+          ) : (
+            <img
+              src={url}
+              alt={`Evidencia adjunta de ${title}`}
+              onError={() => setErrorImagen(true)}
+            />
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function EditarEventoForm({ evento, subtareas = [], onCancelar, onGuardado }) {
   const responsable = typeof evento?.usuario_responsable === "object" ? evento.usuario_responsable?.nombre : evento?.usuario_responsable;
   const [formulario, setFormulario] = useState({
@@ -3498,6 +3560,7 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
   const [eliminando, setEliminando] = useState(false);
   const [actualizandoEstadoSubtarea, setActualizandoEstadoSubtarea] = useState(null);
   const [conflictoCheckbox, setConflictoCheckbox] = useState(null);
+  const [evidenciaAbierta, setEvidenciaAbierta] = useState(null);
 
   const cargar = async () => {
     setCargandoEvento(true); setErrorEvento("");
@@ -3718,19 +3781,39 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
             const titulo = obtenerTituloSubtarea(task);
             const nota = obtenerNotaSubtarea(task);
             const responsableSubtarea = obtenerResponsableSubtarea(task);
+            const evidenciaUrl =
+              typeof task.comprobante_url === "string"
+                ? task.comprobante_url.trim()
+                : "";
             return <article className="subtask-row" key={task.id ?? `${titulo}-${obtenerHoras(task)}`}>
-              <button
-                type="button"
-                className={`task-check ${estado === "hecho" ? "completed" : ""}`}
-                role="checkbox"
-                aria-checked={estado === "hecho"}
-                aria-label={estado === "hecho" ? `Marcar ${titulo} como pendiente` : `Marcar ${titulo} como hecha`}
-                title={estado === "hecho" ? "Desmarcar y volver a pendiente" : "Marcar como hecha"}
-                disabled={actualizandoEstadoSubtarea === task.id}
-                onClick={() => alternarEstadoSubtarea(task)}
-              >
-                {actualizandoEstadoSubtarea === task.id ? <span className="mini-spinner" aria-label="Guardando" /> : estado === "hecho" ? "✓" : ""}
-              </button>
+              <div className="subtask-row-controls">
+                <button
+                  type="button"
+                  className={`task-check ${estado === "hecho" ? "completed" : ""}`}
+                  role="checkbox"
+                  aria-checked={estado === "hecho"}
+                  aria-label={estado === "hecho" ? `Marcar ${titulo} como pendiente` : `Marcar ${titulo} como hecha`}
+                  title={estado === "hecho" ? "Desmarcar y volver a pendiente" : "Marcar como hecha"}
+                  disabled={actualizandoEstadoSubtarea === task.id}
+                  onClick={() => alternarEstadoSubtarea(task)}
+                >
+                  {actualizandoEstadoSubtarea === task.id ? <span className="mini-spinner" aria-label="Guardando" /> : estado === "hecho" ? "✓" : ""}
+                </button>
+                {evidenciaUrl && (
+                  <button
+                    type="button"
+                    className="subtask-evidence-trigger"
+                    aria-label={`Ver evidencia adjunta de ${titulo}`}
+                    title="Ver evidencia adjunta"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setEvidenciaAbierta({ url: evidenciaUrl, titulo });
+                    }}
+                  >
+                    <FaPaperclip aria-hidden="true" />
+                  </button>
+                )}
+              </div>
               <div className="task-main">
                 <h3 className={estado === "hecho" ? "completed-text" : ""}>{titulo}</h3>
                 <p>📅 {formatearFecha(task.dia_objetivo)} • ◷ {formatearDuracion(obtenerHoras(task))}{nota && <span className="subtask-note"> · Nota: {nota}</span>}</p>
@@ -3752,6 +3835,13 @@ function DetalleEvento({ id, volver, onNotify, onEventosChanged }) {
       {modal?.type === "edit-subtask" && <Modal title="Editar subtarea" subtitle="Actualiza la información de la subtarea." close={() => setModal(null)}><EditarSubtareaForm subtarea={modal.item} eventoId={id} eventoFecha={evento.fecha} eventoTitulo={evento.titulo} onCancelar={() => setModal(null)} onGuardado={subtareaActualizada} /></Modal>}
       {confirmacion?.type === "evento" && <ConfirmModal title="¿Eliminar evento?" message="Esta acción eliminará el evento y sus subtareas. No se puede deshacer." close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
       {confirmacion?.type === "subtarea" && <ConfirmModal title="¿Eliminar subtarea?" message={`Esta acción eliminará “${obtenerTituloSubtarea(confirmacion.item)}”. No se puede deshacer.`} close={() => setConfirmacion(null)} onConfirm={ejecutarEliminacion} loading={eliminando} />}
+      {evidenciaAbierta && (
+        <EvidencePreviewModal
+          url={evidenciaAbierta.url}
+          title={evidenciaAbierta.titulo}
+          onClose={() => setEvidenciaAbierta(null)}
+        />
+      )}
       {conflictoCheckbox && (
         <ModalResolucionSobrecarga
           key={`checkbox-${conflictoCheckbox.tarea.id}-${conflictoCheckbox.conflicto.fecha_objetivo}-${conflictoCheckbox.conflicto.horas_asignadas}`}
@@ -3911,12 +4001,19 @@ function ConfiguracionUsuario({ onNotify }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [errorCampo, setErrorCampo] = useState("");
+  const [errorPerfil, setErrorPerfil] = useState("");
   const [conflictoConfiguracion, setConflictoConfiguracion] = useState(null);
   const [fotoPerfil, setFotoPerfil] = useState("");
   const [errorFoto, setErrorFoto] = useState("");
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [fotoSeleccionada, setFotoSeleccionada] = useState(null);
+  const [vistaPreviaFoto, setVistaPreviaFoto] = useState("");
   const inputFotoRef = useRef(null);
+  const vistaPreviaFotoRef = useRef("");
   const [perfilActual, setPerfilActual] = useState(obtenerDatosPerfil);
+  const [nombrePerfil, setNombrePerfil] = useState("");
+  const [apellidoPerfil, setApellidoPerfil] = useState("");
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
 
   useEffect(() => {
     const cargarConfiguracion = async () => {
@@ -3955,6 +4052,8 @@ function ConfiguracionUsuario({ onNotify }) {
 
       if (perfilResultado.status === "fulfilled") {
         const perfilData = perfilResultado.value;
+        setNombrePerfil(perfilData?.nombre || "");
+        setApellidoPerfil(perfilData?.apellido || "");
         const nombre =
           [perfilData?.nombre, perfilData?.apellido]
             .filter(Boolean)
@@ -3971,7 +4070,7 @@ function ConfiguracionUsuario({ onNotify }) {
             .join("") || "EH",
         });
       } else {
-        setError(
+        setErrorPerfil(
           perfilResultado.reason?.message ||
             "No fue posible consultar el perfil del usuario."
         );
@@ -3992,6 +4091,12 @@ function ConfiguracionUsuario({ onNotify }) {
     return () => {
       activo = false;
     };
+  }, []);
+
+  useEffect(() => () => {
+    if (vistaPreviaFotoRef.current) {
+      URL.revokeObjectURL(vistaPreviaFotoRef.current);
+    }
   }, []);
 
   const cambiarHoras = (event) => {
@@ -4016,9 +4121,7 @@ function ConfiguracionUsuario({ onNotify }) {
     return "";
   };
 
-  const guardar = async (event) => {
-    event.preventDefault();
-
+  const guardar = async () => {
     const errorValidacion = validar();
 
     if (errorValidacion) {
@@ -4128,11 +4231,15 @@ function ConfiguracionUsuario({ onNotify }) {
     }
   };
 
-  const procesarFotoPerfil = async (archivo) => {
+  const seleccionarFotoPerfil = (archivo) => {
     setErrorFoto("");
     if (!archivo || subiendoFoto) return;
     if (!["image/jpeg", "image/png"].includes(archivo.type)) {
       setErrorFoto("Selecciona una imagen JPG o PNG.");
+      return;
+    }
+    if (archivo.size === 0) {
+      setErrorFoto("El archivo está vacío.");
       return;
     }
     if (archivo.size > 5 * 1024 * 1024) {
@@ -4140,18 +4247,44 @@ function ConfiguracionUsuario({ onNotify }) {
       return;
     }
 
+    if (vistaPreviaFotoRef.current) {
+      URL.revokeObjectURL(vistaPreviaFotoRef.current);
+    }
+    const url = URL.createObjectURL(archivo);
+    vistaPreviaFotoRef.current = url;
+    setVistaPreviaFoto(url);
+    setFotoSeleccionada(archivo);
+  };
+
+  const limpiarVistaPreviaFoto = () => {
+    if (vistaPreviaFotoRef.current) {
+      URL.revokeObjectURL(vistaPreviaFotoRef.current);
+      vistaPreviaFotoRef.current = "";
+    }
+    setVistaPreviaFoto("");
+  };
+
+  const guardarFotoPerfil = async () => {
+    if (!fotoSeleccionada || subiendoFoto) return;
+
     setSubiendoFoto(true);
     try {
-      const resultado = await subirFotoPerfil(archivo);
+      const resultado = await subirFotoPerfil(fotoSeleccionada);
       const url = resultado?.foto_perfil_url;
       if (!url) {
         throw new Error("El servidor no devolvió la URL de la foto guardada.");
       }
 
       setFotoPerfil(url);
+      setFotoSeleccionada(null);
+      limpiarVistaPreviaFoto();
       window.dispatchEvent(
         new CustomEvent("eventhub-profile-updated", {
-          detail: { fotoPerfilUrl: url },
+          detail: {
+            fotoPerfilUrl: url,
+            nombre: nombrePerfil.trim(),
+            apellido: apellidoPerfil.trim(),
+          },
         })
       );
       onNotify("Foto de perfil actualizada.");
@@ -4161,6 +4294,52 @@ function ConfiguracionUsuario({ onNotify }) {
       );
     } finally {
       setSubiendoFoto(false);
+    }
+  };
+
+  const guardarPerfil = async () => {
+    const nombre = nombrePerfil.trim();
+    const apellido = apellidoPerfil.trim();
+    if (nombre.length < 2 || nombre.length > 100) {
+      setErrorPerfil("El nombre debe tener entre 2 y 100 caracteres.");
+      return;
+    }
+    if (apellido.length < 2 || apellido.length > 100) {
+      setErrorPerfil("El apellido debe tener entre 2 y 100 caracteres.");
+      return;
+    }
+
+    setGuardandoPerfil(true);
+    setErrorPerfil("");
+    try {
+      const resultado = await actualizarPerfilUsuario({ nombre, apellido });
+      const nombreGuardado = resultado?.nombre?.trim();
+      const apellidoGuardado = resultado?.apellido?.trim();
+      if (!nombreGuardado || !apellidoGuardado) {
+        throw new Error("El servidor no confirmó los datos actualizados.");
+      }
+
+      setNombrePerfil(nombreGuardado);
+      setApellidoPerfil(apellidoGuardado);
+      const nombreCompleto = `${nombreGuardado} ${apellidoGuardado}`;
+      setPerfilActual((actual) => ({
+        ...actual,
+        nombre: nombreCompleto,
+        correo: resultado.email || actual.correo,
+        iniciales: `${nombreGuardado[0]}${apellidoGuardado[0]}`.toLocaleUpperCase("es-CO"),
+      }));
+      window.dispatchEvent(
+        new CustomEvent("eventhub-profile-updated", {
+          detail: { nombre: nombreGuardado, apellido: apellidoGuardado },
+        })
+      );
+      onNotify("Nombre y apellido actualizados correctamente.");
+    } catch (errorActual) {
+      setErrorPerfil(
+        errorActual.message || "No fue posible actualizar el perfil."
+      );
+    } finally {
+      setGuardandoPerfil(false);
     }
   };
 
@@ -4196,15 +4375,87 @@ function ConfiguracionUsuario({ onNotify }) {
           <span className="spinner" />
           Consultando tu configuración...
         </section>
-      ) : error ? (
-        <section className="card state-card error-state" role="alert">
-          <div>
-            <b>No se pudo cargar la configuración.</b>
-            <p>{error}</p>
-          </div>
-        </section>
       ) : (
-        <form className="profile-settings-form" onSubmit={guardar} noValidate>
+        <div className="profile-settings-form">
+          {error && (
+            <section className="card state-card error-state" role="alert">
+              <div>
+                <b>No se pudo cargar o guardar el límite diario.</b>
+                <p>{error}</p>
+              </div>
+            </section>
+          )}
+          <section className="card configuration-card profile-data-card">
+            <div className="settings-section-heading">
+              <span className="settings-section-icon" aria-hidden="true">
+                <FaUser />
+              </span>
+              <div>
+                <h2>Datos del perfil</h2>
+                <p>Actualiza el nombre que aparece en tu espacio de trabajo.</p>
+              </div>
+            </div>
+            <div className="profile-data-fields">
+              <div>
+                <label htmlFor="perfil-nombre">Nombre</label>
+                <input
+                  id="perfil-nombre"
+                  name="nombre"
+                  type="text"
+                  autoComplete="given-name"
+                  maxLength={100}
+                  value={nombrePerfil}
+                  onChange={(event) => {
+                    setNombrePerfil(event.target.value);
+                    setErrorPerfil("");
+                  }}
+                  disabled={guardandoPerfil}
+                />
+              </div>
+              <div>
+                <label htmlFor="perfil-apellido">Apellido</label>
+                <input
+                  id="perfil-apellido"
+                  name="apellido"
+                  type="text"
+                  autoComplete="family-name"
+                  maxLength={100}
+                  value={apellidoPerfil}
+                  onChange={(event) => {
+                    setApellidoPerfil(event.target.value);
+                    setErrorPerfil("");
+                  }}
+                  disabled={guardandoPerfil}
+                />
+              </div>
+              <div className="profile-email-field">
+                <label htmlFor="perfil-email">Correo electrónico</label>
+                <input
+                  id="perfil-email"
+                  type="email"
+                  value={perfilActual.correo}
+                  readOnly
+                  aria-readonly="true"
+                />
+              </div>
+            </div>
+            {errorPerfil && (
+              <p className="inline-error profile-data-error" role="alert">
+                {errorPerfil}
+              </p>
+            )}
+            <div className="profile-data-actions">
+              <button
+                className="btn primary"
+                type="button"
+                disabled={guardandoPerfil}
+                onClick={guardarPerfil}
+              >
+                {guardandoPerfil ? "Guardando perfil..." : "Guardar perfil"}
+              </button>
+            </div>
+          </section>
+
           <section className="card configuration-card profile-photo-card">
             <div className="settings-section-heading">
               <span className="settings-section-icon" aria-hidden="true">♙</span>
@@ -4216,8 +4467,11 @@ function ConfiguracionUsuario({ onNotify }) {
 
             <div className="profile-photo-content">
               <div className="profile-photo-preview" aria-label={`Foto de perfil de ${perfilActual.nombre}`}>
-                {fotoPerfil ? (
-                  <img src={fotoPerfil} alt={`Foto de perfil de ${perfilActual.nombre}`} />
+                {vistaPreviaFoto || fotoPerfil ? (
+                  <img
+                    src={vistaPreviaFoto || fotoPerfil}
+                    alt={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}
+                  />
                 ) : (
                   <span>{perfilActual.iniciales}</span>
                 )}
@@ -4242,7 +4496,7 @@ function ConfiguracionUsuario({ onNotify }) {
                   aria-label="Seleccionar foto de perfil"
                   disabled={subiendoFoto}
                   onChange={(event) => {
-                    procesarFotoPerfil(event.target.files?.[0]);
+                    seleccionarFotoPerfil(event.target.files?.[0]);
                     event.target.value = "";
                   }}
                 />
@@ -4252,8 +4506,32 @@ function ConfiguracionUsuario({ onNotify }) {
                   disabled={subiendoFoto}
                   onClick={() => inputFotoRef.current?.click()}
                 >
-                  <span aria-hidden="true">↥</span> {subiendoFoto ? "Guardando foto..." : "Cambiar foto"}
+                  <span aria-hidden="true">↥</span> {fotoSeleccionada ? "Elegir otra foto" : "Seleccionar foto"}
                 </button>
+                {fotoSeleccionada && (
+                  <div className="profile-photo-pending">
+                    <span title={fotoSeleccionada.name}>{fotoSeleccionada.name}</span>
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      disabled={subiendoFoto}
+                      onClick={guardarFotoPerfil}
+                    >
+                      {subiendoFoto ? "Guardando foto..." : "Guardar foto"}
+                    </button>
+                    <button
+                      className="profile-photo-cancel"
+                      type="button"
+                      disabled={subiendoFoto}
+                      onClick={() => {
+                        setFotoSeleccionada(null);
+                        limpiarVistaPreviaFoto();
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
                 {subiendoFoto && <p className="profile-photo-status" role="status">Subiendo y guardando tu foto de perfil...</p>}
                 <small className="profile-photo-hint">JPG o PNG · Máximo 5 MB</small>
                 <div
@@ -4277,7 +4555,7 @@ function ConfiguracionUsuario({ onNotify }) {
                   onDrop={(event) => {
                     event.preventDefault();
                     if (subiendoFoto) return;
-                    procesarFotoPerfil(event.dataTransfer.files?.[0]);
+                    seleccionarFotoPerfil(event.dataTransfer.files?.[0]);
                   }}
                 >
                   <span className="profile-drop-icon" aria-hidden="true">⇧</span>
@@ -4347,11 +4625,11 @@ function ConfiguracionUsuario({ onNotify }) {
             <button className="btn secondary" type="button" disabled={guardando} onClick={cancelarCambios}>
               Cancelar
             </button>
-            <button className="btn primary" type="submit" disabled={guardando}>
+            <button className="btn primary" type="button" disabled={guardando} onClick={guardar}>
               {guardando ? "Guardando..." : "▣  Guardar cambios"}
             </button>
           </div>
-        </form>
+        </div>
       )}
 
       {conflictoConfiguracion && (
@@ -7168,7 +7446,6 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
                 </div>
 
                 <div className="progress-rendimiento-info">
-                  <small>RENDIMIENTO OPERATIVO</small>
                   <h2>Progreso general</h2>
                   <p>
                     {resumen.completadas} de {resumen.total} subtareas
