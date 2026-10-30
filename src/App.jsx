@@ -53,6 +53,7 @@ import {
   cerrarSesion,
   estaAutenticado,
   guardarSesion,
+  obtenerAccessToken,
   obtenerSesion,
 } from "./services/auth.js";
 
@@ -1011,6 +1012,7 @@ function ResponsibleCombobox({ id, value, options, onChange }) {
 
 function Header({
   ruta,
+  fotoPerfilUrl,
   abrirCrear,
   abrirCrearSubtarea,
   busquedaEventos,
@@ -1027,45 +1029,27 @@ function Header({
   const crearMenuRef = useRef(null);
   const creacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
   const [perfil, setPerfil] = useState(obtenerDatosPerfil);
-  const [fotoPerfilHeader, setFotoPerfilHeader] = useState("");
   const [horasPerfil, setHorasPerfil] = useState(null);
 
   useEffect(() => {
-    let activo = true;
-    const cargarPerfil = async () => {
-      try {
-        const fotoData = await obtenerFotoPerfil();
-        if (!activo) return;
-        setFotoPerfilHeader(fotoData?.foto_perfil_url || "");
-      } catch (error) {
-        console.error("No fue posible recuperar el perfil del usuario.", error);
-      }
-    };
     const actualizarFoto = (event) => {
-      const { fotoPerfilUrl, nombre, apellido } = event.detail || {};
-      if (typeof fotoPerfilUrl === "string") {
-        setFotoPerfilHeader(fotoPerfilUrl);
-      } else if (!nombre && !apellido) {
-        void cargarPerfil();
-      }
+      const { nombre, apellido } = event.detail || {};
 
-      if (nombre || apellido) {
-        const nuevoNombre = [nombre, apellido].filter(Boolean).join(" ").trim();
-        setPerfil((actual) => ({
-          ...actual,
-          nombre: nuevoNombre,
-          iniciales: nuevoNombre
-            .split(/\s+/)
-            .slice(0, 2)
-            .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
-            .join("") || "EH",
-        }));
-      }
+      if (!nombre && !apellido) return;
+
+      const nuevoNombre = [nombre, apellido].filter(Boolean).join(" ").trim();
+      setPerfil((actual) => ({
+        ...actual,
+        nombre: nuevoNombre,
+        iniciales: nuevoNombre
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+          .join("") || "EH",
+      }));
     };
-    void cargarPerfil();
     window.addEventListener("eventhub-profile-updated", actualizarFoto);
     return () => {
-      activo = false;
       window.removeEventListener("eventhub-profile-updated", actualizarFoto);
     };
   }, []);
@@ -1292,8 +1276,8 @@ function Header({
             }}
           >
             <span className="avatar profile-menu-avatar" aria-hidden="true">
-              {fotoPerfilHeader ? (
-                <img src={fotoPerfilHeader} alt="" className="avatar-photo" />
+              {fotoPerfilUrl ? (
+                <img src={fotoPerfilUrl} alt="" className="avatar-photo" />
               ) : perfil.iniciales}
             </span>
             <span className="profile-header-name" title={perfil.nombre}>
@@ -1329,8 +1313,8 @@ function Header({
             >
               <div className="profile-dropdown-user">
                 <div className="profile-dropdown-avatar">
-                  {fotoPerfilHeader ? (
-                    <img src={fotoPerfilHeader} alt="" />
+                  {fotoPerfilUrl ? (
+                    <img src={fotoPerfilUrl} alt="" />
                   ) : perfil.iniciales}
                   <span className="profile-online-dot" aria-label="Sesión activa" />
                 </div>
@@ -2156,9 +2140,6 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
         </label>
         {crearSubtareaInicial && (
           <div className="create-event-subtask-fields">
-            <p className="create-event-subtask-help">
-              Las subtareas son actividades necesarias para organizar o ejecutar el evento; puedes asignar responsable, fecha y duración estimada.
-            </p>
             {subtareas.map((item, indice) => (
               <div className="create-event-subtask-item" key={item.id}>
                 <div className="field-header">
@@ -4036,7 +4017,11 @@ function CrearEventoPage({ onCancelar, onCrear }) {
   );
 }
 
-function ConfiguracionUsuario({ onNotify }) {
+function ConfiguracionUsuario({
+  onNotify,
+  fotoPerfilUrl,
+  onFotoPerfilActualizada,
+}) {
   const [horasDia, setHorasDia] = useState(6);
   const [horasGuardadas, setHorasGuardadas] = useState(6);
   const [cargando, setCargando] = useState(true);
@@ -4045,9 +4030,9 @@ function ConfiguracionUsuario({ onNotify }) {
   const [errorCampo, setErrorCampo] = useState("");
   const [errorPerfil, setErrorPerfil] = useState("");
   const [conflictoConfiguracion, setConflictoConfiguracion] = useState(null);
-  const [fotoPerfil, setFotoPerfil] = useState("");
   const [errorFoto, setErrorFoto] = useState("");
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const subidaFotoEnCursoRef = useRef(false);
   const [mostrarModalFoto, setMostrarModalFoto] = useState(false);
   const [fotoSeleccionada, setFotoSeleccionada] = useState(null);
   const [vistaPreviaFoto, setVistaPreviaFoto] = useState("");
@@ -4088,9 +4073,8 @@ function ConfiguracionUsuario({ onNotify }) {
   useEffect(() => {
     let activo = true;
     const cargarPerfil = async () => {
-      const [perfilResultado, fotoResultado] = await Promise.allSettled([
+      const [perfilResultado] = await Promise.allSettled([
         obtenerPerfilUsuario(),
-        obtenerFotoPerfil(),
       ]);
       if (!activo) return;
 
@@ -4117,15 +4101,6 @@ function ConfiguracionUsuario({ onNotify }) {
         setErrorPerfil(
           perfilResultado.reason?.message ||
             "No fue posible consultar el perfil del usuario."
-        );
-      }
-
-      if (fotoResultado.status === "fulfilled") {
-        setFotoPerfil(fotoResultado.value?.foto_perfil_url || "");
-      } else {
-        setErrorFoto(
-          fotoResultado.reason?.message ||
-            "No fue posible consultar tu foto de perfil."
         );
       }
     };
@@ -4308,7 +4283,7 @@ function ConfiguracionUsuario({ onNotify }) {
 
   const seleccionarFotoPerfil = (archivo) => {
     setErrorFoto("");
-    if (!archivo || subiendoFoto) return;
+    if (!archivo || subiendoFoto || subidaFotoEnCursoRef.current) return;
     if (!["image/jpeg", "image/png"].includes(archivo.type)) {
       setFotoSeleccionada(null);
       limpiarVistaPreviaFoto();
@@ -4353,7 +4328,7 @@ function ConfiguracionUsuario({ onNotify }) {
   };
 
   const cerrarModalFoto = useCallback(() => {
-    if (subiendoFoto) return;
+    if (subiendoFoto || subidaFotoEnCursoRef.current) return;
     setMostrarModalFoto(false);
     setFotoSeleccionada(null);
     setErrorFoto("");
@@ -4362,25 +4337,28 @@ function ConfiguracionUsuario({ onNotify }) {
   }, [subiendoFoto, limpiarVistaPreviaFoto]);
 
   const guardarFotoPerfil = async () => {
-    if (!fotoSeleccionada || subiendoFoto) return;
+    if (
+      !fotoSeleccionada ||
+      subiendoFoto ||
+      subidaFotoEnCursoRef.current
+    ) {
+      return;
+    }
 
+    subidaFotoEnCursoRef.current = true;
     setSubiendoFoto(true);
     try {
       const resultado = await subirFotoPerfil(fotoSeleccionada);
       const url = resultado?.foto_perfil_url;
-      if (!url) {
+      if (typeof url !== "string" || !url.trim()) {
         throw new Error("El servidor no devolvió la URL de la foto guardada.");
       }
 
-      setFotoPerfil(url);
+      onFotoPerfilActualizada(url);
+      setErrorFoto("");
       setFotoSeleccionada(null);
       limpiarVistaPreviaFoto();
       setMostrarModalFoto(false);
-      window.dispatchEvent(
-        new CustomEvent("eventhub-profile-updated", {
-          detail: { fotoPerfilUrl: url },
-        })
-      );
       window.requestAnimationFrame(() => fotoTriggerRef.current?.focus());
       onNotify("Foto de perfil actualizada.");
     } catch (errorActual) {
@@ -4388,6 +4366,7 @@ function ConfiguracionUsuario({ onNotify }) {
         errorActual.message || "No fue posible guardar la foto de perfil."
       );
     } finally {
+      subidaFotoEnCursoRef.current = false;
       setSubiendoFoto(false);
     }
   };
@@ -4445,8 +4424,8 @@ function ConfiguracionUsuario({ onNotify }) {
                 title="Cambiar foto de perfil"
                 onClick={abrirModalFoto}
               >
-                {fotoPerfil ? (
-                  <img src={fotoPerfil} alt="" />
+                {fotoPerfilUrl ? (
+                  <img src={fotoPerfilUrl} alt="" />
                 ) : (
                   <span>{perfilActual.iniciales || <FaUser />}</span>
                 )}
@@ -4521,9 +4500,9 @@ function ConfiguracionUsuario({ onNotify }) {
             >
               <div className="profile-photo-modal-content">
                 <div className="profile-photo-preview" aria-label={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}>
-                  {vistaPreviaFoto || fotoPerfil ? (
+                  {vistaPreviaFoto || fotoPerfilUrl ? (
                     <img
-                      src={vistaPreviaFoto || fotoPerfil}
+                      src={vistaPreviaFoto || fotoPerfilUrl}
                       alt={`Vista previa de la foto de perfil de ${perfilActual.nombre}`}
                     />
                   ) : (
@@ -8694,6 +8673,14 @@ export default function App() {
   }, [modoOscuro]);
 
   const [ruta, setRuta] = useState(obtenerRutaInicial);
+  const [fotoPerfilSesion, setFotoPerfilSesion] = useState({
+    token: null,
+    url: "",
+  });
+  const tokenSesionActual = obtenerAccessToken();
+  const fotoPerfilRevisionRef = useRef(0);
+  const fotoPerfilUrl =
+    fotoPerfilSesion.token === tokenSesionActual ? fotoPerfilSesion.url : "";
   const [eventos, setEventos] = useState([]);
   const [busquedaEventos, setBusquedaEventos] = useState("");
   const [cargandoEventos, setCargandoEventos] = useState(true);
@@ -8702,6 +8689,43 @@ export default function App() {
   const toastTimer = useRef(null);
   const [crearSubtareaAbierta, setCrearSubtareaAbierta] = useState(false);
   const [recargaHoy, setRecargaHoy] = useState(0);
+
+  const actualizarFotoPerfil = useCallback((url) => {
+    fotoPerfilRevisionRef.current += 1;
+    setFotoPerfilSesion({ token: obtenerAccessToken(), url });
+  }, []);
+
+  useEffect(() => {
+    let activo = true;
+
+    if (!tokenSesionActual) {
+      setFotoPerfilSesion({ token: null, url: "" });
+      return () => {
+        activo = false;
+      };
+    }
+
+    const revision = fotoPerfilRevisionRef.current;
+    obtenerFotoPerfil()
+      .then((data) => {
+        if (!activo || revision !== fotoPerfilRevisionRef.current) return;
+        setFotoPerfilSesion({
+          token: tokenSesionActual,
+          url:
+            typeof data?.foto_perfil_url === "string"
+              ? data.foto_perfil_url
+              : "",
+        });
+      })
+      .catch((error) => {
+        if (!activo || revision !== fotoPerfilRevisionRef.current) return;
+        console.error("No fue posible recuperar la foto de perfil.", error);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [tokenSesionActual]);
 
   const cargarEventos = async () => {
     setCargandoEventos(true); setErrorEventos("");
@@ -8847,6 +8871,7 @@ export default function App() {
   return <main className={`app${modoOscuro ? " theme-dark" : ""}`}>
     <Header
       ruta={ruta}
+      fotoPerfilUrl={fotoPerfilUrl}
       abrirCrear={() => navegar("/crear-evento")}
       abrirCrearSubtarea={() => setCrearSubtareaAbierta(true)}
       busquedaEventos={busquedaEventos}
@@ -8906,7 +8931,13 @@ export default function App() {
         onLimpiarBusqueda={() => setBusquedaEventos("")}
       />
     )}
-    {ruta === "/configuracion" && (<ConfiguracionUsuario onNotify={notify} />)}
+    {ruta === "/configuracion" && (
+      <ConfiguracionUsuario
+        onNotify={notify}
+        fotoPerfilUrl={fotoPerfilUrl}
+        onFotoPerfilActualizada={actualizarFotoPerfil}
+      />
+    )}
     {(ruta === "/hoy" || ruta === "/progreso") && crearSubtareaAbierta && (
       <Modal
         title="Crear subtarea"
