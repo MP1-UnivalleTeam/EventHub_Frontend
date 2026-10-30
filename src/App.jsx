@@ -8,7 +8,6 @@ import {
   FaDoorOpen,
   FaSyncAlt,
   FaTrashAlt,
-  FaStickyNote,
   FaFilter,
   FaCalendarAlt,
   FaTasks,
@@ -363,7 +362,6 @@ function DurationInput({
           aria-invalid={ariaInvalid}
         />
       </div>
-      <span className="duration-input-preview">{tieneValor && Number(value) > 0 ? formatearDuracion(value) : "—"}</span>
     </div>
   );
 }
@@ -838,14 +836,14 @@ function CreateMenu({
   );
 }
 
-// Sección opcional del modal de subtareas. Se mantiene montada para conservar
-// los valores introducidos y se anima con grid-template-rows, sin librerías.
+// Sección opcional compartida; conserva los valores al animar su apertura.
 function StitchOptionalSection({
   id,
   icon,
   title,
   children,
   defaultOpen = false,
+  className = "",
 }) {
   const [abierta, setAbierta] = useState(defaultOpen);
   const toggleRef = useRef(null);
@@ -862,7 +860,7 @@ function StitchOptionalSection({
 
   return (
     <section
-      className={`stitch-optional-section stitch-optional-collapsible${abierta ? " is-open" : ""}`}
+      className={`stitch-optional-section stitch-optional-collapsible${abierta ? " is-open" : ""}${className ? ` ${className}` : ""}`}
     >
       <button
         ref={toggleRef}
@@ -895,6 +893,102 @@ function StitchOptionalSection({
   );
 }
 
+function ResponsibleCombobox({ id, value, options, onChange }) {
+  const [abierto, setAbierto] = useState(false);
+  const containerRef = useRef(null);
+  const listRef = useRef(null);
+  const opcionesFiltradas = options.filter((nombre) =>
+    nombre.toLocaleLowerCase("es").includes(value.trim().toLocaleLowerCase("es"))
+  );
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const cerrarFuera = (event) => {
+      if (!containerRef.current?.contains(event.target)) setAbierto(false);
+    };
+    const cerrarEscape = (event) => {
+      if (event.key === "Escape") setAbierto(false);
+    };
+    document.addEventListener("mousedown", cerrarFuera);
+    document.addEventListener("keydown", cerrarEscape);
+    return () => {
+      document.removeEventListener("mousedown", cerrarFuera);
+      document.removeEventListener("keydown", cerrarEscape);
+    };
+  }, [abierto]);
+
+  return (
+    <div className="responsible-combobox" ref={containerRef}>
+      <div className="responsible-combobox-control">
+        <input
+          id={id}
+          type="text"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={abierto && opcionesFiltradas.length > 0}
+          aria-controls={abierto && opcionesFiltradas.length > 0 ? `${id}-options` : undefined}
+          autoComplete="off"
+          maxLength={150}
+          value={value}
+          onFocus={() => setAbierto(true)}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setAbierto(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              if (!abierto) setAbierto(true);
+              else listRef.current?.querySelector("button")?.focus();
+            } else if (event.key === "Escape") {
+              setAbierto(false);
+            }
+          }}
+          placeholder="Busca o escribe un nombre"
+        />
+        {value && (
+          <button
+            type="button"
+            className="responsible-combobox-clear"
+            aria-label="Quitar responsable"
+            onClick={() => {
+              onChange("");
+              setAbierto(false);
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {abierto && opcionesFiltradas.length > 0 && (
+        <div
+          className="responsible-combobox-options"
+          id={`${id}-options`}
+          role="listbox"
+          aria-label="Responsables existentes"
+          ref={listRef}
+        >
+          {opcionesFiltradas.map((nombre) => (
+            <button
+              key={nombre}
+              type="button"
+              role="option"
+              aria-selected={value === nombre}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(nombre);
+                setAbierto(false);
+              }}
+            >
+              {nombre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Header({
   ruta,
   abrirCrear,
@@ -910,6 +1004,7 @@ function Header({
   const [mostrarMenuCrear, setMostrarMenuCrear] = useState(false);
   const perfilMenuRef = useRef(null);
   const crearMenuRef = useRef(null);
+  const creacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
   const perfil = obtenerDatosPerfil();
   const [fotoPerfilHeader, setFotoPerfilHeader] = useState(() => {
     try { return window.localStorage.getItem(claveFotoPerfil()) || ""; }
@@ -1057,18 +1152,18 @@ function Header({
             className="btn primary header-create"
             type="button"
             onClick={
-              ruta === "/hoy"
+              creacionGlobalDisponible
                 ? () => setMostrarMenuCrear((visible) => !visible)
                 : abrirCrear
             }
-            aria-haspopup={ruta === "/hoy" ? "menu" : undefined}
-            aria-expanded={ruta === "/hoy" ? mostrarMenuCrear : undefined}
-            aria-controls={ruta === "/hoy" ? "header-create-menu" : undefined}
+            aria-haspopup={creacionGlobalDisponible ? "menu" : undefined}
+            aria-expanded={creacionGlobalDisponible ? mostrarMenuCrear : undefined}
+            aria-controls={creacionGlobalDisponible ? "header-create-menu" : undefined}
           >
             + Crear
           </button>
 
-          {ruta === "/hoy" && (
+          {creacionGlobalDisponible && (
             <CreateMenu
               id="header-create-menu"
               abierto={mostrarMenuCrear}
@@ -2019,28 +2114,34 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
                     ? "Selecciona una fecha desde hoy hasta la fecha del evento."
                     : "Puedes elegir una fecha desde hoy; al guardar, debe ser igual o anterior a la fecha del evento."}
                 </p>
-                <details className="stitch-optional-section">
-                  <summary>Asignar responsable <span>(opcional)</span></summary>
-                  <label htmlFor={`evento-subtarea-responsable-${item.id}`}>Responsable de la subtarea</label>
+                <StitchOptionalSection
+                  id={`evento-subtarea-responsable-${item.id}`}
+                  icon={<FaUser />}
+                  title="Asignar responsable"
+                >
+                  <label htmlFor={`evento-subtarea-responsable-${item.id}-input`}>Responsable de la subtarea</label>
                   <input
-                    id={`evento-subtarea-responsable-${item.id}`}
+                    id={`evento-subtarea-responsable-${item.id}-input`}
                     value={item.responsable || ""}
                     onChange={(event) => actualizarSubtarea(item.id, "responsable", event.target.value)}
                     placeholder="Nombre de la persona responsable"
                   />
-                </details>
-                <details className="stitch-optional-section">
-                  <summary>Agregar nota <span>(opcional)</span></summary>
-                  <label htmlFor={`evento-subtarea-notas-${item.id}`}>Notas e instrucciones</label>
+                </StitchOptionalSection>
+                <StitchOptionalSection
+                  id={`evento-subtarea-notas-${item.id}`}
+                  icon={<FaRegFileAlt />}
+                  title="Agregar nota"
+                >
+                  <label htmlFor={`evento-subtarea-notas-${item.id}-textarea`}>Notas e instrucciones</label>
                   <textarea
-                    id={`evento-subtarea-notas-${item.id}`}
+                    id={`evento-subtarea-notas-${item.id}-textarea`}
                     value={item.notas || ""}
                     onChange={(event) => actualizarSubtarea(item.id, "notas", event.target.value)}
                     placeholder="Agrega detalles o instrucciones para esta subtarea"
                     rows={2}
                     maxLength={300}
                   />
-                </details>
+                </StitchOptionalSection>
               </div>
             ))}
             <button
@@ -2599,20 +2700,17 @@ function CrearSubtareaForm({
         <label htmlFor="sub-responsable-select">
           Responsable de la subtarea
         </label>
-        <select
+        <ResponsibleCombobox
           id="sub-responsable-select"
-          name="responsable"
           value={form.responsable}
-          onChange={actualizar}
-          disabled={cargandoEventos}
-        >
-          <option value="">Sin asignar</option>
-          {responsablesDisponibles.map((nombre) => (
-            <option key={nombre} value={nombre}>{nombre}</option>
-          ))}
-        </select>
+          options={responsablesDisponibles}
+          onChange={(responsable) => {
+            setForm((prev) => ({ ...prev, responsable }));
+            setErrorServidor("");
+          }}
+        />
         <p className="helper">
-          Puedes dejar la subtarea sin asignar o elegir un responsable existente.
+          Elige un responsable existente o escribe un nombre. Puedes dejarlo vacío.
         </p>
       </StitchOptionalSection>
 
@@ -3216,21 +3314,25 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
         </p>
       )}
 
-      <details className="stitch-optional-section" open={Boolean(form.responsable)}>
-        <summary>Asignar responsable <span>(opcional)</span></summary>
-        <label htmlFor="edit-sub-responsable">Responsable de la subtarea</label>
-        <input id="edit-sub-responsable" name="responsable" value={form.responsable} onChange={actualizar} placeholder="Nombre de la persona responsable" />
-      </details>
+      <StitchOptionalSection
+        id="edit-sub-responsable"
+        icon={<FaUser />}
+        title="Asignar responsable"
+        defaultOpen={Boolean(form.responsable)}
+      >
+        <label htmlFor="edit-sub-responsable-input">Responsable de la subtarea</label>
+        <input id="edit-sub-responsable-input" name="responsable" value={form.responsable} onChange={actualizar} placeholder="Nombre de la persona responsable" />
+      </StitchOptionalSection>
 
-      <div className="note-card">
-        <div className="note-card-header">
-          <FaStickyNote aria-hidden="true" />
-          <label htmlFor="edit-sub-notas">Nota opcional</label>
-          <span className="note-card-hint">Se guarda al editar</span>
-        </div>
-
+      <StitchOptionalSection
+        id="edit-sub-notas"
+        icon={<FaRegFileAlt />}
+        title="Agregar nota"
+        defaultOpen
+      >
+        <label htmlFor="edit-sub-notas-textarea">Notas e instrucciones</label>
         <textarea
-          id="edit-sub-notas"
+          id="edit-sub-notas-textarea"
           name="notas"
           ref={notaRef}
           value={form.notas}
@@ -3240,7 +3342,8 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
           maxLength={300}
           placeholder="Añade una nota (opcional)"
         />
-      </div>
+        <p className="helper">Se guarda al editar.</p>
+      </StitchOptionalSection>
 
       {errorServidor && (
         <div className="alert alert-error" role="alert">
@@ -6130,7 +6233,13 @@ function Today({ onNotify, recargaToken = 0 }) {
                 <small>Base: {formatearDuracion(obtenerHoras(tareaPosponer))}</small>
               </div>
 
-              <div className="postpone-field">
+              <StitchOptionalSection
+                id="postpone-note"
+                className="postpone-note-section"
+                icon={<FaRegFileAlt />}
+                title="Agregar nota"
+                defaultOpen
+              >
                 <label htmlFor="nota-posposicion">Nota</label>
                 <textarea
                   id="nota-posposicion"
@@ -6145,7 +6254,7 @@ function Today({ onNotify, recargaToken = 0 }) {
                   rows={3}
                   maxLength={300}
                 />
-              </div>
+              </StitchOptionalSection>
             </div>
 
             <div className="postpone-actions">
@@ -6313,7 +6422,7 @@ function derivarEstadoEvento(porcentaje, total) {
   return { clave: "planificacion", etiqueta: "Planificación" };
 }
 
-function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
+function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [datos, setDatos] = useState({ resumen: null, eventos: [] });
@@ -6355,7 +6464,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda }) {
 
   useEffect(() => {
     cargar();
-  }, []);
+  }, [recargaToken]);
 
   // Los vencimientos dependen del día local, así que al cruzar la medianoche
   // los contadores y las etiquetas quedan obsoletos aunque la pestaña siga
@@ -7485,7 +7594,7 @@ function RegistroUsuario() {
 function MobileCreateButton({ ruta, onCrearEvento, onCrearSubtarea }) {
   const [abierto, setAbierto] = useState(false);
   const anclaRef = useRef(null);
-  const esHoy = ruta === "/hoy";
+  const esCreacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
 
   useEffect(() => {
     if (!abierto) return undefined;
@@ -7513,7 +7622,7 @@ function MobileCreateButton({ ruta, onCrearEvento, onCrearSubtarea }) {
   }, [ruta]);
 
   const alternar = () => {
-    if (!esHoy) {
+    if (!esCreacionGlobalDisponible) {
       onCrearEvento();
       return;
     }
@@ -7528,17 +7637,17 @@ function MobileCreateButton({ ruta, onCrearEvento, onCrearSubtarea }) {
       <button
         className="mobile-create-fab"
         type="button"
-        aria-label={esHoy ? "Abrir opciones de creación" : "Crear evento"}
-        title={esHoy ? "Crear" : "Crear evento"}
-        aria-haspopup={esHoy ? "menu" : undefined}
-        aria-expanded={esHoy ? abierto : undefined}
-        aria-controls={esHoy && abierto ? "mobile-create-menu" : undefined}
+        aria-label={esCreacionGlobalDisponible ? "Abrir opciones de creación" : "Crear evento"}
+        title={esCreacionGlobalDisponible ? "Crear" : "Crear evento"}
+        aria-haspopup={esCreacionGlobalDisponible ? "menu" : undefined}
+        aria-expanded={esCreacionGlobalDisponible ? abierto : undefined}
+        aria-controls={esCreacionGlobalDisponible && abierto ? "mobile-create-menu" : undefined}
         onClick={alternar}
       >
         {abierto ? "×" : "+"}
       </button>
 
-      {esHoy && (
+      {esCreacionGlobalDisponible && (
         <CreateMenu
           id="mobile-create-menu"
           variant="mobile"
@@ -7786,11 +7895,12 @@ export default function App() {
     {ruta === "/progreso" && (
       <Progreso
         busquedaEventos={busquedaEventos}
+        recargaToken={recargaHoy}
         onLimpiarBusqueda={() => setBusquedaEventos("")}
       />
     )}
     {ruta === "/configuracion" && (<ConfiguracionUsuario onNotify={notify} />)}
-    {ruta === "/hoy" && crearSubtareaAbierta && (
+    {(ruta === "/hoy" || ruta === "/progreso") && crearSubtareaAbierta && (
       <Modal
         title="Crear subtarea"
         subtitle="Elige el evento y define los detalles de la nueva subtarea."
