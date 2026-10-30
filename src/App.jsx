@@ -15,7 +15,7 @@ import {
   FaRegFileAlt,
   FaChevronDown,
 } from "react-icons/fa";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   actualizarEvento,
@@ -6574,6 +6574,53 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
     { clave: "fecha", etiqueta: "Fecha: más recientes" },
   ];
 
+  const [categoriaSubtareasActiva, setCategoriaSubtareasActiva] = useState(null);
+  const panelSubtareasRef = useRef(null);
+
+  const subtareasPorCategoria = useMemo(() => {
+    const base = { completadas: [], pendientes: [] };
+
+    subtareasCalendario.forEach((subtarea) => {
+      const estado = estadoEfectivoSubtarea(subtarea);
+
+      if (estado === "hecho") {
+        base.completadas.push(subtarea);
+      }
+
+      if (estado === "pendiente") {
+        base.pendientes.push(subtarea);
+      }
+    });
+
+    return base;
+  }, [subtareasCalendario]);
+
+  const activarCategoriaSubtareas = (categoria) => {
+    setCategoriaSubtareasActiva((actual) =>
+      actual === categoria ? null : categoria
+    );
+  };
+
+  useEffect(() => {
+    const manejarClicFuera = (event) => {
+      if (!categoriaSubtareasActiva) return;
+
+      const panel = panelSubtareasRef.current;
+      const elemento = event.target instanceof Element ? event.target : null;
+      const cardActiva = elemento?.closest(".progress-status-card");
+
+      if (!panel?.contains(elemento) && !cardActiva) {
+        setCategoriaSubtareasActiva(null);
+      }
+    };
+
+    document.addEventListener("mousedown", manejarClicFuera);
+    return () => document.removeEventListener("mousedown", manejarClicFuera);
+  }, [categoriaSubtareasActiva]);
+
+  const contenidoCategoriaSubtareas =
+    categoriaSubtareasActiva ? subtareasPorCategoria[categoriaSubtareasActiva] : [];
+
   return (
     <section className="page progress-page">
       <div className="progress-header">
@@ -6745,6 +6792,109 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
                     <span>Requieren atención</span>
                   </article>
                 </div>
+              </section>
+
+              <section className="progress-status-summary" aria-label="Consultar subtareas por estado">
+                <div className="progress-status-cards">
+                  {[
+                    {
+                      clave: "completadas",
+                      titulo: "Completadas",
+                      descripcion: "Gestiones ya ejecutadas",
+                      icono: "✓",
+                    },
+                    {
+                      clave: "pendientes",
+                      titulo: "Pendientes",
+                      descripcion: "Faltan por ejecutar",
+                      icono: "○",
+                    },
+                  ].map((categoria) => {
+                    const activa = categoriaSubtareasActiva === categoria.clave;
+                    const total = subtareasPorCategoria[categoria.clave].length;
+
+                    return (
+                      <button
+                        key={categoria.clave}
+                        type="button"
+                        className={`progress-status-card${activa ? " selected" : ""}`}
+                        aria-pressed={activa}
+                        aria-expanded={activa}
+                        aria-controls={activa ? "progress-status-panel" : undefined}
+                        onClick={() => activarCategoriaSubtareas(categoria.clave)}
+                      >
+                        <div className="progress-status-card-top">
+                          <span className="progress-status-icon" aria-hidden="true">
+                            {categoria.icono}
+                          </span>
+                          <span className="progress-status-label">{categoria.titulo}</span>
+                        </div>
+                        <strong>{total}</strong>
+                        <small>{categoria.descripcion}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {categoriaSubtareasActiva && (
+                  <div
+                    id="progress-status-panel"
+                    className="progress-status-panel"
+                    ref={panelSubtareasRef}
+                    role="region"
+                    aria-live="polite"
+                    aria-label={`Subtareas ${categoriaSubtareasActiva}`}
+                  >
+                    {cargando ? (
+                      <div className="progress-status-state">
+                        <span className="spinner" /> Cargando subtareas...
+                      </div>
+                    ) : error ? (
+                      <div className="progress-status-state error" role="alert">
+                        No se pudieron cargar las subtareas de esta categoría.
+                      </div>
+                    ) : contenidoCategoriaSubtareas.length === 0 ? (
+                      <div className="progress-status-state empty">
+                        <strong>No hay subtareas {categoriaSubtareasActiva === "completadas" ? "completadas" : "pendientes"}.</strong>
+                        <span>Los registros aparecerán aquí cuando existan.</span>
+                      </div>
+                    ) : (
+                      <div className="progress-status-list">
+                        {contenidoCategoriaSubtareas.map((subtarea, index) => {
+                          const evento = datos.eventos.find(
+                            (item) => String(item.id) === String(subtarea.evento_id)
+                          );
+                          const nota = obtenerNotaSubtarea(subtarea);
+
+                          return (
+                            <article
+                              className="progress-status-item"
+                              key={
+                                subtarea.id ?? `${subtarea.evento_id}-${subtarea.titulo ?? "subtarea"}-${index}`
+                              }
+                            >
+                              <div className="progress-status-item-main">
+                                <span className="progress-status-item-tag">
+                                  {categoriaSubtareasActiva === "completadas" ? "Completada" : "Pendiente"}
+                                </span>
+                                <h3>{subtarea.titulo || subtarea.nombre || "Subtarea sin nombre"}</h3>
+                                <p className="progress-status-event">
+                                  Evento: {evento?.titulo || "Evento no asociado"}
+                                </p>
+                                {nota && <p className="progress-status-note">{nota}</p>}
+                              </div>
+                              {evento?.fecha && (
+                                <span className="progress-status-date">
+                                  {formatearFecha(evento.fecha)}
+                                </span>
+                              )}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
               <section className="progress-breakdown">
