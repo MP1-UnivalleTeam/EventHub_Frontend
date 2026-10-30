@@ -178,7 +178,9 @@ export function actualizarConfiguracionUsuario(horasDia) {
 }
 
 export function obtenerFotoPerfil() {
-  return request("/usuario/foto-perfil");
+  return request("/usuario/foto-perfil", {
+    cache: "no-store",
+  });
 }
 
 export function obtenerPerfilUsuario() {

@@ -11072,17 +11072,6 @@ body[data-theme="dark"] .work-limit-help span {
   white-space: nowrap;
 }
 
-.create-event-subtask-help {
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border: 1px solid #dce7fb;
-  border-radius: 9px;
-  background: #f5f8ff;
-  color: #52607a;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 .today-panel-note {
   margin: 12px 0;
   padding: 12px;
@@ -11517,7 +11506,6 @@ body[data-theme="dark"] .progress-calendar-view-switch button.active {
   color: #bfdbfe;
 }
 
-body[data-theme="dark"] .create-event-subtask-help,
 body[data-theme="dark"] .today-panel-note,
 body[data-theme="dark"] .today-evidence-preview {
   background: var(--eh-surface-raised) !important;
