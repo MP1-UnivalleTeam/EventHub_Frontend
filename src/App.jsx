@@ -28,6 +28,7 @@ import { createPortal } from "react-dom";
 import {
   actualizarEvento,
   actualizarSubtarea,
+  actualizarPerfilUsuario,
   actualizarConfiguracionUsuario,
   crearEvento,
   crearSubtarea,
@@ -1038,10 +1039,26 @@ function Header({
       }
     };
     const actualizarFoto = (event) => {
-      const url = event.detail?.fotoPerfilUrl;
-      if (typeof url === "string") setFotoPerfilHeader(url);
-      else void cargarPerfil();
-    };
+        const { fotoPerfilUrl, nombre, apellido } = event.detail || {};
+        if (typeof fotoPerfilUrl === "string") {
+          setFotoPerfilHeader(fotoPerfilUrl);
+        } else if (!nombre && !apellido) {
+          void cargarPerfil();
+        }
+
+        if (nombre || apellido) {
+          const nuevoNombre = [nombre, apellido].filter(Boolean).join(" ").trim();
+          setPerfil((actual) => ({
+            ...actual,
+            nombre: nuevoNombre,
+            iniciales: nuevoNombre
+              .split(/\s+/)
+              .slice(0, 2)
+              .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+              .join("") || "EH",
+          }));
+        }
+      };
     void cargarPerfil();
     window.addEventListener("eventhub-profile-updated", actualizarFoto);
     return () => {
@@ -1248,9 +1265,6 @@ function Header({
         </button>
 
         <div className="profile-menu-anchor" ref={perfilMenuRef}>
-          <span className="profile-header-name" title={perfil.nombre}>
-            {perfil.nombre}
-          </span>
           <button
             className={`avatar profile-menu-trigger ${mostrarMenuPerfil ? "is-open" : ""}`}
             type="button"
@@ -1265,6 +1279,9 @@ function Header({
               perfil.iniciales
             )}
           </button>
+          <span className="profile-header-name" title={perfil.nombre}>
+            {perfil.nombre}
+          </span>
 
           {mostrarMenuPerfil && (
             <div className="profile-dropdown" role="menu" aria-label="Menú del perfil">

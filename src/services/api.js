@@ -185,6 +185,13 @@ export function obtenerPerfilUsuario() {
   return request("/usuario/perfil");
 }
 
+export function actualizarPerfilUsuario(perfil) {
+  return request("/usuario/perfil", {
+    method: "PUT",
+    body: JSON.stringify(perfil),
+  });
+}
+
 export function subirFotoPerfil(archivo) {
   const datos = new FormData();
   datos.append("file", archivo);
