@@ -6,9 +6,11 @@ async function request(path, options = {}) {
   let response;
 
   const token = obtenerAccessToken();
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
 
   const headers = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...options.headers,
   };
 
@@ -131,6 +133,16 @@ export function eliminarSubtarea(id) {
   });
 }
 
+export function subirComprobanteSubtarea(id, archivo) {
+  const datos = new FormData();
+  datos.append("file", archivo);
+
+  return request(`/subtareas/${id}/comprobante`, {
+    method: "POST",
+    body: datos,
+  });
+}
+
 // --- AUTENTICACIÓN ---
 
 export function iniciarSesion(email, password) {
@@ -162,5 +174,23 @@ export function actualizarConfiguracionUsuario(horasDia) {
     body: JSON.stringify({
       horas_dia: horasDia,
     }),
+  });
+}
+
+export function obtenerFotoPerfil() {
+  return request("/usuario/foto-perfil");
+}
+
+export function obtenerPerfilUsuario() {
+  return request("/usuario/perfil");
+}
+
+export function subirFotoPerfil(archivo) {
+  const datos = new FormData();
+  datos.append("file", archivo);
+
+  return request("/usuario/foto-perfil", {
+    method: "POST",
+    body: datos,
   });
 }

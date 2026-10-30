@@ -14,6 +14,14 @@ import {
   FaUser,
   FaRegFileAlt,
   FaChevronDown,
+  FaCheckCircle,
+  FaClock,
+  FaExclamationTriangle,
+  FaChevronLeft,
+  FaChevronRight,
+  FaTimes,
+  FaImage,
+  FaPaperclip,
 } from "react-icons/fa";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -28,11 +36,15 @@ import {
   iniciarSesion,
   registrarUsuario,
   obtenerConfiguracionUsuario,
+  obtenerFotoPerfil,
+  obtenerPerfilUsuario,
   obtenerHoy,
   obtenerEvento,
   obtenerEventos,
   obtenerSubtareas,
   actualizarParcialSubtarea,
+  subirFotoPerfil,
+  subirComprobanteSubtarea,
 } from "./services/api.js";
 import {
   cerrarSesion,
@@ -58,17 +70,12 @@ function obtenerDatosPerfil() {
     usuario.username ||
     "";
   const iniciales = String(nombre)
-    .split(/\\s+/)
+    .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
     .join("") || "EH";
   return { nombre: String(nombre), correo: String(correo), iniciales };
-}
-
-function claveFotoPerfil() {
-  const { correo } = obtenerDatosPerfil();
-  return `eventhub-profile-photo:${correo.toLowerCase() || "organizador"}`;
 }
 
 const rutas = ["/login", "/registro", "/registro/onboarding", "/eventos", "/hoy", "/progreso", "/crear-evento", "/configuracion"];
@@ -267,14 +274,25 @@ function obtenerResponsableSubtarea(subtarea) {
 
 function obtenerHoras(item) {
   const value = Number(item?.horas_estimadas ?? item?.horas ?? item?.hours ?? 0);
-  return Number.isFinite(value) ? value : 0;
+  return Number.isFinite(value) ? minutosAHoras(horasAMinutos(value)) : 0;
 }
 
-// Las duraciones se conservan como horas decimales en el estado/API por
-// compatibilidad, pero se muestran y editan en horas + minutos.
 function horasAMinutos(valor) {
   const horas = Number(valor);
-  return Number.isFinite(horas) ? Math.max(0, Math.round(horas * 60)) : 0;
+  return Number.isFinite(horas)
+    ? Math.max(0, Math.round(horas * 60 + Number.EPSILON))
+    : 0;
+}
+
+function minutosAHoras(minutos) {
+  const total = Number(minutos);
+  return Number.isFinite(total)
+    ? Number((Math.max(0, Math.trunc(total)) / 60).toFixed(10))
+    : 0;
+}
+
+function sumarMinutosEstimados(items) {
+  return items.reduce((total, item) => total + horasAMinutos(obtenerHoras(item)), 0);
 }
 
 function formatearDuracion(valor) {
@@ -320,9 +338,7 @@ function DurationInput({
     if (horas >= maxHours) minutos = 0;
 
     const totalMinutos = horas * 60 + minutos;
-    const nuevoValor = totalMinutos === 0
-      ? ""
-      : String(Number((totalMinutos / 60).toFixed(4)));
+    const nuevoValor = totalMinutos === 0 ? "" : String(minutosAHoras(totalMinutos));
 
     onChange({ target: { name, value: nuevoValor } });
   };
@@ -367,12 +383,13 @@ function DurationInput({
 }
 
 function obtenerHorasPendientes(tareas) {
-  return tareas
+  const minutos = tareas
     .filter((tarea) => {
       const estado = normalizarEstado(tarea.estado);
       return estado === "pendiente" || estado === "pospuesto";
     })
-    .reduce((total, tarea) => total + obtenerHoras(tarea), 0);
+    .reduce((total, tarea) => total + horasAMinutos(obtenerHoras(tarea)), 0);
+  return minutosAHoras(minutos);
 }
 
 function obtenerTituloSubtarea(item) {
@@ -1005,20 +1022,61 @@ function Header({
   const perfilMenuRef = useRef(null);
   const crearMenuRef = useRef(null);
   const creacionGlobalDisponible = ruta === "/hoy" || ruta === "/progreso";
-  const perfil = obtenerDatosPerfil();
-  const [fotoPerfilHeader, setFotoPerfilHeader] = useState(() => {
-    try { return window.localStorage.getItem(claveFotoPerfil()) || ""; }
-    catch { return ""; }
-  });
+  const [perfil, setPerfil] = useState(obtenerDatosPerfil);
+  const [fotoPerfilHeader, setFotoPerfilHeader] = useState("");
   const [horasPerfil, setHorasPerfil] = useState(null);
 
   useEffect(() => {
-    const actualizarFoto = () => {
-      try { setFotoPerfilHeader(window.localStorage.getItem(claveFotoPerfil()) || ""); }
-      catch { setFotoPerfilHeader(""); }
+    let activo = true;
+    const cargarPerfil = async () => {
+      try {
+        const fotoData = await obtenerFotoPerfil();
+        if (!activo) return;
+        setFotoPerfilHeader(fotoData?.foto_perfil_url || "");
+      } catch (error) {
+        console.error("No fue posible recuperar el perfil del usuario.", error);
+      }
     };
+    const actualizarFoto = (event) => {
+      const url = event.detail?.fotoPerfilUrl;
+      if (typeof url === "string") setFotoPerfilHeader(url);
+      else void cargarPerfil();
+    };
+    void cargarPerfil();
     window.addEventListener("eventhub-profile-updated", actualizarFoto);
-    return () => window.removeEventListener("eventhub-profile-updated", actualizarFoto);
+    return () => {
+      activo = false;
+      window.removeEventListener("eventhub-profile-updated", actualizarFoto);
+    };
+  }, []);
+
+  useEffect(() => {
+    let activo = true;
+    obtenerPerfilUsuario()
+      .then((perfilData) => {
+        if (!activo) return;
+        const nombre =
+          [perfilData?.nombre, perfilData?.apellido]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || obtenerDatosPerfil().nombre;
+        setPerfil({
+          ...obtenerDatosPerfil(),
+          nombre,
+          correo: perfilData?.email || obtenerDatosPerfil().correo,
+          iniciales: nombre
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+            .join("") || "EH",
+        });
+      })
+      .catch((error) => {
+        console.error("No fue posible recuperar el nombre del usuario.", error);
+      });
+    return () => {
+      activo = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -1189,17 +1247,10 @@ function Header({
           ☰ <span>Herramientas</span>
         </button>
 
-        <button
-          className="theme-toggle"
-          type="button"
-          onClick={alternarTema}
-          aria-label={modoOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-          title={modoOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-        >
-          <span aria-hidden="true">{modoOscuro ? "☀️" : "🌙"}</span>
-        </button>
-
         <div className="profile-menu-anchor" ref={perfilMenuRef}>
+          <span className="profile-header-name" title={perfil.nombre}>
+            {perfil.nombre}
+          </span>
           <button
             className={`avatar profile-menu-trigger ${mostrarMenuPerfil ? "is-open" : ""}`}
             type="button"
@@ -2041,11 +2092,14 @@ function FormularioEvento({ onCancelar, onCrear, onProgress }) {
           />
           <span>
             <strong>Crear una subtarea</strong>
-            <small>Se guardará vinculada al evento y con una fecha límite dentro de su periodo.</small>
+            <small>¿Qué necesitas hacer para este evento? Agrega subtareas para organizar tus actividades y encontrarlas dentro del evento.</small>
           </span>
         </label>
         {crearSubtareaInicial && (
           <div className="create-event-subtask-fields">
+            <p className="create-event-subtask-help">
+              Las subtareas son actividades necesarias para organizar o ejecutar el evento; puedes asignar responsable, fecha y duración estimada.
+            </p>
             {subtareas.map((item, indice) => (
               <div className="create-event-subtask-item" key={item.id}>
                 <div className="field-header">
@@ -3841,13 +3895,11 @@ function ConfiguracionUsuario({ onNotify }) {
   const [error, setError] = useState("");
   const [errorCampo, setErrorCampo] = useState("");
   const [conflictoConfiguracion, setConflictoConfiguracion] = useState(null);
-  const [fotoPerfil, setFotoPerfil] = useState(() => {
-    try { return window.localStorage.getItem(claveFotoPerfil()) || ""; }
-    catch { return ""; }
-  });
+  const [fotoPerfil, setFotoPerfil] = useState("");
   const [errorFoto, setErrorFoto] = useState("");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const inputFotoRef = useRef(null);
-  const perfilActual = obtenerDatosPerfil();
+  const [perfilActual, setPerfilActual] = useState(obtenerDatosPerfil);
 
   useEffect(() => {
     const cargarConfiguracion = async () => {
@@ -3873,6 +3925,56 @@ function ConfiguracionUsuario({ onNotify }) {
     };
 
     cargarConfiguracion();
+  }, []);
+
+  useEffect(() => {
+    let activo = true;
+    const cargarPerfil = async () => {
+      const [perfilResultado, fotoResultado] = await Promise.allSettled([
+        obtenerPerfilUsuario(),
+        obtenerFotoPerfil(),
+      ]);
+      if (!activo) return;
+
+      if (perfilResultado.status === "fulfilled") {
+        const perfilData = perfilResultado.value;
+        const nombre =
+          [perfilData?.nombre, perfilData?.apellido]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || obtenerDatosPerfil().nombre;
+        setPerfilActual({
+          ...obtenerDatosPerfil(),
+          nombre,
+          correo: perfilData?.email || obtenerDatosPerfil().correo,
+          iniciales: nombre
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((parte) => parte[0]?.toLocaleUpperCase("es-CO") || "")
+            .join("") || "EH",
+        });
+      } else {
+        setError(
+          perfilResultado.reason?.message ||
+            "No fue posible consultar el perfil del usuario."
+        );
+      }
+
+      if (fotoResultado.status === "fulfilled") {
+        setFotoPerfil(fotoResultado.value?.foto_perfil_url || "");
+      } else {
+        setErrorFoto(
+          fotoResultado.reason?.message ||
+            "No fue posible consultar tu foto de perfil."
+        );
+      }
+    };
+
+    void cargarPerfil();
+
+    return () => {
+      activo = false;
+    };
   }, []);
 
   const cambiarHoras = (event) => {
@@ -4009,9 +4111,9 @@ function ConfiguracionUsuario({ onNotify }) {
     }
   };
 
-  const procesarFotoPerfil = (archivo) => {
+  const procesarFotoPerfil = async (archivo) => {
     setErrorFoto("");
-    if (!archivo) return;
+    if (!archivo || subiendoFoto) return;
     if (!["image/jpeg", "image/png"].includes(archivo.type)) {
       setErrorFoto("Selecciona una imagen JPG o PNG.");
       return;
@@ -4021,35 +4123,28 @@ function ConfiguracionUsuario({ onNotify }) {
       return;
     }
 
-    const lector = new FileReader();
-    lector.onerror = () => setErrorFoto("No se pudo leer la imagen. Inténtalo de nuevo.");
-    lector.onload = () => {
-      const imagen = new Image();
-      imagen.onerror = () => setErrorFoto("El archivo seleccionado no es una imagen válida.");
-      imagen.onload = () => {
-        const maxDimension = 512;
-        const escala = Math.min(1, maxDimension / Math.max(imagen.width, imagen.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(imagen.width * escala));
-        canvas.height = Math.max(1, Math.round(imagen.height * escala));
-        const contexto = canvas.getContext("2d");
-        if (!contexto) {
-          setErrorFoto("No se pudo procesar la imagen en este navegador.");
-          return;
-        }
-        contexto.drawImage(imagen, 0, 0, canvas.width, canvas.height);
-        const imagenComprimida = canvas.toDataURL("image/jpeg", 0.82);
-        try {
-          window.localStorage.setItem(claveFotoPerfil(), imagenComprimida);
-          setFotoPerfil(imagenComprimida);
-          window.dispatchEvent(new Event("eventhub-profile-updated"));
-        } catch {
-          setErrorFoto("No se pudo guardar la foto en este navegador. Prueba con otra imagen.");
-        }
-      };
-      imagen.src = String(lector.result || "");
-    };
-    lector.readAsDataURL(archivo);
+    setSubiendoFoto(true);
+    try {
+      const resultado = await subirFotoPerfil(archivo);
+      const url = resultado?.foto_perfil_url;
+      if (!url) {
+        throw new Error("El servidor no devolvió la URL de la foto guardada.");
+      }
+
+      setFotoPerfil(url);
+      window.dispatchEvent(
+        new CustomEvent("eventhub-profile-updated", {
+          detail: { fotoPerfilUrl: url },
+        })
+      );
+      onNotify("Foto de perfil actualizada.");
+    } catch (errorActual) {
+      setErrorFoto(
+        errorActual.message || "No fue posible guardar la foto de perfil."
+      );
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
 
   const ajustarHoras = (cambio) => {
@@ -4112,6 +4207,7 @@ function ConfiguracionUsuario({ onNotify }) {
                 <button
                   className="profile-photo-camera"
                   type="button"
+                  disabled={subiendoFoto}
                   aria-label="Cambiar foto de perfil"
                   title="Cambiar foto de perfil"
                   onClick={() => inputFotoRef.current?.click()}
@@ -4127,6 +4223,7 @@ function ConfiguracionUsuario({ onNotify }) {
                   type="file"
                   accept="image/png,image/jpeg"
                   aria-label="Seleccionar foto de perfil"
+                  disabled={subiendoFoto}
                   onChange={(event) => {
                     procesarFotoPerfil(event.target.files?.[0]);
                     event.target.value = "";
@@ -4135,25 +4232,34 @@ function ConfiguracionUsuario({ onNotify }) {
                 <button
                   className="btn secondary profile-change-photo"
                   type="button"
+                  disabled={subiendoFoto}
                   onClick={() => inputFotoRef.current?.click()}
                 >
-                  <span aria-hidden="true">↥</span> Cambiar foto
+                  <span aria-hidden="true">↥</span> {subiendoFoto ? "Guardando foto..." : "Cambiar foto"}
                 </button>
+                {subiendoFoto && <p className="profile-photo-status" role="status">Subiendo y guardando tu foto de perfil...</p>}
                 <small className="profile-photo-hint">JPG o PNG · Máximo 5 MB</small>
                 <div
-                  className="profile-photo-dropzone"
+                  className={`profile-photo-dropzone${subiendoFoto ? " disabled" : ""}`}
                   role="button"
-                  tabIndex={0}
-                  onClick={() => inputFotoRef.current?.click()}
+                  tabIndex={subiendoFoto ? -1 : 0}
+                  aria-disabled={subiendoFoto}
+                  onClick={() => {
+                    if (!subiendoFoto) inputFotoRef.current?.click();
+                  }}
                   onKeyDown={(event) => {
+                    if (subiendoFoto) return;
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
                       inputFotoRef.current?.click();
                     }
                   }}
-                  onDragOver={(event) => event.preventDefault()}
+                  onDragOver={(event) => {
+                    if (!subiendoFoto) event.preventDefault();
+                  }}
                   onDrop={(event) => {
                     event.preventDefault();
+                    if (subiendoFoto) return;
                     procesarFotoPerfil(event.dataTransfer.files?.[0]);
                   }}
                 >
@@ -4846,6 +4952,11 @@ function Today({ onNotify, recargaToken = 0 }) {
   const [error, setError] = useState("");
   const [actualizando, setActualizando] = useState(null);
   const [seleccionada, setSeleccionada] = useState(null);
+  const [archivoEvidencia, setArchivoEvidencia] = useState(null);
+  const [vistaPreviaEvidencia, setVistaPreviaEvidencia] = useState("");
+  const [subiendoEvidencia, setSubiendoEvidencia] = useState(false);
+  const [errorEvidencia, setErrorEvidencia] = useState("");
+  const inputEvidenciaRef = useRef(null);
   const [capacidadDiaria, setCapacidadDiaria] = useState(6);
   const [filtroBusqueda, setFiltroBusqueda] = useState("");
   const [filtroEvento, setFiltroEvento] = useState("");
@@ -4882,6 +4993,22 @@ function Today({ onNotify, recargaToken = 0 }) {
       return new Set();
     }
   })());
+
+  useEffect(() => {
+    if (!archivoEvidencia) {
+      setVistaPreviaEvidencia("");
+      return undefined;
+    }
+
+    const url = URL.createObjectURL(archivoEvidencia);
+    setVistaPreviaEvidencia(url);
+    return () => URL.revokeObjectURL(url);
+  }, [archivoEvidencia]);
+
+  useEffect(() => {
+    setArchivoEvidencia(null);
+    setErrorEvidencia("");
+  }, [seleccionada?.id]);
 
 
   const cargarHoy = async () => {
@@ -5026,6 +5153,64 @@ function Today({ onNotify, recargaToken = 0 }) {
   useEffect(() => {
     cargarHoy();
   }, [recargaToken]);
+
+  const seleccionarEvidencia = (archivo) => {
+    setErrorEvidencia("");
+    if (!archivo) return;
+    if (!archivo.type.startsWith("image/")) {
+      setErrorEvidencia("Selecciona un archivo de imagen.");
+      return;
+    }
+    if (archivo.size === 0) {
+      setErrorEvidencia("El archivo está vacío.");
+      return;
+    }
+    if (archivo.size > 10 * 1024 * 1024) {
+      setErrorEvidencia("La imagen debe pesar 10 MB o menos.");
+      return;
+    }
+    setArchivoEvidencia(archivo);
+  };
+
+  const guardarEvidencia = async () => {
+    if (!seleccionada || !archivoEvidencia || subiendoEvidencia) return;
+
+    setSubiendoEvidencia(true);
+    setErrorEvidencia("");
+    try {
+      const resultado = await subirComprobanteSubtarea(
+        seleccionada.id,
+        archivoEvidencia
+      );
+      const url = resultado?.comprobante_url;
+      if (!url) {
+        throw new Error("El servidor no devolvió la URL de la evidencia guardada.");
+      }
+
+      const actualizarEnLista = (lista) =>
+        lista.map((item) =>
+          String(item.id) === String(seleccionada.id)
+            ? { ...item, comprobante_url: url }
+            : item
+        );
+      setSeleccionada((actual) =>
+        actual && String(actual.id) === String(seleccionada.id)
+          ? { ...actual, comprobante_url: url }
+          : actual
+      );
+      setTareas(actualizarEnLista);
+      setGestionesVencidas(actualizarEnLista);
+      setProximasGestiones(actualizarEnLista);
+      setArchivoEvidencia(null);
+      onNotify("Evidencia guardada correctamente.");
+    } catch (errorActual) {
+      setErrorEvidencia(
+        errorActual.message || "No fue posible guardar la evidencia."
+      );
+    } finally {
+      setSubiendoEvidencia(false);
+    }
+  };
 
   // El campo arranca con tres líneas, pero se ajusta al contenido cuando el
   // modal se abre con una nota larga ya guardada.
@@ -5897,23 +6082,146 @@ function Today({ onNotify, recargaToken = 0 }) {
                 </strong>
               </div>
 
+              <div className="today-panel-info">
+                <span>Responsable: </span>
+                <strong>
+                  {obtenerResponsableSubtarea(seleccionada) || "Sin asignar"}
+                </strong>
+              </div>
+
+              {obtenerNotaSubtarea(seleccionada) && (
+                <div className="today-panel-note">
+                  <strong>Nota logística</strong>
+                  <p>{obtenerNotaSubtarea(seleccionada)}</p>
+                </div>
+              )}
+
+              <section className="today-evidence-section" aria-labelledby="today-evidence-title">
+                <div className="today-evidence-heading">
+                  <FaPaperclip aria-hidden="true" />
+                  <div>
+                    <h3 id="today-evidence-title">Evidencia (opcional)</h3>
+                    <p>Adjunta una imagen de respaldo para esta subtarea.</p>
+                  </div>
+                </div>
+
+                <input
+                  ref={inputEvidenciaRef}
+                  className="today-evidence-input"
+                  type="file"
+                  accept="image/*"
+                  aria-label="Seleccionar imagen de evidencia"
+                  disabled={subiendoEvidencia || actualizando === seleccionada.id}
+                  onChange={(event) => {
+                    seleccionarEvidencia(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+
+                {(vistaPreviaEvidencia || seleccionada.comprobante_url) && (
+                  <div className="today-evidence-preview">
+                    <img
+                      src={vistaPreviaEvidencia || seleccionada.comprobante_url}
+                      alt={archivoEvidencia?.name || "Evidencia guardada de la subtarea"}
+                    />
+                    <div className="today-evidence-file">
+                      <strong>
+                        {archivoEvidencia?.name || "Evidencia guardada"}
+                      </strong>
+                      <span>
+                        {archivoEvidencia
+                          ? `${(archivoEvidencia.size / (1024 * 1024)).toFixed(2)} MB · Lista para cargar`
+                          : "Disponible"}
+                      </span>
+                    </div>
+                    {seleccionada.comprobante_url && !archivoEvidencia && (
+                      <a
+                        className="today-evidence-open"
+                        href={seleccionada.comprobante_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Ver
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {archivoEvidencia ? (
+                  <div className="today-evidence-actions">
+                    <button
+                      className="today-panel-secondary"
+                      type="button"
+                      disabled={subiendoEvidencia}
+                      onClick={() => inputEvidenciaRef.current?.click()}
+                    >
+                      Reemplazar archivo
+                    </button>
+                    <button
+                      className="today-evidence-remove"
+                      type="button"
+                      disabled={subiendoEvidencia}
+                      onClick={() => setArchivoEvidencia(null)}
+                    >
+                      Quitar selección
+                    </button>
+                    <button
+                      className="btn primary today-evidence-upload"
+                      type="button"
+                      disabled={subiendoEvidencia}
+                      onClick={guardarEvidencia}
+                    >
+                      {subiendoEvidencia ? "Subiendo evidencia..." : "Guardar evidencia"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="today-panel-secondary today-evidence-choose"
+                    type="button"
+                    disabled={subiendoEvidencia || actualizando === seleccionada.id}
+                    onClick={() => inputEvidenciaRef.current?.click()}
+                  >
+                    <FaImage aria-hidden="true" />
+                    {subiendoEvidencia
+                      ? "Subiendo evidencia..."
+                      : seleccionada.comprobante_url
+                        ? "Reemplazar"
+                        : "Adjuntar imagen"}
+                  </button>
+                )}
+
+                {errorEvidencia && (
+                  <p className="today-evidence-error" role="alert">
+                    {errorEvidencia}
+                  </p>
+                )}
+              </section>
+
               {normalizarEstado(seleccionada.estado) !== "hecho" ? (
                 <>
                   <button
                     className="today-register-button"
                     type="button"
-                    disabled={actualizando === seleccionada.id}
+                    disabled={
+                      actualizando === seleccionada.id ||
+                      subiendoEvidencia ||
+                      Boolean(archivoEvidencia)
+                    }
                     onClick={() => cambiarEstado(seleccionada, "hecho")}
                   >
-                    {actualizando === seleccionada.id
+                    {subiendoEvidencia
+                      ? "Guardando evidencia..."
+                      : actualizando === seleccionada.id
                       ? "Guardando…"
-                      : "✓ Registrar ejecución"}
+                      : "Marcar como hecho"}
                   </button>
 
                   <button
                     className="today-panel-secondary"
                     type="button"
-                    disabled={actualizando === seleccionada.id}
+                    disabled={
+                      actualizando === seleccionada.id || subiendoEvidencia
+                    }
                     onClick={() => abrirModalPosponer(seleccionada)}
                   >
                     Reprogramar gestión
@@ -6432,6 +6740,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
   const [subtareasCalendario, setSubtareasCalendario] = useState([]);
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
   const [fechaCalendario, setFechaCalendario] = useState(obtenerFechaLocalHoy());
+  const [vistaCalendario, setVistaCalendario] = useState("mes");
   const [mesCalendarioProgreso, setMesCalendarioProgreso] = useState(() => {
     const hoy = new Date();
     return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -6578,22 +6887,61 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
   const panelSubtareasRef = useRef(null);
 
   const subtareasPorCategoria = useMemo(() => {
-    const base = { completadas: [], pendientes: [] };
+    const base = {
+      completadas: [],
+      pendientes: [],
+      pospuestas: [],
+      vencidas: [],
+    };
 
     subtareasCalendario.forEach((subtarea) => {
       const estado = estadoEfectivoSubtarea(subtarea);
-
-      if (estado === "hecho") {
-        base.completadas.push(subtarea);
-      }
-
-      if (estado === "pendiente") {
-        base.pendientes.push(subtarea);
-      }
+      const categoria = {
+        hecho: "completadas",
+        pendiente: "pendientes",
+        pospuesto: "pospuestas",
+        vencido: "vencidas",
+      }[estado];
+      if (categoria) base[categoria].push(subtarea);
     });
 
     return base;
   }, [subtareasCalendario]);
+
+  const categoriasSubtareas = [
+    {
+      clave: "completadas",
+      titulo: "Completadas",
+      descripcion: "Gestiones ejecutadas",
+      clase: "stat-done",
+      icono: <FaCheckCircle aria-hidden="true" />,
+      etiquetaEstado: "Completada",
+    },
+    {
+      clave: "pendientes",
+      titulo: "Pendientes",
+      descripcion: "En ritmo ordinario",
+      clase: "stat-pending",
+      icono: <FaClock aria-hidden="true" />,
+      etiquetaEstado: "Pendiente",
+    },
+    {
+      clave: "pospuestas",
+      titulo: "Pospuestas",
+      descripcion: "Reprogramadas",
+      clase: "stat-postponed",
+      icono: <FaClock aria-hidden="true" />,
+      etiquetaEstado: "Pospuesta",
+    },
+    {
+      clave: "vencidas",
+      titulo: "Vencidas",
+      descripcion: "Requieren atención",
+      clase: "stat-risk",
+      icono: <FaExclamationTriangle aria-hidden="true" />,
+      etiquetaEstado: "Vencida",
+    },
+  ];
 
   const activarCategoriaSubtareas = (categoria) => {
     setCategoriaSubtareasActiva((actual) =>
@@ -6607,7 +6955,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
 
       const panel = panelSubtareasRef.current;
       const elemento = event.target instanceof Element ? event.target : null;
-      const cardActiva = elemento?.closest(".progress-status-card");
+      const cardActiva = elemento?.closest(".progress-stat-card");
 
       if (!panel?.contains(elemento) && !cardActiva) {
         setCategoriaSubtareasActiva(null);
@@ -6620,6 +6968,70 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
 
   const contenidoCategoriaSubtareas =
     categoriaSubtareasActiva ? subtareasPorCategoria[categoriaSubtareasActiva] : [];
+  const fechaSeleccionadaCalendario = new Date(`${fechaCalendario}T12:00:00`);
+  const inicioSemanaCalendario = new Date(fechaSeleccionadaCalendario);
+  inicioSemanaCalendario.setDate(
+    inicioSemanaCalendario.getDate() -
+      ((inicioSemanaCalendario.getDay() + 6) % 7)
+  );
+  const diasVisiblesCalendario =
+    vistaCalendario === "semana"
+      ? Array.from({ length: 7 }, (_, index) => {
+          const date = new Date(inicioSemanaCalendario);
+          date.setDate(date.getDate() + index);
+          return {
+            fecha: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+            dia: date.getDate(),
+            mesActual: date.getMonth() === mesCalendarioProgreso.getMonth(),
+          };
+        })
+      : Array.from(
+          {
+            length:
+              (mesCalendarioProgreso.getDay() + 6) % 7 +
+              new Date(
+                mesCalendarioProgreso.getFullYear(),
+                mesCalendarioProgreso.getMonth() + 1,
+                0
+              ).getDate(),
+          },
+          (_, index) => {
+            const primerDia = (mesCalendarioProgreso.getDay() + 6) % 7;
+            if (index < primerDia) return null;
+            const dia = index - primerDia + 1;
+            return {
+              fecha: `${mesCalendarioProgreso.getFullYear()}-${String(mesCalendarioProgreso.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
+              dia,
+              mesActual: true,
+            };
+          }
+        );
+  const eventosDelDiaSeleccionado = datos.eventos.filter(
+    (evento) => String(evento.fecha || "").slice(0, 10) === fechaCalendario
+  );
+  const subtareasDelDiaSeleccionado = subtareasCalendario.filter(
+    (subtarea) => obtenerFechaObjetivo(subtarea) === fechaCalendario
+  );
+  const minutosEstimadosDia = sumarMinutosEstimados(subtareasDelDiaSeleccionado);
+  const navegarCalendario = (direccion) => {
+    const fechaBase =
+      vistaCalendario === "semana"
+        ? new Date(fechaSeleccionadaCalendario)
+        : new Date(
+            mesCalendarioProgreso.getFullYear(),
+            mesCalendarioProgreso.getMonth(),
+            1,
+            12
+          );
+    if (vistaCalendario === "semana") {
+      fechaBase.setDate(fechaBase.getDate() + direccion * 7);
+    } else {
+      fechaBase.setMonth(fechaBase.getMonth() + direccion);
+    }
+    const fechaNueva = `${fechaBase.getFullYear()}-${String(fechaBase.getMonth() + 1).padStart(2, "0")}-${String(fechaBase.getDate()).padStart(2, "0")}`;
+    setFechaCalendario(fechaNueva);
+    setMesCalendarioProgreso(new Date(fechaBase.getFullYear(), fechaBase.getMonth(), 1));
+  };
 
   return (
     <section className="page progress-page">
@@ -6751,92 +7163,35 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
                 </div>
 
                 <div className="progress-rendimiento-stats">
-                  <article className="progress-stat-card stat-done">
-                    <small>COMPLETADAS</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">✓</span>
-                      <strong>{resumen.completadas}</strong>
-                    </div>
-                    <span>
-                      {resumen.total
-                        ? Math.round((resumen.completadas / resumen.total) * 100)
-                        : 0}
-                      % del total
-                    </span>
-                  </article>
-
-                  <article className="progress-stat-card stat-pending">
-                    <small>PENDIENTES</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">○</span>
-                      <strong>{resumen.pendientes}</strong>
-                    </div>
-                    <span>En ritmo ordinario</span>
-                  </article>
-
-                  <article className="progress-stat-card stat-postponed">
-                    <small>POSPUESTAS</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">◷</span>
-                      <strong>{resumen.pospuestas}</strong>
-                    </div>
-                    <span>Reprogramadas</span>
-                  </article>
-
-                  <article className="progress-stat-card stat-risk">
-                    <small>VENCIDAS</small>
-                    <div className="progress-stat-figure">
-                      <span className="progress-stat-icon">!</span>
-                      <strong>{resumen.vencidas}</strong>
-                    </div>
-                    <span>Requieren atención</span>
-                  </article>
-                </div>
-              </section>
-
-              <section className="progress-status-summary" aria-label="Consultar subtareas por estado">
-                <div className="progress-status-cards">
-                  {[
-                    {
-                      clave: "completadas",
-                      titulo: "Completadas",
-                      descripcion: "Gestiones ya ejecutadas",
-                      icono: "✓",
-                    },
-                    {
-                      clave: "pendientes",
-                      titulo: "Pendientes",
-                      descripcion: "Faltan por ejecutar",
-                      icono: "○",
-                    },
-                  ].map((categoria) => {
+                  {categoriasSubtareas.map((categoria) => {
                     const activa = categoriaSubtareasActiva === categoria.clave;
-                    const total = subtareasPorCategoria[categoria.clave].length;
-
+                    const cantidad = subtareasPorCategoria[categoria.clave].length;
+                    const porcentaje = subtareasCalendario.length
+                      ? Math.round((cantidad / subtareasCalendario.length) * 100)
+                      : 0;
                     return (
                       <button
                         key={categoria.clave}
                         type="button"
-                        className={`progress-status-card${activa ? " selected" : ""}`}
+                        className={`progress-stat-card ${categoria.clase}${activa ? " selected" : ""}`}
                         aria-pressed={activa}
                         aria-expanded={activa}
                         aria-controls={activa ? "progress-status-panel" : undefined}
                         onClick={() => activarCategoriaSubtareas(categoria.clave)}
                       >
-                        <div className="progress-status-card-top">
-                          <span className="progress-status-icon" aria-hidden="true">
-                            {categoria.icono}
-                          </span>
-                          <span className="progress-status-label">{categoria.titulo}</span>
+                        <small>{categoria.titulo.toUpperCase()}</small>
+                        <div className="progress-stat-figure">
+                          <span className="progress-stat-icon">{categoria.icono}</span>
+                          <strong>{cantidad}</strong>
                         </div>
-                        <strong>{total}</strong>
-                        <small>{categoria.descripcion}</small>
+                        <span>{categoria.clave === "completadas" ? `${porcentaje}% del total` : categoria.descripcion}</span>
                       </button>
                     );
                   })}
                 </div>
+              </section>
 
-                {categoriaSubtareasActiva && (
+              {categoriaSubtareasActiva && (
                   <div
                     id="progress-status-panel"
                     className="progress-status-panel"
@@ -6855,7 +7210,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
                       </div>
                     ) : contenidoCategoriaSubtareas.length === 0 ? (
                       <div className="progress-status-state empty">
-                        <strong>No hay subtareas {categoriaSubtareasActiva === "completadas" ? "completadas" : "pendientes"}.</strong>
+                        <strong>No hay subtareas {categoriasSubtareas.find((item) => item.clave === categoriaSubtareasActiva)?.titulo.toLowerCase()}.</strong>
                         <span>Los registros aparecerán aquí cuando existan.</span>
                       </div>
                     ) : (
@@ -6865,6 +7220,10 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
                             (item) => String(item.id) === String(subtarea.evento_id)
                           );
                           const nota = obtenerNotaSubtarea(subtarea);
+                          const responsable = obtenerResponsableSubtarea(subtarea);
+                          const categoria = categoriasSubtareas.find(
+                            (item) => item.clave === categoriaSubtareasActiva
+                          );
 
                           return (
                             <article
@@ -6874,19 +7233,28 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
                               }
                             >
                               <div className="progress-status-item-main">
-                                <span className="progress-status-item-tag">
-                                  {categoriaSubtareasActiva === "completadas" ? "Completada" : "Pendiente"}
+                                <span className={`progress-status-item-tag ${categoria?.clase || ""}`}>
+                                  {categoria?.etiquetaEstado}
                                 </span>
                                 <h3>{subtarea.titulo || subtarea.nombre || "Subtarea sin nombre"}</h3>
                                 <p className="progress-status-event">
                                   Evento: {evento?.titulo || "Evento no asociado"}
                                 </p>
+                                <div className="progress-status-meta">
+                                  <span>Fecha: {subtarea.dia_objetivo ? formatearFecha(subtarea.dia_objetivo) : "Sin fecha"}</span>
+                                  <span>Responsable: {responsable || "Sin asignar"}</span>
+                                  <span>Estimado: {formatearDuracion(obtenerHoras(subtarea))}</span>
+                                </div>
                                 {nota && <p className="progress-status-note">{nota}</p>}
                               </div>
-                              {evento?.fecha && (
-                                <span className="progress-status-date">
-                                  {formatearFecha(evento.fecha)}
-                                </span>
+                              {evento?.id && (
+                                <button
+                                  className="progress-status-event-link"
+                                  type="button"
+                                  onClick={() => navegar(`/eventos/${evento.id}`)}
+                                >
+                                  Ver evento →
+                                </button>
                               )}
                             </article>
                           );
@@ -6894,8 +7262,7 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
                       </div>
                     )}
                   </div>
-                )}
-              </section>
+              )}
 
               <section className="progress-breakdown">
                 <div className="progress-breakdown-header">
@@ -7027,59 +7394,194 @@ function Progreso({ busquedaEventos = "", onLimpiarBusqueda, recargaToken = 0 })
         aria-label="Abrir calendario de progreso"
         title="Ver calendario"
       >
-        <span aria-hidden="true">▦</span>
+        <FaCalendarAlt aria-hidden="true" />
       </button>
 
       {mostrarCalendario && (
         <div className="progress-calendar-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setMostrarCalendario(false); }}>
           <section className="progress-calendar-modal" role="dialog" aria-modal="true" aria-labelledby="progress-calendar-title">
             <header className="progress-calendar-modal-header">
-              <div><span className="progress-calendar-eyebrow">EVENTHUB · PLANIFICACIÓN</span><h2 id="progress-calendar-title">Calendario de progreso y entregas</h2><p>Consulta eventos y subtareas según su fecha programada.</p></div>
-              <button type="button" className="progress-calendar-close" onClick={() => setMostrarCalendario(false)} aria-label="Cerrar calendario">×</button>
+              <div>
+                <span className="progress-calendar-eyebrow">EVENTHUB · PLANIFICACIÓN</span>
+                <h2 id="progress-calendar-title">Calendario de Progreso y Entregas</h2>
+                <p>Consulta fechas, hitos y gestiones de tus eventos.</p>
+              </div>
+              <button type="button" className="progress-calendar-close" onClick={() => setMostrarCalendario(false)} aria-label="Cerrar calendario">
+                <FaTimes aria-hidden="true" />
+              </button>
             </header>
             <div className="progress-calendar-body">
               <div className="progress-calendar-main">
                 <div className="progress-calendar-monthbar">
-                  <h3>{new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" }).format(mesCalendarioProgreso)}</h3>
+                  <h3>
+                    {vistaCalendario === "semana"
+                      ? `${new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" }).format(inicioSemanaCalendario)} – ${new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" }).format(new Date(inicioSemanaCalendario.getFullYear(), inicioSemanaCalendario.getMonth(), inicioSemanaCalendario.getDate() + 6, 12))}`
+                      : new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" }).format(mesCalendarioProgreso)}
+                  </h3>
                   <div className="progress-calendar-month-actions">
-                    <button type="button" aria-label="Mes anterior" onClick={() => setMesCalendarioProgreso(new Date(mesCalendarioProgreso.getFullYear(), mesCalendarioProgreso.getMonth() - 1, 1))}>‹</button>
-                    <button type="button" onClick={() => { const hoy = new Date(); setMesCalendarioProgreso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)); setFechaCalendario(obtenerFechaLocalHoy()); }}>Hoy</button>
-                    <button type="button" aria-label="Mes siguiente" onClick={() => setMesCalendarioProgreso(new Date(mesCalendarioProgreso.getFullYear(), mesCalendarioProgreso.getMonth() + 1, 1))}>›</button>
+                    <button type="button" aria-label={vistaCalendario === "semana" ? "Semana anterior" : "Mes anterior"} onClick={() => navegarCalendario(-1)}>
+                      <FaChevronLeft aria-hidden="true" />
+                    </button>
+                    <button type="button" className="progress-calendar-today" onClick={() => {
+                      const hoy = obtenerFechaLocalHoy();
+                      const fechaHoy = new Date(`${hoy}T12:00:00`);
+                      setMesCalendarioProgreso(new Date(fechaHoy.getFullYear(), fechaHoy.getMonth(), 1));
+                      setFechaCalendario(hoy);
+                    }}>Hoy</button>
+                    <button type="button" aria-label={vistaCalendario === "semana" ? "Semana siguiente" : "Mes siguiente"} onClick={() => navegarCalendario(1)}>
+                      <FaChevronRight aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="progress-calendar-view-switch" role="group" aria-label="Vista del calendario">
+                    <button type="button" className={vistaCalendario === "mes" ? "active" : ""} aria-pressed={vistaCalendario === "mes"} onClick={() => setVistaCalendario("mes")}>Mes</button>
+                    <button type="button" className={vistaCalendario === "semana" ? "active" : ""} aria-pressed={vistaCalendario === "semana"} onClick={() => setVistaCalendario("semana")}>Semana</button>
                   </div>
                 </div>
                 <div className="progress-calendar-grid">
                   {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => <span className="progress-calendar-weekday" key={d}>{d}</span>)}
-                  {Array.from({ length: (mesCalendarioProgreso.getDay() + 6) % 7 }, (_, i) => <span className="progress-calendar-empty" key={`empty-${i}`} />)}
-                  {Array.from({ length: new Date(mesCalendarioProgreso.getFullYear(), mesCalendarioProgreso.getMonth() + 1, 0).getDate() }, (_, i) => {
-                    const dia = i + 1;
-                    const fecha = `${mesCalendarioProgreso.getFullYear()}-${String(mesCalendarioProgreso.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
-                    const eventosDia = datos.eventos.filter((ev) => String(ev.fecha || "").slice(0, 10) === fecha);
-                    const tareasDia = subtareasCalendario.filter((t) => obtenerFechaObjetivo(t) === fecha);
+                  {diasVisiblesCalendario.map((dia, index) => {
+                    if (!dia) {
+                      return <span className="progress-calendar-empty" key={`empty-${index}`} />;
+                    }
+                    const { fecha, dia: numeroDia } = dia;
+                    const eventosDia = datos.eventos.filter((evento) => String(evento.fecha || "").slice(0, 10) === fecha);
+                    const tareasDia = subtareasCalendario.filter((subtarea) => obtenerFechaObjetivo(subtarea) === fecha);
                     const esHoy = fecha === obtenerFechaLocalHoy();
-                    return <button type="button" key={fecha} className={`progress-calendar-day ${fechaCalendario === fecha ? "selected" : ""} ${esHoy ? "today" : ""} ${eventosDia.length || tareasDia.length ? "has-items" : ""}`} onClick={() => setFechaCalendario(fecha)} aria-pressed={fechaCalendario === fecha} aria-label={`${dia}, ${eventosDia.length} eventos y ${tareasDia.length} subtareas`}>
-                      <span className="progress-calendar-day-number">{dia}</span>
-                      {eventosDia.slice(0, 1).map((ev) => <span key={ev.id} className="progress-calendar-chip event-chip">{ev.titulo}</span>)}
-                      {tareasDia.slice(0, 1).map((t) => <span key={t.id} className={`progress-calendar-chip task-chip ${estadoEfectivoSubtarea(t)}`}>{t.titulo || t.nombre || "Subtarea"}</span>)}
-                      {eventosDia.length + tareasDia.length > 2 && <small className="progress-calendar-more">+{eventosDia.length + tareasDia.length - 2} más</small>}
-                    </button>;
+                    const fechaCompleta = new Intl.DateTimeFormat("es-CO", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    }).format(new Date(`${fecha}T12:00:00`));
+                    return (
+                      <button
+                        type="button"
+                        key={fecha}
+                        className={`progress-calendar-day ${fechaCalendario === fecha ? "selected" : ""} ${esHoy ? "today" : ""} ${eventosDia.length || tareasDia.length ? "has-items" : ""}`}
+                        onClick={() => {
+                          setFechaCalendario(fecha);
+                          const date = new Date(`${fecha}T12:00:00`);
+                          setMesCalendarioProgreso(new Date(date.getFullYear(), date.getMonth(), 1));
+                        }}
+                        aria-pressed={fechaCalendario === fecha}
+                        aria-label={`${fechaCompleta}: ${eventosDia.length} eventos y ${tareasDia.length} subtareas`}
+                      >
+                        <span className="progress-calendar-day-number">{numeroDia}</span>
+                        {eventosDia.slice(0, 1).map((evento) => (
+                          <span key={evento.id} className="progress-calendar-chip event-chip">
+                            <FaCalendarAlt aria-hidden="true" /> {evento.titulo}
+                          </span>
+                        ))}
+                        {tareasDia.slice(0, 1).map((subtarea) => {
+                          const estado = estadoEfectivoSubtarea(subtarea);
+                          return (
+                            <span key={subtarea.id} className={`progress-calendar-chip task-chip ${estado}`}>
+                              {estado === "hecho" ? <FaCheckCircle aria-hidden="true" /> : estado === "vencido" ? <FaExclamationTriangle aria-hidden="true" /> : <FaClock aria-hidden="true" />}
+                              {subtarea.titulo || subtarea.nombre || "Subtarea"}
+                            </span>
+                          );
+                        })}
+                        {eventosDia.length + tareasDia.length > 2 && <small className="progress-calendar-more">+{eventosDia.length + tareasDia.length - 2} más</small>}
+                      </button>
+                    );
                   })}
+                </div>
+                <div className="progress-calendar-legend" aria-label="Leyenda de estados">
+                  <span className="legend-pending"><FaClock aria-hidden="true" /> Pendiente</span>
+                  <span className="legend-progress"><FaClock aria-hidden="true" /> Pospuesta</span>
+                  <span className="legend-done"><FaCheckCircle aria-hidden="true" /> Completada</span>
+                  <span className="legend-overdue"><FaExclamationTriangle aria-hidden="true" /> Vencida</span>
+                  <span className="legend-event"><FaCalendarAlt aria-hidden="true" /> Hito</span>
                 </div>
               </div>
               <aside className="progress-calendar-detail">
-                <span className="progress-calendar-eyebrow">DÍA SELECCIONADO</span>
-                <h3>{new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(`${fechaCalendario}T12:00:00`))}</h3>
-                {(() => {
-                  const eventosDia = datos.eventos.filter((ev) => String(ev.fecha || "").slice(0, 10) === fechaCalendario);
-                  const tareasDia = subtareasCalendario.filter((t) => obtenerFechaObjetivo(t) === fechaCalendario);
-                  if (!eventosDia.length && !tareasDia.length) return <div className="progress-calendar-empty-detail"><span>▦</span><strong>Sin actividades programadas</strong><p>Selecciona otro día para consultar sus entregas.</p></div>;
-                  return <div className="progress-calendar-items">
-                    {eventosDia.map((ev) => <article className="progress-calendar-item event-item" key={`evento-${ev.id}`}><span className="progress-calendar-item-label">EVENTO · {ev.estado?.etiqueta || "Programado"}</span><h4>{ev.titulo}</h4><p>Progreso acumulado: {ev.porcentaje}%</p><button type="button" onClick={() => navegar(`/eventos/${ev.id}`)}>Ver evento →</button></article>)}
-                    {tareasDia.map((t) => { const estado = estadoEfectivoSubtarea(t); const evento = datos.eventos.find((ev) => String(ev.id) === String(t.evento_id)); return <article className={`progress-calendar-item task-item task-${estado}`} key={`tarea-${t.id}`}><span className="progress-calendar-item-label">SUBTAREA · {estado === "hecho" ? "Completada" : estado === "vencido" ? "Vencida" : estado === "pospuesto" ? "Pospuesta" : "Pendiente"}</span><h4>{t.titulo || t.nombre || "Subtarea"}</h4><p>Evento: {evento?.titulo || "Evento asociado"}</p>{evento && <button type="button" onClick={() => navegar(`/eventos/${evento.id}`)}>Ver evento →</button>}</article>; })}
-                  </div>;
-                })()}
+                <span className="progress-calendar-eyebrow">
+                  <FaCalendarAlt aria-hidden="true" /> DÍA SELECCIONADO
+                </span>
+                <h3>
+                  {new Intl.DateTimeFormat("es-CO", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }).format(fechaSeleccionadaCalendario)}
+                </h3>
+                <div className="progress-calendar-hours-summary">
+                  <FaClock aria-hidden="true" />
+                  <span>
+                    <strong>{formatearDuracion(minutosAHoras(minutosEstimadosDia))}</strong>
+                    <small>Tiempo estimado · {subtareasDelDiaSeleccionado.length} subtareas</small>
+                  </span>
+                </div>
+                {!eventosDelDiaSeleccionado.length && !subtareasDelDiaSeleccionado.length ? (
+                  <div className="progress-calendar-empty-detail">
+                    <FaCalendarAlt aria-hidden="true" />
+                    <strong>Sin actividades programadas</strong>
+                    <p>Selecciona otro día para consultar sus entregas.</p>
+                  </div>
+                ) : (
+                  <div className="progress-calendar-items">
+                    {eventosDelDiaSeleccionado.map((evento) => (
+                      <article className="progress-calendar-item event-item" key={`evento-${evento.id}`}>
+                        <span className="progress-calendar-item-label">
+                          <FaCalendarAlt aria-hidden="true" /> HITO · {evento.estado?.etiqueta || "Programado"}
+                        </span>
+                        <h4>{evento.titulo}</h4>
+                        <p>Progreso acumulado: {evento.porcentaje}%</p>
+                        <button type="button" onClick={() => navegar(`/eventos/${evento.id}`)}>
+                          Ver evento →
+                        </button>
+                      </article>
+                    ))}
+                    {subtareasDelDiaSeleccionado.map((subtarea) => {
+                      const estado = estadoEfectivoSubtarea(subtarea);
+                      const evento = datos.eventos.find(
+                        (item) => String(item.id) === String(subtarea.evento_id)
+                      );
+                      const etiqueta =
+                        estado === "hecho"
+                          ? "Completada"
+                          : estado === "vencido"
+                            ? "Vencida"
+                            : estado === "pospuesto"
+                              ? "Pospuesta"
+                              : "Pendiente";
+                      return (
+                        <article
+                          className={`progress-calendar-item task-item task-${estado}`}
+                          key={`tarea-${subtarea.id}`}
+                        >
+                          <span className="progress-calendar-item-label">
+                            {estado === "hecho" ? <FaCheckCircle aria-hidden="true" /> : estado === "vencido" ? <FaExclamationTriangle aria-hidden="true" /> : <FaClock aria-hidden="true" />}
+                            SUBTAREA · {etiqueta}
+                          </span>
+                          <h4>{subtarea.titulo || subtarea.nombre || "Subtarea"}</h4>
+                          <p>Evento: {evento?.titulo || "Evento no asociado"}</p>
+                          <div className="progress-calendar-task-meta">
+                            <span>Responsable: {obtenerResponsableSubtarea(subtarea) || "Sin asignar"}</span>
+                            <span>Estimado: {formatearDuracion(obtenerHoras(subtarea))}</span>
+                          </div>
+                          {obtenerNotaSubtarea(subtarea) && (
+                            <p>{obtenerNotaSubtarea(subtarea)}</p>
+                          )}
+                          {evento && (
+                            <button type="button" onClick={() => navegar(`/eventos/${evento.id}`)}>
+                              Ver evento →
+                            </button>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
               </aside>
             </div>
-            <footer className="progress-calendar-footer"><span>Haz clic en un día para ver sus eventos y subtareas.</span><button type="button" className="btn secondary" onClick={() => setMostrarCalendario(false)}>Cerrar calendario</button></footer>
+            <footer className="progress-calendar-footer">
+              <span>Selecciona un día para consultar sus actividades y carga horaria.</span>
+              <button type="button" className="btn secondary" onClick={() => setMostrarCalendario(false)}>
+                <FaTimes aria-hidden="true" /> Cerrar calendario
+              </button>
+            </footer>
           </section>
         </div>
       )}
