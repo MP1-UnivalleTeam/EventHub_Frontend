@@ -12455,3 +12455,15 @@ body[data-theme="dark"] .profile-data-fields input[readonly] {
     transform: none;
   }
 }
+
+
+/* Modal Editar subtarea: alinear Estado con Duración estimada. */
+.edit-subtask-duration-status-row > div:nth-child(2) {
+  transform: translateY(12px);
+}
+
+@media (max-width: 680px) {
+  .edit-subtask-duration-status-row > div:nth-child(2) {
+    transform: none;
+  }
+}

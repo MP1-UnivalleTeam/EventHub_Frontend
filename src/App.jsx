@@ -3419,7 +3419,7 @@ function EditarSubtareaForm({ subtarea, eventoId, eventoFecha, eventoTitulo, onC
         </p>
       )}
 
-      <div className="form-two-columns">
+      <div className="form-two-columns edit-subtask-duration-status-row">
         <div>
           <div className="field-header">
             <label htmlFor="edit-sub-horas-hours">
